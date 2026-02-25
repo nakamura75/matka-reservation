@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "regions": ["nrt1"],
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
