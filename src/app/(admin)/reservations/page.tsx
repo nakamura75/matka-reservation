@@ -1,10 +1,23 @@
-import { getReservations } from '@/lib/google-sheets';
+import { getReservations, getCustomers, getPlans } from '@/lib/google-sheets';
 import ReservationList from './ReservationList';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReservationsPage() {
-  const reservations = await getReservations().catch(() => []);
+  const [reservations, customers, plans] = await Promise.all([
+    getReservations().catch(() => []),
+    getCustomers().catch(() => []),
+    getPlans().catch(() => []),
+  ]);
+
+  const customerMap = Object.fromEntries(customers.map((c) => [c.id, c.name]));
+  const planMap = Object.fromEntries(plans.map((p) => [p.id, p.name]));
+
+  const enriched = reservations.map((r) => ({
+    ...r,
+    customerName: customerMap[r.customerId] ?? r.customerId,
+    planName: planMap[r.planId],
+  }));
 
   return (
     <div>
@@ -17,7 +30,7 @@ export default async function ReservationsPage() {
           + 新規予約
         </a>
       </div>
-      <ReservationList reservations={reservations} />
+      <ReservationList reservations={enriched} />
     </div>
   );
 }

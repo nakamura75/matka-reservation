@@ -13,13 +13,17 @@ import type { ReservationFormData } from '@/types';
 
 /** GET /api/reservations - 予約一覧 */
 export async function GET() {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const reservations = await getReservations();
-  return NextResponse.json({ success: true, data: reservations });
+    const reservations = await getReservations();
+    return NextResponse.json({ success: true, data: reservations });
+  } catch {
+    return NextResponse.json({ success: true, data: [] });
+  }
 }
 
 /** POST /api/reservations - 予約作成（フォーム送信） */

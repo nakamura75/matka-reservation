@@ -4,7 +4,11 @@ import { getOptions } from '@/lib/google-sheets';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const options = await getOptions();
-  const active = options.filter((o) => o.isActive);
-  return NextResponse.json({ success: true, data: active });
+  try {
+    const options = await getOptions();
+    const active = options.filter((o) => o.isActive);
+    return NextResponse.json({ success: true, data: active });
+  } catch {
+    return NextResponse.json({ success: true, data: [] });
+  }
 }

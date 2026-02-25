@@ -42,12 +42,16 @@ export function getCalendarClient() {
 
 /** シートの全データを取得（1行目=ヘッダー、2行目以降=データ） */
 export async function getSheetData(sheetName: string): Promise<string[][]> {
-  const sheets = getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: sheetName,
-  });
-  return (res.data.values ?? []) as string[][];
+  try {
+    const sheets = getSheetsClient();
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: sheetName,
+    });
+    return (res.data.values ?? []) as string[][];
+  } catch {
+    return [];
+  }
 }
 
 /** シートに行を追記 */
@@ -126,34 +130,31 @@ export async function updateCustomer(data: Customer): Promise<void> {
 function rowToCustomer(r: string[], rowNumber: number): Customer {
   return {
     _rowNumber: rowNumber,
-    id: r[1] ?? '',       // B: ID顧客
-    name: r[2] ?? '',     // C: 顧客名
-    furigana: r[3],       // D: フリガナ
-    phone: r[4] ?? '',    // E: 電話番号
-    email: r[5],          // F: メールアドレス
-    zipCode: r[6],        // G: 郵便番号
-    address: r[7],        // H: 住所
-    lineName: r[8],       // I: LINE名
-    note: r[9],           // J: 備考
-    createdAt: r[10],     // K: 登録日 (0-indexed from col A)
+    id: r[0] ?? '',       // A: ID顧客
+    name: r[1] ?? '',     // B: 顧客名
+    furigana: r[2],       // C: フリガナ
+    phone: r[3] ?? '',    // D: 電話番号
+    email: r[4],          // E: メールアドレス
+    zipCode: r[5],        // F: 郵便番号
+    address: r[6],        // G: 住所
+    lineName: r[7],       // H: LINE名
+    note: r[8],           // I: 備考
+    createdAt: r[9],      // J: 登録日
   };
-  // Note: スプレッドシートの列は A=0, B=1, ...（配列インデックス）
 }
 
 function customerToRow(c: Omit<Customer, '_rowNumber'>): (string | number | boolean | null)[] {
-  // A: _RowNumber（システム） → 空欄
   return [
-    '',           // A: _RowNumber
-    c.id,         // B: ID顧客
-    c.name,       // C: 顧客名
-    c.furigana ?? '',  // D: フリガナ
-    c.phone,      // E: 電話番号
-    c.email ?? '', // F: メールアドレス
-    c.zipCode ?? '', // G: 郵便番号
-    c.address ?? '', // H: 住所
-    c.lineName ?? '', // I: LINE名
-    c.note ?? '', // J: 備考
-    c.createdAt ?? new Date().toLocaleDateString('ja-JP'), // K: 登録日
+    c.id,         // A: ID顧客
+    c.name,       // B: 顧客名
+    c.furigana ?? '',  // C: フリガナ
+    c.phone,      // D: 電話番号
+    c.email ?? '', // E: メールアドレス
+    c.zipCode ?? '', // F: 郵便番号
+    c.address ?? '', // G: 住所
+    c.lineName ?? '', // H: LINE名
+    c.note ?? '', // I: 備考
+    c.createdAt ?? new Date().toLocaleDateString('ja-JP'), // J: 登録日
   ];
 }
 
@@ -170,13 +171,13 @@ export async function getPlans(): Promise<Plan[]> {
 function rowToPlan(r: string[], rowNumber: number): Plan {
   return {
     _rowNumber: rowNumber,
-    id: r[1] ?? '',
-    name: r[2] ?? '',
-    price: Number(r[3]) || 0,
-    duration: Number(r[4]) || 90,
-    description: r[5],
-    isActive: r[6] === 'TRUE' || r[6] === '1' || r[6] === 'true',
-    commissionPrice: Number(r[7]) || 0,
+    id: r[0] ?? '',         // A: IDプラン
+    name: r[1] ?? '',       // B: プラン名
+    price: Number(r[2]) || 0, // C: 単価
+    duration: Number(r[3]) || 90, // D: 所要時間
+    description: r[4],      // E: 説明
+    isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
+    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   };
 }
 
@@ -193,13 +194,13 @@ export async function getOptions(): Promise<Option[]> {
 function rowToOption(r: string[], rowNumber: number): Option {
   return {
     _rowNumber: rowNumber,
-    id: r[1] ?? '',
-    name: r[2] ?? '',
-    price: Number(r[3]) || 0,
-    description: r[4],
-    isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true',
-    externalCode: r[6],
-    commissionPrice: Number(r[7]) || 0,
+    id: r[0] ?? '',         // A: IDオプション
+    name: r[1] ?? '',       // B: オプション名
+    price: Number(r[2]) || 0, // C: 単価
+    description: r[3],      // D: 説明
+    isActive: r[4] === 'TRUE' || r[4] === '1' || r[4] === 'true', // E: 有効
+    externalCode: r[5],     // F: 外部コード
+    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   };
 }
 
@@ -212,9 +213,9 @@ export async function getStaff(): Promise<Staff[]> {
   if (rows.length < 2) return [];
   return rows.slice(1).map((r, i) => ({
     _rowNumber: i + 2,
-    id: r[1] ?? '',
-    name: r[2] ?? '',
-    isActive: r[3],
+    id: r[0] ?? '',       // A: IDスタッフ
+    name: r[1] ?? '',     // B: スタッフ名
+    isActive: r[2],       // C: 有効
   }));
 }
 
@@ -246,7 +247,7 @@ export async function updateReservationStatus(
   // K列 (index 10) = ステータス
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `${SHEET_NAMES.RESERVATIONS}!L${rowNumber}`,
+    range: `${SHEET_NAMES.RESERVATIONS}!K${rowNumber}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [[status]] },
   });
@@ -275,66 +276,66 @@ export async function linkLineUserId(rowNumber: number, lineUserId: string): Pro
 }
 
 function rowToReservation(r: string[], rowNumber: number): Reservation {
+  // 列対応(0-indexed, _RowNumberはシートに存在しない):
+  // 0=A(ID予約), 1=B(ID顧客), 2=C(IDプラン),
+  // 3=D(支払ステータス), 4=E(支払日), 5=F(予約日), 6=G(予約時間帯),
+  // 7=H(お子様人数), 8=I(大人人数), 9=J(構成メモ), 10=K(ステータス),
+  // 11=L(参考写真), 12=M(備考), 13=N(登録日), 14=O(LINE_UserID),
+  // 15=P(フラグ), 16=Q(電話希望), 17=R(撮影シーン), 18=S(予約番号),
+  // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間)
   return {
     _rowNumber: rowNumber,
-    id: r[1] ?? '',             // B: ID予約
-    customerId: r[2] ?? '',     // C: ID顧客
-    planId: r[3] ?? '',         // D: IDプラン
-    paymentStatus: r[4] === 'TRUE' || r[4] === '1',
-    paymentDate: r[5],          // F
-    date: r[6] ?? '',           // G: 予約日
-    timeSlot: (r[7] ?? '9:00') as Reservation['timeSlot'], // H
-    childrenCount: Number(r[8]) || undefined,
-    adultCount: r[9],
-    familyNote: r[10],
-    status: (r[11] ?? '予約済') as Reservation['status'], // L
-    referencePhoto: r[12],
-    note: r[13],
-    createdAt: r[14],
-    lineUserId: r[15],          // P: LINE_UserID (0-index 15 = col P? let me recount)
-    flag: r[16] === 'TRUE',
-    phonePreference: r[17],
-    scene: r[18] as Reservation['scene'],
-    reservationNumber: r[19],   // T: 予約番号 (0-index 19 = col T)
-    discountAmount: Number(r[20]) || 0,
-    discountReason: r[21],
-    checkInTime: r[22],
-    checkOutTime: r[23],
+    id: r[0] ?? '',             // A: ID予約
+    customerId: r[1] ?? '',     // B: ID顧客
+    planId: r[2] ?? '',         // C: IDプラン
+    paymentStatus: r[3] === 'TRUE' || r[3] === '1', // D: 支払ステータス
+    paymentDate: r[4],          // E: 支払日
+    date: r[5] ?? '',           // F: 予約日
+    timeSlot: (r[6] ?? '9:00') as Reservation['timeSlot'], // G: 予約時間帯
+    childrenCount: Number(r[7]) || undefined, // H: お子様人数
+    adultCount: r[8],           // I: 大人人数
+    familyNote: r[9],           // J: 構成メモ
+    status: (r[10] ?? '予約済') as Reservation['status'], // K: ステータス
+    referencePhoto: r[11],      // L: 参考写真
+    note: r[12],                // M: 備考
+    createdAt: r[13],           // N: 登録日
+    lineUserId: r[14],          // O: LINE_UserID
+    flag: r[15] === 'TRUE',     // P: フラグ
+    phonePreference: r[16],     // Q: 電話希望
+    scene: r[17] as Reservation['scene'], // R: 撮影シーン
+    reservationNumber: r[18],   // S: 予約番号
+    discountAmount: Number(r[19]) || 0, // T: 値引額
+    discountReason: r[20],      // U: 値引理由
+    checkInTime: r[21],         // V: 入店時間
+    checkOutTime: r[22],        // W: 退店時間
   };
-  // 列対応(0-indexed):
-  // 0=A(_RowNumber), 1=B(ID予約), 2=C(ID顧客), 3=D(IDプラン),
-  // 4=E(支払ステータス), 5=F(支払日), 6=G(予約日), 7=H(予約時間帯),
-  // 8=I(お子様人数), 9=J(大人人数), 10=K(構成メモ), 11=L(ステータス),
-  // 12=M(参考写真), 13=N(備考), 14=O(登録日), 15=P(LINE_UserID),
-  // 16=Q(フラグ), 17=R(電話希望), 18=S(撮影シーン), 19=T(予約番号), ...
 }
 
 function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number | boolean | null)[] {
   return [
-    '',                              // A: _RowNumber
-    r.id,                            // B: ID予約
-    r.customerId,                    // C: ID顧客
-    r.planId,                        // D: IDプラン
-    r.paymentStatus ? 'TRUE' : 'FALSE', // E
-    r.paymentDate ?? '',             // F
-    r.date,                          // G: 予約日
-    r.timeSlot,                      // H: 予約時間帯
-    r.childrenCount ?? '',           // I
-    r.adultCount ?? '',              // J
-    r.familyNote ?? '',              // K
-    r.status,                        // L: ステータス
-    r.referencePhoto ?? '',          // M
-    r.note ?? '',                    // N: 備考
-    r.createdAt ?? new Date().toISOString(), // O: 登録日
-    r.lineUserId ?? '',              // P: LINE_UserID
-    r.flag ? 'TRUE' : 'FALSE',       // Q: フラグ
-    r.phonePreference ?? '',         // R
-    r.scene ?? '',                   // S: 撮影シーン
-    r.reservationNumber ?? '',       // T: 予約番号
-    r.discountAmount ?? 0,           // U
-    r.discountReason ?? '',          // V
-    r.checkInTime ?? '',             // W
-    r.checkOutTime ?? '',            // X
+    r.id,                            // A: ID予約
+    r.customerId,                    // B: ID顧客
+    r.planId,                        // C: IDプラン
+    r.paymentStatus ? 'TRUE' : 'FALSE', // D: 支払ステータス
+    r.paymentDate ?? '',             // E: 支払日
+    r.date,                          // F: 予約日
+    r.timeSlot,                      // G: 予約時間帯
+    r.childrenCount ?? '',           // H: お子様人数
+    r.adultCount ?? '',              // I: 大人人数
+    r.familyNote ?? '',              // J: 構成メモ
+    r.status,                        // K: ステータス
+    r.referencePhoto ?? '',          // L: 参考写真
+    r.note ?? '',                    // M: 備考
+    r.createdAt ?? new Date().toISOString(), // N: 登録日
+    r.lineUserId ?? '',              // O: LINE_UserID
+    r.flag ? 'TRUE' : 'FALSE',       // P: フラグ
+    r.phonePreference ?? '',         // Q: 電話希望
+    r.scene ?? '',                   // R: 撮影シーン
+    r.reservationNumber ?? '',       // S: 予約番号
+    r.discountAmount ?? 0,           // T: 値引額
+    r.discountReason ?? '',          // U: 値引理由
+    r.checkInTime ?? '',             // V: 入店時間
+    r.checkOutTime ?? '',            // W: 退店時間
   ];
 }
 
@@ -347,23 +348,22 @@ export async function getReservationOptions(reservationId?: string): Promise<Res
   if (rows.length < 2) return [];
   const all = rows.slice(1).map((r, i) => ({
     _rowNumber: i + 2,
-    id: r[1] ?? '',
-    reservationId: r[2] ?? '',
-    optionId: r[3] ?? '',
-    quantity: Number(r[4]) || 1,
-    note: r[5],
+    id: r[0] ?? '',             // A: ID予約オプション
+    reservationId: r[1] ?? '',  // B: ID予約
+    optionId: r[2] ?? '',       // C: IDオプション
+    quantity: Number(r[3]) || 1, // D: 数量
+    note: r[4],                 // E: 備考
   } as ReservationOption));
   return reservationId ? all.filter((o) => o.reservationId === reservationId) : all;
 }
 
 export async function createReservationOption(data: Omit<ReservationOption, '_rowNumber' | 'subtotal' | 'commissionAmount'>): Promise<void> {
   await appendRow(SHEET_NAMES.RESERVATION_OPTIONS, [
-    '',
-    data.id,
-    data.reservationId,
-    data.optionId,
-    data.quantity,
-    data.note ?? '',
+    data.id,              // A: ID予約オプション
+    data.reservationId,   // B: ID予約
+    data.optionId,        // C: IDオプション
+    data.quantity,        // D: 数量
+    data.note ?? '',      // E: 備考
   ]);
 }
 
@@ -376,14 +376,14 @@ export async function getOrders(): Promise<Order[]> {
   if (rows.length < 2) return [];
   return rows.slice(1).map((r, i) => ({
     _rowNumber: i + 2,
-    id: r[1] ?? '',
-    customerId: r[2] ?? '',
-    reservationId: r[3],
-    orderDate: r[4] ?? '',
-    isPaid: r[5] === 'TRUE',
-    paidDate: r[6],
-    note: r[7],
-    flag: r[8] === 'TRUE',
+    id: r[0] ?? '',             // A: ID注文
+    customerId: r[1] ?? '',     // B: ID顧客
+    reservationId: r[2],        // C: ID予約
+    orderDate: r[3] ?? '',      // D: 注文日
+    isPaid: r[4] === 'TRUE',    // E: 入金済
+    paidDate: r[5],             // F: 入金日
+    note: r[6],                 // G: 備考
+    flag: r[7] === 'TRUE',      // H: フラグ
   } as Order));
 }
 
@@ -396,18 +396,18 @@ export async function getOrderItems(orderId?: string): Promise<OrderItem[]> {
   if (rows.length < 2) return [];
   const all = rows.slice(1).map((r, i) => ({
     _rowNumber: i + 2,
-    id: r[1] ?? '',
-    orderId: r[2] ?? '',
-    productId: r[3] ?? '',
-    customerId: r[4],
-    quantity: Number(r[5]) || 1,
-    status: (r[6] ?? '受注') as OrderItem['status'],
-    completedDate: r[7],
-    orderedDate: r[8],
-    arrivedDate: r[9],
-    shippedDate: r[10],
-    trackingNumber: r[11],
-    note: r[12],
+    id: r[0] ?? '',             // A: ID注文詳細
+    orderId: r[1] ?? '',        // B: ID注文
+    productId: r[2] ?? '',      // C: ID商品
+    customerId: r[3],           // D: ID顧客（VC）
+    quantity: Number(r[4]) || 1, // E: 数量
+    status: (r[5] ?? '受注') as OrderItem['status'], // F: ステータス
+    completedDate: r[6],        // G: 制作完了日
+    orderedDate: r[7],          // H: 発注日
+    arrivedDate: r[8],          // I: 入荷日
+    shippedDate: r[9],          // J: 発送日
+    trackingNumber: r[10],      // K: 追跡番号
+    note: r[11],                // L: 備考
   } as OrderItem));
   return orderId ? all.filter((item) => item.orderId === orderId) : all;
 }

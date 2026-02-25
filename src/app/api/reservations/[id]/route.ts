@@ -70,9 +70,9 @@ export async function PATCH(
     const row = reservation._rowNumber;
 
     const updates: { range: string; value: string | number }[] = [];
-    if (body.note !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!N${row}`, value: body.note });
-    if (body.discountAmount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!U${row}`, value: body.discountAmount });
-    if (body.discountReason !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!V${row}`, value: body.discountReason });
+    if (body.note !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!M${row}`, value: body.note }); // M: 備考
+    if (body.discountAmount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!T${row}`, value: body.discountAmount }); // T: 値引額
+    if (body.discountReason !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!U${row}`, value: body.discountReason }); // U: 値引理由
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,

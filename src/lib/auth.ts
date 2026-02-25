@@ -3,10 +3,11 @@ import GoogleProvider from 'next-auth/providers/google';
 import type { NextAuthOptions } from 'next-auth';
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET ?? 'dev-fallback-secret-change-in-production',
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      clientId: process.env.GOOGLE_CLIENT_ID ?? 'not-configured',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'not-configured',
     }),
   ],
   pages: {
