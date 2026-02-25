@@ -8,10 +8,12 @@ import {
   ShoppingBagIcon,
   Cog6ToothIcon,
   XMarkIcon,
+  TableCellsIcon,
 } from '@heroicons/react/24/outline';
 
 const navItems = [
-  { href: '/reservations', label: '予約管理', icon: CalendarDaysIcon },
+  { href: '/reservations', label: '予約一覧', icon: TableCellsIcon, exact: true },
+  { href: '/reservations/calendar', label: 'カレンダー', icon: CalendarDaysIcon },
   { href: '/customers', label: '顧客管理', icon: UsersIcon },
   { href: '/orders', label: '注文管理', icon: ShoppingBagIcon },
   { href: '/settings', label: '設定', icon: Cog6ToothIcon },
@@ -57,7 +59,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* ナビゲーション */}
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname.startsWith(item.href);
+            const isActive = item.exact
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
