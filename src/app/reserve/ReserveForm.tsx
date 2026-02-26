@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID } from '@/lib/constants';
 import { formatCurrency, formatDate, isWeekend } from '@/lib/utils';
@@ -72,6 +72,10 @@ export default function ReserveForm() {
   const [options, setOptions] = useState<Option[]>([]);
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [calendarYM, setCalendarYM] = useState(() => {
+    const t = new Date();
+    return { year: t.getFullYear(), month: t.getMonth() };
+  });
 
   // STEP 1
   const [scene, setScene] = useState<ShootingScene | ''>('');
@@ -149,6 +153,8 @@ export default function ReserveForm() {
     setScene(s);
     setSelectedDate('');
     setSelectedTime('');
+    const t = new Date();
+    setCalendarYM({ year: t.getFullYear(), month: t.getMonth() });
     const planType = SCENE_PLAN_MAP[s];
     // 仮の平日プランを設定（日付選択後に更新）
     const match = plans.find((p) => p.name.includes(planType) && p.name.includes('平日'));
@@ -315,27 +321,83 @@ export default function ReserveForm() {
             <h2 className="text-base font-bold text-gray-900 mb-3">撮影日を選択</h2>
             {loadingSlots ? (
               <div className="text-center py-8 text-gray-400 text-sm">空き枠を確認中...</div>
-            ) : slots.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 text-sm">空き枠がありません</div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.date}
-                    type="button"
-                    onClick={() => handleDateSelect(slot.date)}
-                    className={`py-2 px-1 rounded-lg border text-xs font-medium transition-colors
-                      ${selectedDate === slot.date
-                        ? 'border-pink-500 bg-pink-50 text-pink-700'
-                        : 'border-gray-200 text-gray-600 hover:border-pink-200'
-                      }`}
-                  >
-                    <div>{formatDate(slot.date).replace(/\d{4}年/, '')}</div>
-                    <div className={`mt-0.5 ${slot.isWeekend || slot.isHoliday ? 'text-red-400' : 'text-gray-400'}`}>
-                      {slot.isWeekend || slot.isHoliday ? '休日' : '平日'}
+              <div className="border border-gray-200 rounded-2xl p-3">
+                {/* 月ナビゲーション */}
+                {(() => {
+                  const today = new Date();
+                  const minY = today.getFullYear(), minM = today.getMonth();
+                  const future = new Date(today); future.setDate(today.getDate() + 60);
+                  const maxY = future.getFullYear(), maxM = future.getMonth();
+                  const { year, month } = calendarYM;
+                  const canPrev = year > minY || month > minM;
+                  const canNext = year < maxY || (year === maxY && month < maxM);
+                  return (
+                    <div className="flex items-center justify-between mb-3">
+                      <button type="button" onClick={() => setCalendarYM(({ year: y, month: m }) => { const d = new Date(y, m - 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })} disabled={!canPrev} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed">
+                        <ChevronLeftIcon className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <span className="text-sm font-semibold text-gray-700">{year}年{month + 1}月</span>
+                      <button type="button" onClick={() => setCalendarYM(({ year: y, month: m }) => { const d = new Date(y, m + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })} disabled={!canNext} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed">
+                        <ChevronRightIcon className="w-4 h-4 text-gray-500" />
+                      </button>
                     </div>
-                  </button>
-                ))}
+                  );
+                })()}
+                {/* 曜日ヘッダー */}
+                <div className="grid grid-cols-7 mb-1">
+                  {['日','月','火','水','木','金','土'].map((d, i) => (
+                    <div key={d} className={`text-center text-xs py-1 font-medium ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>{d}</div>
+                  ))}
+                </div>
+                {/* カレンダーグリッド */}
+                <div className="grid grid-cols-7 gap-0.5">
+                  {(() => {
+                    const { year, month } = calendarYM;
+                    const slotMap = new Map(slots.map(s => [s.date, s]));
+                    const today = new Date();
+                    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+                    const firstDow = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const cells: (string | null)[] = Array(firstDow).fill(null);
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      cells.push(`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+                    }
+                    while (cells.length % 7 !== 0) cells.push(null);
+                    return cells.map((dateStr, idx) => {
+                      if (!dateStr) return <div key={`e${idx}`} />;
+                      const day = parseInt(dateStr.slice(8));
+                      const slot = slotMap.get(dateStr);
+                      const isPast = dateStr <= todayStr;
+                      const isAvailable = !isPast && !!slot;
+                      const isSelected = selectedDate === dateStr;
+                      const dow = new Date(dateStr + 'T00:00:00').getDay();
+                      const isRed = dow === 0 || !!slot?.isHoliday;
+                      const isBlue = dow === 6;
+                      if (!isAvailable) {
+                        return (
+                          <div key={dateStr} className={`aspect-square flex items-center justify-center text-xs rounded-lg ${isPast ? 'text-gray-200' : 'text-gray-300'}`}>
+                            {day}
+                          </div>
+                        );
+                      }
+                      return (
+                        <button key={dateStr} type="button" onClick={() => handleDateSelect(dateStr)}
+                          className={`aspect-square flex items-center justify-center text-xs font-medium rounded-lg transition-colors
+                            ${isSelected ? 'bg-pink-500 text-white shadow-sm' :
+                              isRed ? 'text-red-500 hover:bg-red-50' :
+                              isBlue ? 'text-blue-500 hover:bg-blue-50' :
+                              'text-gray-700 hover:bg-pink-50'}`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                {slots.length === 0 && (
+                  <p className="text-center text-xs text-gray-400 mt-3">この月に空き枠がありません</p>
+                )}
               </div>
             )}
           </div>
