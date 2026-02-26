@@ -440,15 +440,22 @@ export default function ReserveForm() {
               ))}
             </div>
             {selectedPlan && selectedTime && (
-              <div className="mt-4 bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
-                  <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
-                  {selectedPlan.duration && (
-                    <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
-                  )}
+              <div className="mt-4 space-y-3">
+                <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
+                    <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
+                    {selectedPlan.duration && (
+                      <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
+                    )}
+                  </div>
+                  <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
                 </div>
-                <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
+                <div className="text-xs text-red-600 space-y-1 leading-relaxed">
+                  <p>※ ○○（選択した時間）は撮影開始時刻の目安です。お支度時間が別途必要となります。</p>
+                  <p>※ 所要時間は約3時間でございます。来店時刻・所要時間はご撮影内容によって変更になる場合もございます。</p>
+                  <p>※ 来店いただく確定時刻は本予約確定LINEに記載します。</p>
+                </div>
               </div>
             )}
           </div>
