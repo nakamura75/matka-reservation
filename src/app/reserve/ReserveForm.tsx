@@ -131,6 +131,18 @@ export default function ReserveForm() {
     fetch('/api/options').then(r => r.json()).then(d => setOptions(d.data ?? []));
   }, []);
 
+  // plans ロード後（またはシーン・日付変更後）に planId を再評価
+  useEffect(() => {
+    if (plans.length === 0 || !scene) return;
+    const planType = SCENE_PLAN_MAP[scene];
+    const weekend = selectedDate ? isWeekend(selectedDate) : false;
+    const match =
+      plans.find((p) => p.name.includes(planType) && p.name.includes(selectedDate && weekend ? '休日' : '平日'))
+      ?? plans.find((p) => p.name.includes(planType))
+      ?? plans[0];
+    if (match) setPlanId(match.id);
+  }, [plans, scene, selectedDate]);
+
   // 空き枠取得
   const fetchSlots = useCallback(async (s: ShootingScene) => {
     setLoadingSlots(true);
