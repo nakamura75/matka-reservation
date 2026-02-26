@@ -318,6 +318,9 @@ export default function ReserveForm() {
 
         {scene && (
           <div>
+            {scene === 'その他' && (
+              <p className="text-xs text-red-500 mb-2">※「その他」を選んだ方は、備考欄にて撮影したいシーンをお知らせください。</p>
+            )}
             <h2 className="text-base font-bold text-gray-900 mb-3">撮影日を選択</h2>
             {loadingSlots ? (
               <div className="text-center py-8 text-gray-400 text-sm">空き枠を確認中...</div>
