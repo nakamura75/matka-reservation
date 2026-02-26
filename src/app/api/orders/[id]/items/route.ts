@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getOrderItems, createOrderItem, updateOrderItem, getOrders, getCustomers } from '@/lib/google-sheets';
+import { getOrderItems, createOrderItem, updateOrderItem, getOrders } from '@/lib/google-sheets';
 import { generateId } from '@/lib/utils';
 import type { OrderItem } from '@/types';
 
