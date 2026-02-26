@@ -96,8 +96,11 @@ export default function ReserveForm() {
   const [email, setEmail] = useState('');
 
   // STEP 3
-  const [peopleCount, setPeopleCount] = useState('');
-  const [childrenDetail, setChildrenDetail] = useState('');
+  const [childrenCount, setChildrenCount] = useState('');
+  const [adultCount, setAdultCount] = useState('');
+  const [childrenDetails, setChildrenDetails] = useState<{
+    name: string; gender: string; birthday: string; clothingSize: string;
+  }[]>([]);
 
   // STEP 4
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; quantity: number }[]>([]);
@@ -202,6 +205,24 @@ export default function ReserveForm() {
     });
   }
 
+  function handleChildrenCountChange(val: string) {
+    setChildrenCount(val);
+    const n = parseInt(val) || 0;
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      while (next.length < n) next.push({ name: '', gender: '', birthday: '', clothingSize: '' });
+      return next.slice(0, n);
+    });
+  }
+
+  function updateChildDetail(index: number, field: string, value: string) {
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  }
+
   function setOptionQty(optionId: string, quantity: number) {
     setSelectedOptions((prev) =>
       prev.map((o) => (o.optionId === optionId ? { ...o, quantity } : o))
@@ -237,8 +258,12 @@ export default function ReserveForm() {
           address,
           phone,
           email,
-          peopleCount,
-          childrenDetail,
+          peopleCount: `お子様${childrenCount}名・大人の方${adultCount === '5以上' ? '5名以上' : adultCount + '名'}`,
+          childrenDetail: childrenDetails.length > 0
+            ? childrenDetails.map((c, i) =>
+                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} ${c.clothingSize}`
+              ).join('\n')
+            : '',
           selectedOptions,
           note,
           cancelPolicyAgreed: true,
@@ -505,32 +530,95 @@ export default function ReserveForm() {
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">撮影情報</h2>
+
+        {/* お子様人数 */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">撮影人数 *</label>
+          <label className="block text-sm text-gray-600 mb-1">お子様 *</label>
           <select
-            value={peopleCount}
-            onChange={(e) => setPeopleCount(e.target.value)}
+            value={childrenCount}
+            onChange={(e) => handleChildrenCountChange(e.target.value)}
             className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
           >
             <option value="">選択...</option>
-            {['1名', '2名', '3名', '4名', '5名以上'].map((v) => (
-              <option key={v} value={v}>{v}</option>
+            {['0', '1', '2', '3', '4', '5'].map((v) => (
+              <option key={v} value={v}>{v}名</option>
             ))}
           </select>
         </div>
+
+        {/* 大人の方人数 */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">
-            お子様の詳細 *
-            <span className="text-xs text-gray-400 ml-2">（名前・生年月日・衣装サイズ等）</span>
-          </label>
-          <textarea
-            value={childrenDetail}
-            onChange={(e) => setChildrenDetail(e.target.value)}
-            rows={4}
-            placeholder="例: 長女 さくら（2020年5月生）、着物サイズ7歳用..."
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
-          />
+          <label className="block text-sm text-gray-600 mb-1">大人の方 *</label>
+          <select
+            value={adultCount}
+            onChange={(e) => setAdultCount(e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+          >
+            <option value="">選択...</option>
+            {['0', '1', '2', '3', '4', '5以上'].map((v) => (
+              <option key={v} value={v}>{v === '5以上' ? '5名以上' : `${v}名`}</option>
+            ))}
+          </select>
         </div>
+
+        {/* お子様詳細フォーム（人数分） */}
+        {childrenDetails.map((child, i) => (
+          <div key={i} className="border border-pink-100 rounded-xl p-4 space-y-3 bg-pink-50/40">
+            <p className="text-sm font-semibold text-pink-600">お子様 {i + 1}人目</p>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">お名前 *</label>
+              <input
+                type="text"
+                value={child.name}
+                onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
+                placeholder="例：さくら"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">性別 *</label>
+              <div className="flex gap-3">
+                {['男の子', '女の子'].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => updateChildDetail(i, 'gender', g)}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
+                      ${child.gender === g
+                        ? 'border-pink-500 bg-pink-50 text-pink-700'
+                        : 'border-gray-200 text-gray-600 hover:border-pink-200'
+                      }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">生年月日 *</label>
+              <input
+                type="date"
+                value={child.birthday}
+                onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">洋服サイズ *</label>
+              <input
+                type="text"
+                value={child.clothingSize}
+                onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
+                placeholder="例：100cm / 3歳用"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -628,7 +716,7 @@ export default function ReserveForm() {
           <p className="text-gray-500">📞 {phone}</p>
           {email && <p className="text-gray-500">✉️ {email}</p>}
           <p className="text-gray-500">📍 {zip} {address}</p>
-          <p className="text-gray-500">撮影人数: {peopleCount}</p>
+          <p className="text-gray-500">お子様: {childrenCount}名　大人の方: {adultCount === '5以上' ? '5名以上' : adultCount + '名'}</p>
         </div>
 
         {/* 備考 */}
@@ -676,7 +764,14 @@ export default function ReserveForm() {
     switch (step) {
       case 0: return !!(scene && selectedDate && selectedTime);
       case 1: return !!(name && furigana && phone && zip && address);
-      case 2: return !!(peopleCount && childrenDetail);
+      case 2: {
+        if (!childrenCount || !adultCount) return false;
+        const n = parseInt(childrenCount) || 0;
+        if (n > 0) {
+          return childrenDetails.every((c) => c.name && c.gender && c.birthday && c.clothingSize);
+        }
+        return true;
+      }
       case 3: return true;
       case 4: return agreed;
       default: return false;
