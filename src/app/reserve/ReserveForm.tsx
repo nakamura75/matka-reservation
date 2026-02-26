@@ -81,6 +81,7 @@ export default function ReserveForm() {
 
   // STEP 1
   const [scene, setScene] = useState<ShootingScene | ''>('');
+  const [otherSceneNote, setOtherSceneNote] = useState(''); // ① その他シーン詳細
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState<TimeSlot | ''>('');
   const [planId, setPlanId] = useState('');
@@ -104,6 +105,7 @@ export default function ReserveForm() {
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; quantity: number }[]>([]);
 
   // STEP 5
+  const [phoneCallPreference, setPhoneCallPreference] = useState('希望しない'); // ② 電話希望
   const [note, setNote] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -168,6 +170,7 @@ export default function ReserveForm() {
 
   function handleSceneChange(s: ShootingScene) {
     setScene(s);
+    setOtherSceneNote('');
     setSelectedDate('');
     setSelectedTime('');
     const t = new Date();
@@ -245,6 +248,7 @@ export default function ReserveForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           scene,
+          otherSceneNote: scene === 'その他' ? otherSceneNote : '',
           planId,
           date: selectedDate,
           timeSlot: selectedTime,
@@ -261,6 +265,7 @@ export default function ReserveForm() {
               ).join('\n')
             : '',
           selectedOptions,
+          phoneCallPreference,
           note,
           cancelPolicyAgreed: true,
           lineUserId,
@@ -352,11 +357,24 @@ export default function ReserveForm() {
           </div>
         </div>
 
+        {/* ① その他選択時：説明文変更＋入力フォーム */}
+        {scene === 'その他' && (
+          <div>
+            <p className="text-xs text-red-500 mb-2">
+              ※「その他」を選んだ方は、撮影したいシーンについて記入してください。
+            </p>
+            <textarea
+              value={otherSceneNote}
+              onChange={(e) => setOtherSceneNote(e.target.value)}
+              rows={3}
+              placeholder="撮影したいシーンをご記入ください..."
+              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+            />
+          </div>
+        )}
+
         {scene && (
           <div>
-            {scene === 'その他' && (
-              <p className="text-xs text-red-500 mb-2">※「その他」を選んだ方は、備考欄にて撮影したいシーンをお知らせください。</p>
-            )}
             <h2 className="text-base font-bold text-gray-900 mb-3">撮影日を選択</h2>
             {loadingSlots ? (
               <div className="text-center py-8 text-gray-400 text-sm">空き枠を確認中...</div>
@@ -667,11 +685,18 @@ export default function ReserveForm() {
       <div className="space-y-6">
         <h2 className="text-base font-bold text-gray-900">ご予約内容の確認</h2>
 
+        {/* 予約サマリー */}
         <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">撮影シーン</span>
             <span className="font-medium">{scene}</span>
           </div>
+          {scene === 'その他' && otherSceneNote && (
+            <div className="flex justify-between">
+              <span className="text-gray-500">シーン詳細</span>
+              <span className="font-medium text-right max-w-[60%]">{otherSceneNote}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-500">撮影日時</span>
             <span className="font-medium">{formatDate(selectedDate)} {selectedTime}</span>
@@ -700,6 +725,7 @@ export default function ReserveForm() {
           </div>
         </div>
 
+        {/* お客様情報 */}
         <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-1">
           <p className="font-medium text-gray-900">{name}（{furigana}）</p>
           <p className="text-gray-500">📞 {phone}</p>
@@ -708,6 +734,34 @@ export default function ReserveForm() {
           <p className="text-gray-500">お子様: {childrenCount}名　大人の方: {adultCount === '5以上' ? '5名以上' : adultCount + '名'}</p>
         </div>
 
+        {/* ③ お子様詳細を確認画面に表示 */}
+        {childrenDetails.length > 0 && (
+          <div className="space-y-3">
+            {childrenDetails.map((child, i) => (
+              <div key={i} className="bg-pink-50 border border-pink-100 rounded-xl p-4 text-sm space-y-1">
+                <p className="font-semibold text-pink-600">お子様 {i + 1}人目</p>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">お名前</span>
+                  <span className="font-medium">{child.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">性別</span>
+                  <span>{child.gender}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">生年月日</span>
+                  <span>{child.birthday}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">洋服サイズ</span>
+                  <span>{child.clothingSize}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 備考 */}
         <div>
           <label className="block text-sm text-gray-600 mb-1">備考（任意）</label>
           <textarea
@@ -719,6 +773,33 @@ export default function ReserveForm() {
           />
         </div>
 
+        {/* ② お電話の希望 */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">仮予約後のお電話について <span className="text-red-500">*</span></h3>
+          <div className="bg-gray-50 rounded-xl p-4">
+            <p className="text-xs text-gray-500 mb-3">
+              仮予約確定後、担当者からのお電話をご希望されますか？<br />
+              ご要望・ご不明点がある方は「希望する」をお選びください。
+            </p>
+            <div className="flex gap-4">
+              {['希望する', '希望しない'].map((option) => (
+                <label key={option} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="phoneCallPreference"
+                    value={option}
+                    checked={phoneCallPreference === option}
+                    onChange={(e) => setPhoneCallPreference(e.target.value)}
+                    className="w-4 h-4 accent-pink-500"
+                  />
+                  <span className="text-sm text-gray-700">{option}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* キャンセルポリシー */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-2">キャンセルポリシー</h3>
           <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 whitespace-pre-line max-h-40 overflow-y-auto">
@@ -749,7 +830,10 @@ export default function ReserveForm() {
   // ============================================================
   function canProceed(): boolean {
     switch (step) {
-      case 0: return !!(scene && selectedDate && selectedTime);
+      case 0:
+        if (!scene || !selectedDate || !selectedTime) return false;
+        if (scene === 'その他' && !otherSceneNote.trim()) return false; // ① その他は入力必須
+        return true;
       case 1: return !!(name && furigana && phone && zip && address);
       case 2: {
         if (!childrenCount || !adultCount) return false;
