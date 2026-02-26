@@ -1,9 +1,27 @@
-import { getCalendarClient } from './google-sheets';
+import { getCalendarClient, getReservations } from './google-sheets';
 import { CALENDAR_ID, BOOKING_DAYS, ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS } from './constants';
 import type { AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 
 /** 祝日判定（Google Calendar の日本の祝日カレンダーを使用） */
 const HOLIDAYS_CALENDAR_ID = 'ja.japanese#holiday@group.v.calendar.google.com';
+
+// ============================================================
+// JST ヘルパー
+// ============================================================
+function toJSTDateStr(dt: Date): string {
+  const jst = new Date(dt.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().slice(0, 10);
+}
+
+function getJSTHour(dt: Date): number {
+  const jst = new Date(dt.getTime() + 9 * 60 * 60 * 1000);
+  return jst.getUTCHours();
+}
+
+function getJSTDayOfWeek(dt: Date): number {
+  const jst = new Date(dt.getTime() + 9 * 60 * 60 * 1000);
+  return jst.getUTCDay();
+}
 
 /** 今日から60日分の空き枠を取得 */
 export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
@@ -11,69 +29,83 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
     console.error('[getAvailableSlots] GOOGLE_SERVICE_ACCOUNT_KEY is not set');
     return [];
   }
-  if (!process.env.GOOGLE_CALENDAR_ID) {
-    console.error('[getAvailableSlots] GOOGLE_CALENDAR_ID is not set');
-    return [];
-  }
-  const calendar = getCalendarClient();
+
   const today = new Date();
   const end = new Date(today);
   end.setDate(end.getDate() + BOOKING_DAYS);
 
-  // スタジオカレンダーのイベント（ブロック・予約済み枠）を取得
-  const [studioEvents, holidays] = await Promise.all([
-    calendar.events.list({
-      calendarId: CALENDAR_ID,
-      timeMin: today.toISOString(),
-      timeMax: end.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    }),
-    calendar.events.list({
-      calendarId: HOLIDAYS_CALENDAR_ID,
-      timeMin: today.toISOString(),
-      timeMax: end.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    }).catch(() => ({ data: { items: [] } })), // 祝日取得失敗は無視
-  ]);
-
-  // ブロック済み日付・時間枠を抽出
   const blockedDates = new Set<string>(); // 終日ブロック
   const blockedSlots = new Map<string, Set<string>>(); // 日付 -> 時間枠Set
+  const holidayDates = new Set<string>();
 
-  for (const event of studioEvents.data.items ?? []) {
-    if (event.start?.date) {
-      // 終日イベント = 定休日などのブロック
-      blockedDates.add(event.start.date);
-    } else if (event.start?.dateTime) {
-      const dt = new Date(event.start.dateTime);
-      const dateStr = dt.toISOString().slice(0, 10);
-      const hour = dt.getHours();
-      const timeStr = `${hour}:00` as TimeSlot;
-      if (!blockedSlots.has(dateStr)) blockedSlots.set(dateStr, new Set());
-      blockedSlots.get(dateStr)!.add(timeStr);
+  // --- Google Calendar からブロック情報取得（IDが設定されている場合のみ）---
+  if (process.env.GOOGLE_CALENDAR_ID) {
+    try {
+      const calendar = getCalendarClient();
+      const [studioEvents, holidays] = await Promise.all([
+        calendar.events.list({
+          calendarId: CALENDAR_ID,
+          timeMin: today.toISOString(),
+          timeMax: end.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+        }),
+        calendar.events.list({
+          calendarId: HOLIDAYS_CALENDAR_ID,
+          timeMin: today.toISOString(),
+          timeMax: end.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+        }).catch(() => ({ data: { items: [] } })),
+      ]);
+
+      for (const event of studioEvents.data.items ?? []) {
+        if (event.start?.date) {
+          // 終日イベント = 定休日などのブロック
+          blockedDates.add(event.start.date);
+        } else if (event.start?.dateTime) {
+          const dt = new Date(event.start.dateTime);
+          const dateStr = toJSTDateStr(dt);
+          const hour = getJSTHour(dt);
+          const timeStr = `${hour}:00` as TimeSlot;
+          if (!blockedSlots.has(dateStr)) blockedSlots.set(dateStr, new Set());
+          blockedSlots.get(dateStr)!.add(timeStr);
+        }
+      }
+
+      for (const event of holidays.data.items ?? []) {
+        if (event.start?.date) holidayDates.add(event.start.date);
+      }
+    } catch (e) {
+      console.error('[getAvailableSlots] Calendar error:', e);
     }
   }
 
-  // 祝日セット
-  const holidayDates = new Set<string>();
-  for (const event of holidays.data.items ?? []) {
-    if (event.start?.date) holidayDates.add(event.start.date);
+  // --- スプレッドシートの既存予約からブロック ---
+  try {
+    const reservations = await getReservations();
+    for (const r of reservations) {
+      if (r.status === 'キャンセル') continue;
+      if (!r.date || !r.timeSlot) continue;
+      if (!blockedSlots.has(r.date)) blockedSlots.set(r.date, new Set());
+      blockedSlots.get(r.date)!.add(r.timeSlot);
+    }
+  } catch (e) {
+    console.error('[getAvailableSlots] Sheets reservation error:', e);
   }
 
-  // シーンに応じた利用可能時間枠
-  const availableTimes = scene === '七五三'
+  // シーンに応じた利用可能時間枠（七五三・マタニティは9時不可）
+  const availableTimes = (scene === '七五三' || scene === 'マタニティ')
     ? SHICHIGOSAN_TIME_SLOTS
     : ALL_TIME_SLOTS;
 
   // 60日分の空き枠を生成
   const result: AvailableSlot[] = [];
-  for (let i = 1; i <= BOOKING_DAYS; i++) { // 今日は除外（翌日以降）
+  for (let i = 1; i <= BOOKING_DAYS; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateStr = date.toISOString().slice(0, 10);
-    const dayOfWeek = date.getDay(); // 0=日, 6=土
+    const dateStr = toJSTDateStr(date);
+    const dayOfWeek = getJSTDayOfWeek(date);
 
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isHoliday = holidayDates.has(dateStr);
@@ -88,7 +120,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
 
     // 空き枠が1つでもあれば追加
     if (slots.some((s) => s.available)) {
-      result.push({ date: dateStr, slots, isWeekend, isHoliday: isHoliday });
+      result.push({ date: dateStr, slots, isWeekend, isHoliday });
     }
   }
 
