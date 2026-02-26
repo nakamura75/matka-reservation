@@ -439,16 +439,27 @@ export default function ReserveForm() {
                 </button>
               ))}
             </div>
-            {selectedPlan && selectedTime && (
-              <div className="mt-4 bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
-                <div>
-                  <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
-                  <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
-                  {selectedPlan.duration && (
-                    <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
-                  )}
-                </div>
-                <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
+            {selectedTime && (
+              <div className="mt-4">
+                {selectedPlan ? (
+                  <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
+                      <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
+                      {selectedPlan.duration && (
+                        <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
+                      )}
+                    </div>
+                    <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800 space-y-1">
+                    <p className="font-bold">⚠ デバッグ情報（プラン未取得）</p>
+                    <p>plans件数: {plans.length}</p>
+                    <p>planId: &quot;{planId}&quot;</p>
+                    {plans.length > 0 && <p>plans[0].id: &quot;{plans[0].id}&quot; / name: &quot;{plans[0].name}&quot;</p>}
+                  </div>
+                )}
               </div>
             )}
           </div>
