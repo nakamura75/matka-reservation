@@ -134,6 +134,12 @@ export default function ReserveForm() {
       const res = await fetch(`/api/slots?scene=${encodeURIComponent(s)}`);
       const data = await res.json();
       setSlots(data.data ?? []);
+      if (!data.success) {
+        console.error('[fetchSlots] API error:', data.error);
+      }
+    } catch (err) {
+      console.error('[fetchSlots] fetch error:', err);
+      setSlots([]);
     } finally {
       setLoadingSlots(false);
     }

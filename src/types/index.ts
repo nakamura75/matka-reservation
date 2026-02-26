@@ -169,6 +169,20 @@ export interface SalesRecord {
 }
 
 // ============================================================
+// 商品
+// ============================================================
+export interface Product {
+  _rowNumber?: number;
+  id: string;            // ID商品
+  name: string;          // 商品名
+  price: number;         // 単価
+  image?: string;        // 商品画像
+  description?: string;  // 説明
+  isActive: boolean;     // 有効
+  commissionPrice?: number; // 歩合単価
+}
+
+// ============================================================
 // フォーム送信データ
 // ============================================================
 export interface ReservationFormData {

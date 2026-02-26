@@ -7,7 +7,14 @@ const HOLIDAYS_CALENDAR_ID = 'ja.japanese#holiday@group.v.calendar.google.com';
 
 /** 今日から60日分の空き枠を取得 */
 export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
-  if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) return [];
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    console.error('[getAvailableSlots] GOOGLE_SERVICE_ACCOUNT_KEY is not set');
+    return [];
+  }
+  if (!process.env.GOOGLE_CALENDAR_ID) {
+    console.error('[getAvailableSlots] GOOGLE_CALENDAR_ID is not set');
+    return [];
+  }
   const calendar = getCalendarClient();
   const today = new Date();
   const end = new Date(today);

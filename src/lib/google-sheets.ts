@@ -4,11 +4,13 @@ import type {
   Customer,
   Plan,
   Option,
+  Product,
   Staff,
   Reservation,
   ReservationOption,
   Order,
   OrderItem,
+  SalesRecord,
 } from '@/types';
 
 // ============================================================
@@ -410,4 +412,236 @@ export async function getOrderItems(orderId?: string): Promise<OrderItem[]> {
     note: r[11],                // L: 備考
   } as OrderItem));
   return orderId ? all.filter((item) => item.orderId === orderId) : all;
+}
+
+export async function createOrder(data: Omit<Order, '_rowNumber' | 'items'>): Promise<void> {
+  await appendRow(SHEET_NAMES.ORDERS, [
+    data.id,                            // A: ID注文
+    data.customerId,                    // B: ID顧客
+    data.reservationId ?? '',           // C: ID予約
+    data.orderDate,                     // D: 注文日
+    data.isPaid ? 'TRUE' : 'FALSE',     // E: 入金済
+    data.paidDate ?? '',                // F: 入金日
+    data.note ?? '',                    // G: 備考
+    data.flag ? 'TRUE' : 'FALSE',       // H: フラグ
+  ]);
+}
+
+export async function updateOrder(
+  rowNumber: number,
+  fields: { isPaid?: boolean; paidDate?: string; note?: string }
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const updates: { range: string; value: string | number | boolean }[] = [];
+  if (fields.isPaid !== undefined) {
+    updates.push({ range: `${SHEET_NAMES.ORDERS}!E${rowNumber}`, value: fields.isPaid ? 'TRUE' : 'FALSE' });
+    if (fields.isPaid && fields.paidDate) {
+      updates.push({ range: `${SHEET_NAMES.ORDERS}!F${rowNumber}`, value: fields.paidDate });
+    }
+  }
+  if (fields.note !== undefined) updates.push({ range: `${SHEET_NAMES.ORDERS}!G${rowNumber}`, value: fields.note });
+  if (updates.length === 0) return;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: updates.map(({ range, value }) => ({ range, values: [[value]] })),
+    },
+  });
+}
+
+export async function createOrderItem(
+  data: Omit<OrderItem, '_rowNumber' | 'subtotal' | 'commissionAmount'>
+): Promise<void> {
+  await appendRow(SHEET_NAMES.ORDER_ITEMS, [
+    data.id,               // A: ID注文詳細
+    data.orderId,          // B: ID注文
+    data.productId,        // C: ID商品
+    data.customerId ?? '', // D: ID顧客
+    data.quantity,         // E: 数量
+    data.status,           // F: ステータス
+    data.completedDate ?? '', // G: 制作完了日
+    data.orderedDate ?? '',   // H: 発注日
+    data.arrivedDate ?? '',   // I: 入荷日
+    data.shippedDate ?? '',   // J: 発送日
+    data.trackingNumber ?? '', // K: 追跡番号
+    data.note ?? '',          // L: 備考
+  ]);
+}
+
+export async function updateOrderItem(
+  rowNumber: number,
+  fields: {
+    status?: OrderItem['status'];
+    completedDate?: string;
+    orderedDate?: string;
+    arrivedDate?: string;
+    shippedDate?: string;
+    trackingNumber?: string;
+    note?: string;
+  }
+): Promise<void> {
+  const sheets = getSheetsClient();
+  const col: Record<string, string> = {
+    status:         `${SHEET_NAMES.ORDER_ITEMS}!F${rowNumber}`,
+    completedDate:  `${SHEET_NAMES.ORDER_ITEMS}!G${rowNumber}`,
+    orderedDate:    `${SHEET_NAMES.ORDER_ITEMS}!H${rowNumber}`,
+    arrivedDate:    `${SHEET_NAMES.ORDER_ITEMS}!I${rowNumber}`,
+    shippedDate:    `${SHEET_NAMES.ORDER_ITEMS}!J${rowNumber}`,
+    trackingNumber: `${SHEET_NAMES.ORDER_ITEMS}!K${rowNumber}`,
+    note:           `${SHEET_NAMES.ORDER_ITEMS}!L${rowNumber}`,
+  };
+  const updates = Object.entries(fields)
+    .filter(([, v]) => v !== undefined)
+    .map(([key, value]) => ({ range: col[key], values: [[value]] }));
+  if (updates.length === 0) return;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { valueInputOption: 'USER_ENTERED', data: updates },
+  });
+}
+
+// ============================================================
+// 商品
+// ============================================================
+
+export async function getProducts(): Promise<Product[]> {
+  const rows = await getSheetData(SHEET_NAMES.PRODUCTS);
+  if (rows.length < 2) return [];
+  return rows.slice(1).map((r, i) => ({
+    _rowNumber: i + 2,
+    id: r[0] ?? '',             // A: ID商品
+    name: r[1] ?? '',           // B: 商品名
+    price: Number(r[2]) || 0,   // C: 単価
+    image: r[3],                // D: 商品画像
+    description: r[4],          // E: 説明
+    isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
+    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
+  } as Product));
+}
+
+export async function createProduct(data: Omit<Product, '_rowNumber'>): Promise<void> {
+  await appendRow(SHEET_NAMES.PRODUCTS, [
+    data.id,
+    data.name,
+    data.price,
+    data.image ?? '',
+    data.description ?? '',
+    data.isActive ? 'TRUE' : 'FALSE',
+    data.commissionPrice ?? 0,
+  ]);
+}
+
+export async function updateProduct(data: Product): Promise<void> {
+  if (!data._rowNumber) throw new Error('rowNumber is required');
+  await updateRow(SHEET_NAMES.PRODUCTS, data._rowNumber, [
+    data.id,
+    data.name,
+    data.price,
+    data.image ?? '',
+    data.description ?? '',
+    data.isActive ? 'TRUE' : 'FALSE',
+    data.commissionPrice ?? 0,
+  ]);
+}
+
+// ============================================================
+// プラン（設定用 CRUD）
+// ============================================================
+
+export async function createPlan(data: Omit<Plan, '_rowNumber'>): Promise<void> {
+  await appendRow(SHEET_NAMES.PLANS, [
+    data.id,
+    data.name,
+    data.price,
+    data.duration,
+    data.description ?? '',
+    data.isActive ? 'TRUE' : 'FALSE',
+    data.commissionPrice ?? 0,
+  ]);
+}
+
+export async function updatePlan(data: Plan): Promise<void> {
+  if (!data._rowNumber) throw new Error('rowNumber is required');
+  await updateRow(SHEET_NAMES.PLANS, data._rowNumber, [
+    data.id,
+    data.name,
+    data.price,
+    data.duration,
+    data.description ?? '',
+    data.isActive ? 'TRUE' : 'FALSE',
+    data.commissionPrice ?? 0,
+  ]);
+}
+
+// ============================================================
+// オプション（設定用 CRUD）
+// ============================================================
+
+export async function createOption(data: Omit<Option, '_rowNumber'>): Promise<void> {
+  await appendRow(SHEET_NAMES.OPTIONS, [
+    data.id,
+    data.name,
+    data.price,
+    data.description ?? '',
+    data.isActive ? 'TRUE' : 'FALSE',
+    data.externalCode ?? '',
+    data.commissionPrice ?? 0,
+  ]);
+}
+
+export async function updateOption(data: Option): Promise<void> {
+  if (!data._rowNumber) throw new Error('rowNumber is required');
+  await updateRow(SHEET_NAMES.OPTIONS, data._rowNumber, [
+    data.id,
+    data.name,
+    data.price,
+    data.description ?? '',
+    data.isActive ? 'TRUE' : 'FALSE',
+    data.externalCode ?? '',
+    data.commissionPrice ?? 0,
+  ]);
+}
+
+// ============================================================
+// スタッフ（設定用 CRUD）
+// ============================================================
+
+export async function createStaff(data: Omit<Staff, '_rowNumber'>): Promise<void> {
+  await appendRow(SHEET_NAMES.STAFF, [
+    data.id,
+    data.name,
+    data.isActive ?? 'TRUE',
+  ]);
+}
+
+export async function updateStaff(data: Staff): Promise<void> {
+  if (!data._rowNumber) throw new Error('rowNumber is required');
+  await updateRow(SHEET_NAMES.STAFF, data._rowNumber, [
+    data.id,
+    data.name,
+    data.isActive ?? 'TRUE',
+  ]);
+}
+
+// ============================================================
+// 売上明細
+// ============================================================
+
+export async function getSalesRecords(): Promise<SalesRecord[]> {
+  const rows = await getSheetData(SHEET_NAMES.SALES);
+  if (rows.length < 2) return [];
+  return rows.slice(1).map((r, i) => ({
+    _rowNumber: i + 2,
+    id: r[0] ?? '',             // A: ID売上
+    paymentId: r[1],            // B: 決済ID
+    paymentDateTime: r[2],      // C: 決済日時
+    reservationId: r[3] ?? '',  // D: ID予約
+    productName: r[4] ?? '',    // E: 商品名
+    category: r[5] ?? '',       // F: 区分
+    amount: Number(r[6]) || 0,  // G: 金額
+    staffId: r[7],              // H: 担当者
+    commissionRate: Number(r[8]) || 0, // I: 歩合率
+    commissionAmount: Number(r[9]) || 0, // J: 歩合額
+  } as SalesRecord));
 }

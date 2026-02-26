@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
 
     const slots = await getAvailableSlots(scene ?? undefined);
     return NextResponse.json({ success: true, data: slots });
-  } catch {
-    return NextResponse.json({ success: true, data: [] });
+  } catch (err) {
+    console.error('[/api/slots] error:', err);
+    return NextResponse.json({ success: false, data: [], error: String(err) }, { status: 500 });
   }
 }

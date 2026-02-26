@@ -1,0 +1,265 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeftIcon, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import type { Customer, Reservation, Order } from '@/types';
+import { formatDate, formatCurrency } from '@/lib/utils';
+
+const STATUS_COLORS = {
+  '予約済': 'bg-yellow-100 text-yellow-800',
+  '予約確定': 'bg-blue-100 text-blue-800',
+  '完了': 'bg-green-100 text-green-800',
+  'キャンセル': 'bg-gray-100 text-gray-500',
+} as const;
+
+interface Props {
+  customer: Customer;
+  reservations: (Reservation & { planName?: string })[];
+  orders: Order[];
+}
+
+export default function CustomerDetail({ customer, reservations, orders }: Props) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: customer.name,
+    furigana: customer.furigana ?? '',
+    phone: customer.phone,
+    email: customer.email ?? '',
+    zipCode: customer.zipCode ?? '',
+    address: customer.address ?? '',
+    note: customer.note ?? '',
+  });
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await fetch(`/api/customers/${customer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      setEditing(false);
+      router.refresh();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isRepeater = reservations.length > 1;
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <Link href="/customers" className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm">
+          <ArrowLeftIcon className="w-4 h-4" />
+          顧客一覧
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900 flex-1">
+          {customer.name}
+          {isRepeater && (
+            <span className="ml-2 text-sm bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full font-normal">
+              リピーター
+            </span>
+          )}
+        </h1>
+        <button
+          onClick={() => setEditing(!editing)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50"
+        >
+          <PencilSquareIcon className="w-4 h-4" />
+          編集
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 顧客基本情報 */}
+        <div className="lg:col-span-1 space-y-6">
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">基本情報</h2>
+            {editing ? (
+              <div className="space-y-3">
+                {[
+                  { label: '氏名', key: 'name', type: 'text' },
+                  { label: 'フリガナ', key: 'furigana', type: 'text' },
+                  { label: '電話番号', key: 'phone', type: 'tel' },
+                  { label: 'メール', key: 'email', type: 'email' },
+                  { label: '郵便番号', key: 'zipCode', type: 'text' },
+                  { label: '住所', key: 'address', type: 'text' },
+                  { label: '備考', key: 'note', type: 'text' },
+                ].map(({ label, key, type }) => (
+                  <div key={key}>
+                    <label className="block text-xs text-gray-400 mb-1">{label}</label>
+                    <input
+                      type={type}
+                      value={form[key as keyof typeof form]}
+                      onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                    />
+                  </div>
+                ))}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600 disabled:opacity-50"
+                  >
+                    <CheckIcon className="w-4 h-4" />
+                    {saving ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-2 text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <dl className="space-y-3 text-sm">
+                <div>
+                  <dt className="text-gray-400 text-xs">フリガナ</dt>
+                  <dd className="text-gray-700 mt-0.5">{customer.furigana || '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400 text-xs">電話番号</dt>
+                  <dd className="text-gray-700 mt-0.5">{customer.phone}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400 text-xs">メール</dt>
+                  <dd className="text-gray-700 mt-0.5">{customer.email || '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400 text-xs">住所</dt>
+                  <dd className="text-gray-700 mt-0.5">
+                    {customer.zipCode ? `〒${customer.zipCode} ` : ''}{customer.address || '—'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400 text-xs">LINE連携</dt>
+                  <dd className="mt-0.5">
+                    {customer.lineName ? (
+                      <span className="text-green-700 text-xs flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                        {customer.lineName}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">未連携</span>
+                    )}
+                  </dd>
+                </div>
+                {customer.note && (
+                  <div>
+                    <dt className="text-gray-400 text-xs">備考</dt>
+                    <dd className="text-gray-700 mt-0.5">{customer.note}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-400 text-xs">登録日</dt>
+                  <dd className="text-gray-700 mt-0.5">{customer.createdAt}</dd>
+                </div>
+              </dl>
+            )}
+          </section>
+
+          {/* 統計 */}
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">統計</h2>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{reservations.length}</p>
+                <p className="text-xs text-gray-400 mt-0.5">予約回数</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+                <p className="text-xs text-gray-400 mt-0.5">注文数</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* 予約履歴・注文履歴 */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* 予約履歴 */}
+          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">予約履歴</h2>
+            </div>
+            {reservations.length === 0 ? (
+              <p className="text-sm text-gray-400 px-6 py-6">予約なし</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-400 text-xs">
+                  <tr>
+                    <th className="px-4 py-2 text-left">予約番号</th>
+                    <th className="px-4 py-2 text-left">撮影日</th>
+                    <th className="px-4 py-2 text-left">プラン</th>
+                    <th className="px-4 py-2 text-left">ステータス</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {reservations.map((r) => (
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <Link href={`/reservations/${r.id}`} className="text-pink-600 hover:text-pink-800">
+                          {r.reservationNumber || r.id.slice(0, 8)}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{formatDate(r.date)}</td>
+                      <td className="px-4 py-3 text-gray-500">{r.planName}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status]}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          {/* 注文履歴 */}
+          <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">注文履歴</h2>
+            </div>
+            {orders.length === 0 ? (
+              <p className="text-sm text-gray-400 px-6 py-6">注文なし</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-400 text-xs">
+                  <tr>
+                    <th className="px-4 py-2 text-left">注文日</th>
+                    <th className="px-4 py-2 text-left">備考</th>
+                    <th className="px-4 py-2 text-left">入金</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {orders.map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <Link href={`/orders/${o.id}`} className="text-pink-600 hover:text-pink-800">
+                          {o.orderDate}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{o.note || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${o.isPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {o.isPaid ? '入金済' : '未入金'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
