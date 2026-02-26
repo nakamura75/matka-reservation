@@ -156,8 +156,10 @@ export default function ReserveForm() {
     const t = new Date();
     setCalendarYM({ year: t.getFullYear(), month: t.getMonth() });
     const planType = SCENE_PLAN_MAP[s];
-    // 仮の平日プランを設定（日付選択後に更新）
-    const match = plans.find((p) => p.name.includes(planType) && p.name.includes('平日'));
+    // 仮の平日プランを設定（日付選択後に更新）、なければ同種の任意プラン
+    const match = plans.find((p) => p.name.includes(planType) && p.name.includes('平日'))
+      ?? plans.find((p) => p.name.includes(planType))
+      ?? plans[0];
     if (match) setPlanId(match.id);
     fetchSlots(s);
   }
@@ -171,7 +173,7 @@ export default function ReserveForm() {
       const weekend = isWeekend(dateStr);
       const match = plans.find((p) =>
         p.name.includes(planType) && (weekend ? p.name.includes('休日') : p.name.includes('平日'))
-      );
+      ) ?? plans.find((p) => p.name.includes(planType)) ?? plans[0];
       if (match) setPlanId(match.id);
     }
   }
@@ -643,7 +645,7 @@ export default function ReserveForm() {
   // ============================================================
   function canProceed(): boolean {
     switch (step) {
-      case 0: return !!(scene && selectedDate && selectedTime && planId);
+      case 0: return !!(scene && selectedDate && selectedTime);
       case 1: return !!(name && furigana && phone && zip && address);
       case 2: return !!(peopleCount && childrenDetail);
       case 3: return true;
