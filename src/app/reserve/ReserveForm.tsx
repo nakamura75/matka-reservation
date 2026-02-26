@@ -96,8 +96,11 @@ export default function ReserveForm() {
   const [email, setEmail] = useState('');
 
   // STEP 3
-  const [peopleCount, setPeopleCount] = useState('');
-  const [childrenDetail, setChildrenDetail] = useState('');
+  const [childrenCount, setChildrenCount] = useState('');
+  const [adultCount, setAdultCount] = useState('');
+  const [childrenDetails, setChildrenDetails] = useState<{
+    name: string; gender: string; birthday: string; clothingSize: string;
+  }[]>([]);
 
   // STEP 4
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; quantity: number }[]>([]);
@@ -172,7 +175,6 @@ export default function ReserveForm() {
     const t = new Date();
     setCalendarYM({ year: t.getFullYear(), month: t.getMonth() });
     const planType = SCENE_PLAN_MAP[s];
-    // 仮の平日プランを設定（日付選択後に更新）、なければ同種の任意プラン
     const match = plans.find((p) => p.name.includes(planType) && p.name.includes('平日'))
       ?? plans.find((p) => p.name.includes(planType))
       ?? plans[0];
@@ -183,7 +185,6 @@ export default function ReserveForm() {
   function handleDateSelect(dateStr: string) {
     setSelectedDate(dateStr);
     setSelectedTime('');
-    // 平日/休日でプランを切り替え
     if (scene) {
       const planType = SCENE_PLAN_MAP[scene];
       const weekend = isWeekend(dateStr);
@@ -199,6 +200,24 @@ export default function ReserveForm() {
       const exists = prev.find((o) => o.optionId === optionId);
       if (exists) return prev.filter((o) => o.optionId !== optionId);
       return [...prev, { optionId, quantity: 1 }];
+    });
+  }
+
+  function handleChildrenCountChange(val: string) {
+    setChildrenCount(val);
+    const n = parseInt(val) || 0;
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      while (next.length < n) next.push({ name: '', gender: '', birthday: '', clothingSize: '' });
+      return next.slice(0, n);
+    });
+  }
+
+  function updateChildDetail(index: number, field: string, value: string) {
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
     });
   }
 
@@ -237,8 +256,12 @@ export default function ReserveForm() {
           address,
           phone,
           email,
-          peopleCount,
-          childrenDetail,
+          peopleCount: `お子様${childrenCount}名・大人の方${adultCount === '5以上' ? '5名以上' : adultCount + '名'}`,
+          childrenDetail: childrenDetails.length > 0
+            ? childrenDetails.map((c, i) =>
+                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} ${c.clothingSize}`
+              ).join('\n')
+            : '',
           selectedOptions,
           note,
           cancelPolicyAgreed: true,
@@ -344,7 +367,6 @@ export default function ReserveForm() {
               <div className="text-center py-8 text-gray-400 text-sm">空き枠を確認中...</div>
             ) : (
               <div className="border border-gray-200 rounded-2xl p-3">
-                {/* 月ナビゲーション */}
                 {(() => {
                   const today = new Date();
                   const minY = today.getFullYear(), minM = today.getMonth();
@@ -365,13 +387,11 @@ export default function ReserveForm() {
                     </div>
                   );
                 })()}
-                {/* 曜日ヘッダー */}
                 <div className="grid grid-cols-7 mb-1">
                   {['日','月','火','水','木','金','土'].map((d, i) => (
                     <div key={d} className={`text-center text-xs py-1 font-medium ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>{d}</div>
                   ))}
                 </div>
-                {/* カレンダーグリッド */}
                 <div className="grid grid-cols-7 gap-0.5">
                   {(() => {
                     const { year, month } = calendarYM;
@@ -505,32 +525,95 @@ export default function ReserveForm() {
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">撮影情報</h2>
+
+        {/* お子様人数 */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">撮影人数 *</label>
+          <label className="block text-sm text-gray-600 mb-1">お子様 *</label>
           <select
-            value={peopleCount}
-            onChange={(e) => setPeopleCount(e.target.value)}
+            value={childrenCount}
+            onChange={(e) => handleChildrenCountChange(e.target.value)}
             className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
           >
             <option value="">選択...</option>
-            {['1名', '2名', '3名', '4名', '5名以上'].map((v) => (
-              <option key={v} value={v}>{v}</option>
+            {['0', '1', '2', '3', '4', '5'].map((v) => (
+              <option key={v} value={v}>{v}名</option>
             ))}
           </select>
         </div>
+
+        {/* 大人の方人数 */}
         <div>
-          <label className="block text-sm text-gray-600 mb-1">
-            お子様の詳細 *
-            <span className="text-xs text-gray-400 ml-2">（名前・生年月日・衣装サイズ等）</span>
-          </label>
-          <textarea
-            value={childrenDetail}
-            onChange={(e) => setChildrenDetail(e.target.value)}
-            rows={4}
-            placeholder="例: 長女 さくら（2020年5月生）、着物サイズ7歳用..."
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
-          />
+          <label className="block text-sm text-gray-600 mb-1">大人の方 *</label>
+          <select
+            value={adultCount}
+            onChange={(e) => setAdultCount(e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+          >
+            <option value="">選択...</option>
+            {['0', '1', '2', '3', '4', '5以上'].map((v) => (
+              <option key={v} value={v}>{v === '5以上' ? '5名以上' : `${v}名`}</option>
+            ))}
+          </select>
         </div>
+
+        {/* お子様詳細フォーム（人数分） */}
+        {childrenDetails.map((child, i) => (
+          <div key={i} className="border border-pink-100 rounded-xl p-4 space-y-3 bg-pink-50/40">
+            <p className="text-sm font-semibold text-pink-600">お子様 {i + 1}人目</p>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">お名前 *</label>
+              <input
+                type="text"
+                value={child.name}
+                onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
+                placeholder="例：さくら"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">性別 *</label>
+              <div className="flex gap-3">
+                {['男の子', '女の子'].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => updateChildDetail(i, 'gender', g)}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
+                      ${child.gender === g
+                        ? 'border-pink-500 bg-pink-50 text-pink-700'
+                        : 'border-gray-200 text-gray-600 hover:border-pink-200'
+                      }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">生年月日 *</label>
+              <input
+                type="date"
+                value={child.birthday}
+                onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">洋服サイズ *</label>
+              <input
+                type="text"
+                value={child.clothingSize}
+                onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
+                placeholder="例：100cm / 3歳用"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -588,7 +671,6 @@ export default function ReserveForm() {
       <div className="space-y-6">
         <h2 className="text-base font-bold text-gray-900">ご予約内容の確認</h2>
 
-        {/* 予約サマリー */}
         <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">撮影シーン</span>
@@ -622,16 +704,14 @@ export default function ReserveForm() {
           </div>
         </div>
 
-        {/* お客様情報サマリー */}
         <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-1">
           <p className="font-medium text-gray-900">{name}（{furigana}）</p>
           <p className="text-gray-500">📞 {phone}</p>
           {email && <p className="text-gray-500">✉️ {email}</p>}
           <p className="text-gray-500">📍 {zip} {address}</p>
-          <p className="text-gray-500">撮影人数: {peopleCount}</p>
+          <p className="text-gray-500">お子様: {childrenCount}名　大人の方: {adultCount === '5以上' ? '5名以上' : adultCount + '名'}</p>
         </div>
 
-        {/* 備考 */}
         <div>
           <label className="block text-sm text-gray-600 mb-1">備考（任意）</label>
           <textarea
@@ -643,7 +723,6 @@ export default function ReserveForm() {
           />
         </div>
 
-        {/* キャンセルポリシー */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-2">キャンセルポリシー</h3>
           <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 whitespace-pre-line max-h-40 overflow-y-auto">
@@ -676,7 +755,14 @@ export default function ReserveForm() {
     switch (step) {
       case 0: return !!(scene && selectedDate && selectedTime);
       case 1: return !!(name && furigana && phone && zip && address);
-      case 2: return !!(peopleCount && childrenDetail);
+      case 2: {
+        if (!childrenCount || !adultCount) return false;
+        const n = parseInt(childrenCount) || 0;
+        if (n > 0) {
+          return childrenDetails.every((c) => c.name && c.gender && c.birthday && c.clothingSize);
+        }
+        return true;
+      }
       case 3: return true;
       case 4: return agreed;
       default: return false;
@@ -693,7 +779,6 @@ export default function ReserveForm() {
         {stepRenderers[step]?.()}
       </div>
 
-      {/* ナビゲーションボタン */}
       <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-3 max-w-lg mx-auto`}>
         {step > 0 && (
           <button
