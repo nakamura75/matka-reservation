@@ -88,6 +88,7 @@ export interface Reservation {
   discountReason?: string; // 値引理由
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
+  calendarEventId?: string; // GoogleカレンダーイベントID（X列）
   optionTotal?: number;    // オプション合計（VC）
   total?: number;          // 総計（VC）
   options?: ReservationOption[]; // 予約オプション一覧

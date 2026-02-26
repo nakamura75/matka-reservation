@@ -6,6 +6,8 @@ import {
   createReservationOption,
   createCustomer,
   getPlans,
+  getReservationById,
+  updateCalendarEventId,
 } from '@/lib/google-sheets';
 import { createCalendarEvent } from '@/lib/google-calendar';
 import { generateId, generateReservationNumber, toJSTDatetime } from '@/lib/utils';
@@ -94,18 +96,27 @@ export async function POST(req: import('next/server').NextRequest) {
       });
     }
 
-    // Google Calendar イベント作成
+    // Google Calendar イベント作成 → イベントIDをSheetsに保存
     const startISO = toJSTDatetime(body.date, body.timeSlot);
     const endDate = new Date(startISO);
     endDate.setMinutes(endDate.getMinutes() + plan.duration);
     const endISO = endDate.toISOString().replace('Z', '+09:00');
 
-    await createCalendarEvent({
+    const calendarEventId = await createCalendarEvent({
       title: `【仮予約】${body.customerName} 様 (${body.scene})`,
       startDateTime: startISO,
       endDateTime: endISO,
       description: `予約番号: ${reservationNumber}\nプラン: ${plan.name}\n電話: ${body.phone}`,
-    }).catch((e) => console.error('Calendar event creation failed:', e));
+    }).catch((e) => { console.error('Calendar event creation failed:', e); return null; });
+
+    if (calendarEventId) {
+      const saved = await getReservationById(reservationId).catch(() => null);
+      if (saved?._rowNumber) {
+        await updateCalendarEventId(saved._rowNumber, calendarEventId).catch((e) =>
+          console.error('Calendar event ID save failed:', e)
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

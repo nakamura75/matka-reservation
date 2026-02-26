@@ -7,6 +7,7 @@ import {
 } from '@/lib/google-sheets';
 import { sendLinePush, buildConfirmMessage } from '@/lib/line';
 import { getPlans } from '@/lib/google-sheets';
+import { deleteCalendarEvent } from '@/lib/google-calendar';
 import { SHEET_NAMES } from '@/lib/constants';
 import type { ReservationStatus } from '@/types';
 
@@ -49,6 +50,13 @@ export async function PATCH(
   // ステータス変更
   if (body.status) {
     await updateReservationStatus(reservation._rowNumber, body.status);
+
+    // キャンセル → カレンダーイベント削除（枠をリリース）
+    if (body.status === 'キャンセル' && reservation.calendarEventId) {
+      await deleteCalendarEvent(reservation.calendarEventId).catch((e) =>
+        console.error('Calendar event deletion failed:', e)
+      );
+    }
 
     // 予約確定 → LINE通知
     if (body.status === '予約確定' && reservation.lineUserId) {

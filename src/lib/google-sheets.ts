@@ -263,6 +263,11 @@ export async function updateReservationStatus(
   }
 }
 
+/** カレンダーイベントIDを予約に保存（X列） */
+export async function updateCalendarEventId(rowNumber: number, calendarEventId: string): Promise<void> {
+  await updateCell(SHEET_NAMES.RESERVATIONS, `X${rowNumber}`, calendarEventId);
+}
+
 /** 予約番号で予約を検索（LINE紐づけ用） */
 export async function getReservationByNumber(reservationNumber: string): Promise<Reservation | null> {
   const list = await getReservations();
@@ -310,6 +315,7 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     discountReason: r[20],      // U: 値引理由
     checkInTime: r[21],         // V: 入店時間
     checkOutTime: r[22],        // W: 退店時間
+    calendarEventId: r[23],     // X: GoogleカレンダーイベントID
   };
 }
 
@@ -338,6 +344,7 @@ function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number 
     r.discountReason ?? '',          // U: 値引理由
     r.checkInTime ?? '',             // V: 入店時間
     r.checkOutTime ?? '',            // W: 退店時間
+    r.calendarEventId ?? '',         // X: GoogleカレンダーイベントID
   ];
 }
 
