@@ -427,11 +427,17 @@ export default function ReserveForm() {
                 </button>
               ))}
             </div>
-            {selectedPlan && selectedDate && (
-              <p className="text-sm text-gray-500 mt-3 text-center">
-                {selectedPlan.name} — {formatCurrency(selectedPlan.price)}
-                <span className="text-gray-400 ml-2">（{selectedPlan.duration}分）</span>
-              </p>
+            {selectedPlan && selectedTime && (
+              <div className="mt-4 bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
+                  <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
+                  {selectedPlan.duration && (
+                    <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
+                  )}
+                </div>
+                <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
+              </div>
             )}
           </div>
         )}
