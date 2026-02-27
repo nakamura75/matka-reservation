@@ -11,7 +11,7 @@ function LoginForm() {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 w-full max-w-sm text-center">
       <h1 className="text-2xl font-bold text-gray-900 mb-1">
-        Matka<span className="text-pink-500">Studio</span>
+        Matka<span className="text-brand">Studio</span>
       </h1>
       <p className="text-sm text-gray-500 mb-8">予約管理システム</p>
 
@@ -43,7 +43,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-cream">
       <Suspense fallback={<div className="text-gray-400">読み込み中...</div>}>
         <LoginForm />
       </Suspense>
