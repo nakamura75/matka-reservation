@@ -491,7 +491,7 @@ export default function ReserveForm() {
                 <div className="text-xs text-red-600 space-y-1 leading-relaxed">
                   <p>※ {selectedTime}は撮影開始時刻の目安です。お支度時間が別途必要となります。</p>
                   <p>※ 所要時間は約3時間です。<br />　来店時刻・所要時間は撮影シーンによって変更になります。</p>
-                  <p>※ 来店いただく確定時刻は本予約確定LINEに記載します。</p>
+                  <p>※ 来店いただく確定時刻は予約確定LINEに記載します。</p>
                 </div>
               </div>
             )}
