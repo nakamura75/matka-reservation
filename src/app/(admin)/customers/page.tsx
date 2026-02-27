@@ -47,7 +47,7 @@ export default async function CustomersPage() {
 
     // この顧客の予約に紐づくLINE IDが他の予約にも使われていればリピーター
     const lineIds = lineIdsByCustomerId[c.id] ?? new Set<string>();
-    const isRepeaterByLine = [...lineIds].some((lineId) => (reservationCountByLineId[lineId] ?? 0) > 1);
+    const isRepeaterByLine = Array.from(lineIds).some((lineId) => (reservationCountByLineId[lineId] ?? 0) > 1);
 
     const isRepeater = totalByPhone > 1 || isRepeaterByLine;
 

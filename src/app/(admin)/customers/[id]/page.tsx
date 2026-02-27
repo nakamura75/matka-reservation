@@ -39,7 +39,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
       .filter((r) => r.customerId === customer.id && r.lineUserId?.trim())
       .map((r) => r.lineUserId!.trim()),
   );
-  const isRepeaterByLine = [...customerLineIds].some(
+  const isRepeaterByLine = Array.from(customerLineIds).some(
     (lineId) => reservations.filter((r) => r.lineUserId?.trim() === lineId).length > 1,
   );
   const isRepeater = totalByPhone > 1 || isRepeaterByLine;
