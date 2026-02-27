@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
-import { Noto_Sans_JP } from 'next/font/google';
+import { Zen_Maru_Gothic } from 'next/font/google';
 import './globals.css';
 import SessionProvider from '@/components/layout/SessionProvider';
 
-const notoSansJP = Noto_Sans_JP({
+const zenMaruGothic = Zen_Maru_Gothic({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
   display: 'swap',
-  variable: '--font-noto-sans-jp',
+  variable: '--font-zen-maru-gothic',
 });
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
-      <body className={`${notoSansJP.variable} ${notoSansJP.className} antialiased`}>
+      <body className={`${zenMaruGothic.variable} ${zenMaruGothic.className} antialiased`}>
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
