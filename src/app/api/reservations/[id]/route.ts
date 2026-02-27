@@ -28,7 +28,7 @@ export async function GET(
   return NextResponse.json({ success: true, data: { ...reservation, options } });
 }
 
-/** PATCH /api/reservations/[id] - ステータス変更・備考・値引き更新 */
+/** PATCH /api/reservations/[id] - ステータス変更・備考・合計金額更新 */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -39,8 +39,7 @@ export async function PATCH(
   const body = await req.json() as {
     status?: ReservationStatus;
     note?: string;
-    discountAmount?: number;
-    discountReason?: string;
+    totalAmount?: number; // ③ 合計金額（T列に保存）
   };
 
   const reservation = await getReservationById(params.id);
@@ -70,8 +69,8 @@ export async function PATCH(
     }
   }
 
-  // 備考・値引き更新（N, U, V 列）
-  if (body.note !== undefined || body.discountAmount !== undefined || body.discountReason !== undefined) {
+  // 備考・合計金額更新（M列: 備考, T列: 合計金額手動設定）
+  if (body.note !== undefined || body.totalAmount !== undefined) {
     const { getSheetsClient } = await import('@/lib/google-sheets');
     const sheets = getSheetsClient();
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID ?? '';
@@ -79,8 +78,7 @@ export async function PATCH(
 
     const updates: { range: string; value: string | number }[] = [];
     if (body.note !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!M${row}`, value: body.note }); // M: 備考
-    if (body.discountAmount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!T${row}`, value: body.discountAmount }); // T: 値引額
-    if (body.discountReason !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!U${row}`, value: body.discountReason }); // U: 値引理由
+    if (body.totalAmount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!T${row}`, value: body.totalAmount }); // T: 合計金額（手動設定）
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,

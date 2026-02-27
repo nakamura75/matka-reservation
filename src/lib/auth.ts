@@ -15,11 +15,16 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ profile }) {
+      const email = profile?.email;
+      if (!email) return false;
       const allowedDomain = process.env.ALLOWED_EMAIL_DOMAIN;
-      if (allowedDomain && profile?.email) {
-        return profile.email.endsWith(`@${allowedDomain}`);
-      }
-      return true;
+      const allowedEmails = (process.env.ALLOWED_EMAILS ?? '')
+        .split(',')
+        .map((e) => e.trim())
+        .filter(Boolean);
+      if (allowedDomain && email.endsWith(`@${allowedDomain}`)) return true;
+      if (allowedEmails.includes(email)) return true;
+      return false;
     },
   },
 };
