@@ -6,10 +6,12 @@ import {
   createReservationOption,
   createCustomer,
   getPlans,
+  getOptions,
   getReservationById,
   updateCalendarEventId,
 } from '@/lib/google-sheets';
 import { createCalendarEvent } from '@/lib/google-calendar';
+import { sendLinePush, buildTentativeMessage } from '@/lib/line';
 import { generateId, generateReservationNumber, toJSTDatetime } from '@/lib/utils';
 import type { ReservationFormData } from '@/types';
 
@@ -116,6 +118,19 @@ export async function POST(req: import('next/server').NextRequest) {
           console.error('Calendar event ID save failed:', e)
         );
       }
+    }
+
+    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信
+    if (body.lineUserId) {
+      const allOptions = await getOptions().catch(() => []);
+      const optionsWithInfo = body.selectedOptions.map((sel) => {
+        const opt = allOptions.find((o) => o.id === sel.optionId);
+        return opt ? { name: opt.name, price: opt.price, quantity: sel.quantity } : null;
+      }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
+
+      await sendLinePush(body.lineUserId, [
+        buildTentativeMessage(reservation as any, plan.name, plan.price, optionsWithInfo),
+      ]).catch((e) => console.error('LINE Push failed:', e));
     }
 
     return NextResponse.json({

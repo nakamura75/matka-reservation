@@ -94,26 +94,21 @@ ${options.length > 0 ? `￥${optionTotal.toLocaleString()}` : ''}
 export function buildConfirmMessage(
   reservation: Reservation,
   planName: string,
-  planPrice: number
+  checkInTime: string,
+  checkOutTime: string
 ): LineMessage {
+  const formattedDate = reservation.date.replace(/-/g, '/');
   const text = `✅ ご予約が確定しました！
-
 【ご予約内容】
 ━━━━━━━━━━━━━━
-📅 予約日時
-${reservation.date} ${reservation.timeSlot}
-
-👤 代表者様
-${reservation.customerName ?? ''} 様
-
-📋 プラン
-${planName}
-￥${planPrice.toLocaleString()}
-
+📆 予約日: ${formattedDate}
+🕐 時間: ${reservation.timeSlot}
+　※当日は${checkInTime}までにご来店ください。
+　※終了時間は${checkOutTime}ごろになる予定です。
+📸 プラン: ${planName}
 ━━━━━━━━━━━━━━
-
 当日お会いできることを楽しみにしております！
-ご不明点はLINEよりお問い合わせください。`;
+ご不明点はLINEよりお問い合わせください😊`;
 
   return { type: 'text', text };
 }

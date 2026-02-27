@@ -65,6 +65,8 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState(reservation.note ?? '');
+  const [checkInTime, setCheckInTime] = useState(reservation.checkInTime ?? '');
+  const [checkOutTime, setCheckOutTime] = useState(reservation.checkOutTime ?? '');
   const [saving, setSaving] = useState(false);
 
   // 担当割り当て
@@ -105,10 +107,15 @@ export default function ReservationDetail({ reservation, customer, plan, options
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
     try {
+      const payload: Record<string, unknown> = { status: newStatus };
+      if (newStatus === '予約確定') {
+        payload.checkInTime = checkInTime;
+        payload.checkOutTime = checkOutTime;
+      }
       const res = await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setStatus(newStatus);
@@ -524,14 +531,42 @@ export default function ReservationDetail({ reservation, customer, plan, options
           {/* ステータス操作 */}
           <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">ステータス変更</h2>
+            {/* 予約確定への遷移時のみ来店・終了時間を入力 */}
+            {nextStatus === '予約確定' && (
+              <div className="space-y-2 pb-1">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">来店時間（例: 8:00）</label>
+                  <input
+                    type="text"
+                    value={checkInTime}
+                    onChange={(e) => setCheckInTime(e.target.value)}
+                    placeholder="8:00"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">終了時間（例: 11:00）</label>
+                  <input
+                    type="text"
+                    value={checkOutTime}
+                    onChange={(e) => setCheckOutTime(e.target.value)}
+                    placeholder="11:00"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+              </div>
+            )}
             {nextStatus && (
               <button
                 onClick={() => changeStatus(nextStatus)}
-                disabled={loading}
-                className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
+                disabled={loading || (nextStatus === '予約確定' && (!checkInTime || !checkOutTime))}
+                className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? '処理中...' : NEXT_STATUS_LABEL[nextStatus]}
               </button>
+            )}
+            {nextStatus === '予約確定' && (!checkInTime || !checkOutTime) && (
+              <p className="text-xs text-amber-600 text-center">来店時間・終了時間を入力してください</p>
             )}
             {status !== 'キャンセル' && status !== '完了' && (
               <button
@@ -544,7 +579,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 キャンセルにする
               </button>
             )}
-            {status === '予約確定' && reservation.lineUserId && (
+            {status === '予約済' && reservation.lineUserId && checkInTime && checkOutTime && (
               <p className="text-xs text-blue-500 text-center">
                 ※ 予約確定にすると LINE に通知が送信されます
               </p>

@@ -41,6 +41,8 @@ export async function PATCH(
     note?: string;
     totalAmount?: number; // ③ 合計金額（T列に保存）
     staffAssignment?: string; // 担当割り当てJSON（Y列に保存）
+    checkInTime?: string;  // 来店時間（V列に保存）
+    checkOutTime?: string; // 終了時間（W列に保存）
   };
 
   const reservation = await getReservationById(params.id);
@@ -58,14 +60,30 @@ export async function PATCH(
       );
     }
 
-    // 予約確定 → LINE通知
-    if (body.status === '予約確定' && reservation.lineUserId) {
-      const plans = await getPlans();
-      const plan = plans.find((p) => p.id === reservation.planId);
-      if (plan) {
-        await sendLinePush(reservation.lineUserId, [
-          buildConfirmMessage(reservation, plan.name, plan.price),
-        ]).catch((e) => console.error('LINE push failed:', e));
+    // 予約確定 → 来店時間・終了時間をシートに保存 → LINE通知
+    if (body.status === '予約確定') {
+      const { getSheetsClient } = await import('@/lib/google-sheets');
+      const sheets = getSheetsClient();
+      const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID ?? '';
+      const row = reservation._rowNumber;
+      const timeUpdates = [];
+      if (body.checkInTime) timeUpdates.push({ range: `${SHEET_NAMES.RESERVATIONS}!V${row}`, values: [[body.checkInTime]] });
+      if (body.checkOutTime) timeUpdates.push({ range: `${SHEET_NAMES.RESERVATIONS}!W${row}`, values: [[body.checkOutTime]] });
+      if (timeUpdates.length > 0) {
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId,
+          requestBody: { valueInputOption: 'USER_ENTERED', data: timeUpdates },
+        });
+      }
+
+      if (reservation.lineUserId) {
+        const plans = await getPlans();
+        const plan = plans.find((p) => p.id === reservation.planId);
+        if (plan) {
+          await sendLinePush(reservation.lineUserId, [
+            buildConfirmMessage(reservation, plan.name, body.checkInTime ?? '', body.checkOutTime ?? ''),
+          ]).catch((e) => console.error('LINE push failed:', e));
+        }
       }
     }
   }
