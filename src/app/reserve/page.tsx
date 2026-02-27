@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function ReservePage() {
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-brand-light">
       <header className="bg-white border-b border-cream-dark px-4 py-4 text-center">
         <h1 className="text-xl font-bold text-gray-900">
           Matka<span className="text-brand">Studio</span>
