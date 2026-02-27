@@ -43,6 +43,8 @@ export async function PATCH(
     staffAssignment?: string; // 担当割り当てJSON（Y列に保存）
     checkInTime?: string;  // 来店時間（V列に保存）
     checkOutTime?: string; // 終了時間（W列に保存）
+    paymentStatus?: boolean; // 支払ステータス（D列に保存）
+    paymentDate?: string;    // 支払日（E列に保存）
   };
 
   const reservation = await getReservationById(params.id);
@@ -88,8 +90,8 @@ export async function PATCH(
     }
   }
 
-  // 備考・合計金額・担当割り当て更新
-  if (body.note !== undefined || body.totalAmount !== undefined || body.staffAssignment !== undefined) {
+  // 備考・合計金額・担当割り当て・支払ステータス更新
+  if (body.note !== undefined || body.totalAmount !== undefined || body.staffAssignment !== undefined || body.paymentStatus !== undefined) {
     const { getSheetsClient } = await import('@/lib/google-sheets');
     const sheets = getSheetsClient();
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID ?? '';
@@ -99,6 +101,8 @@ export async function PATCH(
     if (body.note !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!M${row}`, value: body.note }); // M: 備考
     if (body.totalAmount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!T${row}`, value: body.totalAmount }); // T: 合計金額（手動設定）
     if (body.staffAssignment !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!Y${row}`, value: body.staffAssignment }); // Y: 担当割り当てJSON
+    if (body.paymentStatus !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!D${row}`, value: body.paymentStatus ? 'TRUE' : 'FALSE' }); // D: 支払ステータス
+    if (body.paymentDate !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!E${row}`, value: body.paymentDate }); // E: 支払日
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,

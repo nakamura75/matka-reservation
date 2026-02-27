@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  // イベント処理（非同期で処理し、200をすぐ返す）
-  processEvents(body.events).catch((e) => console.error('LINE event processing error:', e));
+  // イベント処理（awaitして完了後に200を返す）
+  await processEvents(body.events).catch((e) => console.error('LINE event processing error:', e));
 
   return NextResponse.json({ success: true });
 }

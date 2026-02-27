@@ -42,9 +42,9 @@ function taxExcluded(amount: number) {
   return Math.round(amount / 1.1);
 }
 
-// ② 時間の秒を削除
+// ② 時間の秒を削除（H:MM:SS → H:MM のみ変換。H:MM はそのまま）
 function stripSeconds(time: string) {
-  return time ? time.replace(/:\d{2}$/, '') : time;
+  return time ? time.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1') : time;
 }
 
 interface Props {
@@ -68,6 +68,9 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [checkInTime, setCheckInTime] = useState(reservation.checkInTime ?? '');
   const [checkOutTime, setCheckOutTime] = useState(reservation.checkOutTime ?? '');
   const [saving, setSaving] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(reservation.paymentStatus);
+  const [paymentDate, setPaymentDate] = useState(reservation.paymentDate ?? '');
+  const [paymentSaving, setPaymentSaving] = useState(false);
 
   // 担当割り当て
   const photographers = staff.filter((s) => s.role === 'フォトグラファー' && s.isActive !== 'FALSE');
@@ -139,6 +142,25 @@ export default function ReservationDetail({ reservation, customer, plan, options
       router.refresh();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function togglePayment() {
+    const newStatus = !paymentStatus;
+    const newDate = newStatus ? new Date().toLocaleDateString('ja-JP') : '';
+    setPaymentSaving(true);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: newStatus, paymentDate: newDate }),
+      });
+      if (res.ok) {
+        setPaymentStatus(newStatus);
+        setPaymentDate(newDate);
+      }
+    } finally {
+      setPaymentSaving(false);
     }
   }
 
@@ -507,9 +529,17 @@ export default function ReservationDetail({ reservation, customer, plan, options
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">支払状況</span>
-                <span className={reservation.paymentStatus ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                  {reservation.paymentStatus ? `支払済 (${reservation.paymentDate ?? ''})` : '未払い'}
-                </span>
+                <button
+                  onClick={togglePayment}
+                  disabled={paymentSaving}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors disabled:opacity-50
+                    ${paymentStatus
+                      ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
+                    }`}
+                >
+                  {paymentSaving ? '...' : paymentStatus ? `支払済 (${paymentDate})` : '未払い → 支払済にする'}
+                </button>
               </div>
             </div>
           </section>
