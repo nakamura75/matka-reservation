@@ -201,6 +201,7 @@ export interface Product {
 // ============================================================
 export interface ReservationFormData {
   scene: ShootingScene;
+  otherSceneNote?: string;
   planId: string;
   date: string;
   timeSlot: TimeSlot;
@@ -213,10 +214,13 @@ export interface ReservationFormData {
   email?: string;
   // 撮影情報
   peopleCount: string;
+  childrenCount?: number;
+  adultCount?: string;
   childrenDetail: string;
   // オプション
   selectedOptions: { optionId: string; quantity: number }[];
   // 確認
+  phoneCallPreference?: string;
   note?: string;
   cancelPolicyAgreed: boolean;
   // LIFF

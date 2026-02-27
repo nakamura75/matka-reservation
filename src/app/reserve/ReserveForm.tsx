@@ -260,6 +260,8 @@ export default function ReserveForm() {
           phone,
           email,
           peopleCount: `お子様${childrenCount}名・大人の方${adultCount === '5以上' ? '5名以上' : adultCount + '名'}`,
+          childrenCount: Number(childrenCount) || 0,
+          adultCount,
           childrenDetail: childrenDetails.length > 0
             ? childrenDetails.map((c, i) =>
                 `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} ${c.clothingSize}`
