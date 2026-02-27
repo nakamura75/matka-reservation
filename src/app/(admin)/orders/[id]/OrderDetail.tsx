@@ -141,7 +141,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">注文商品</h2>
               <button
                 onClick={() => setAddingItem(true)}
-                className="flex items-center gap-1 text-sm text-pink-600 hover:text-pink-800"
+                className="flex items-center gap-1 text-sm text-brand hover:text-brand-dark"
               >
                 <PlusIcon className="w-4 h-4" />
                 商品追加
@@ -150,11 +150,11 @@ export default function OrderDetail({ order, customer, reservation, items: initi
 
             {/* 商品追加フォーム */}
             {addingItem && (
-              <div className="px-6 py-4 bg-pink-50 border-b border-pink-100 flex gap-3 flex-wrap">
+              <div className="px-6 py-4 bg-brand-light border-b border-brand/10 flex gap-3 flex-wrap">
                 <select
                   value={newProductId}
                   onChange={(e) => setNewProductId(e.target.value)}
-                  className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                  className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                 >
                   <option value="">商品を選択...</option>
                   {allProducts.filter((p) => p.isActive).map((p) => (
@@ -168,7 +168,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                   onChange={(e) => setNewQty(Number(e.target.value))}
                   className="w-20 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none"
                 />
-                <button onClick={addItem} className="px-4 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600">
+                <button onClick={addItem} className="px-4 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark">
                   追加
                 </button>
                 <button onClick={() => setAddingItem(false)} className="px-4 py-2 text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
@@ -206,7 +206,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                               defaultValue={item.trackingNumber ?? ''}
                               onBlur={(e) => updateTrackingNumber(item, e.target.value)}
                               placeholder="追跡番号を入力"
-                              className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-pink-300"
+                              className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
                             />
                           </div>
                         )}
@@ -221,7 +221,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                               key={s}
                               onClick={() => updateItemStatus(item, s)}
                               disabled={updatingItem === item.id}
-                              className="text-xs text-gray-500 hover:text-pink-600 border border-gray-200 hover:border-pink-200 rounded px-2 py-0.5 transition-colors disabled:opacity-50"
+                              className="text-xs text-gray-500 hover:text-brand border border-gray-200 hover:border-brand/20 rounded px-2 py-0.5 transition-colors disabled:opacity-50"
                             >
                               → {s}
                             </button>
@@ -249,7 +249,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
               placeholder="スタッフメモ..."
             />
           </section>
@@ -267,7 +267,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                 <p className="text-gray-600">📞 {customer.phone}</p>
                 {customer.email && <p className="text-gray-600">✉️ {customer.email}</p>}
                 <Link href={`/customers/${customer.id}`}
-                  className="block text-center text-xs text-pink-600 border border-pink-200 rounded-lg px-3 py-2 hover:bg-pink-50 mt-3">
+                  className="block text-center text-xs text-brand border border-brand/20 rounded-lg px-3 py-2 hover:bg-brand-light mt-3">
                   顧客詳細 →
                 </Link>
               </div>
@@ -284,7 +284,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                 <p className="text-gray-700">{formatDate(reservation.date)} {reservation.timeSlot}</p>
                 <p className="text-gray-500">{reservation.scene}</p>
                 <Link href={`/reservations/${reservation.id}`}
-                  className="block text-center text-xs text-pink-600 border border-pink-200 rounded-lg px-3 py-2 hover:bg-pink-50">
+                  className="block text-center text-xs text-brand border border-brand/20 rounded-lg px-3 py-2 hover:bg-brand-light">
                   予約詳細 →
                 </Link>
               </div>
@@ -299,14 +299,14 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                 type="checkbox"
                 checked={isPaid}
                 onChange={(e) => setIsPaid(e.target.checked)}
-                className="w-4 h-4 accent-pink-500"
+                className="w-4 h-4 accent-brand"
               />
               <span className="text-sm text-gray-700">入金済みにする</span>
             </label>
             <button
               onClick={saveOrder}
               disabled={saving}
-              className="w-full py-2.5 bg-pink-500 text-white text-sm font-medium rounded-lg hover:bg-pink-600 disabled:opacity-50"
+              className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50"
             >
               {saving ? '保存中...' : '保存'}
             </button>

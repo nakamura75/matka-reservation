@@ -29,12 +29,12 @@ export default function OrderList({ orders }: { orders: OrderWithCustomer[] }) {
           placeholder="顧客名・備考で検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+          className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         <select
           value={paidFilter}
           onChange={(e) => setPaidFilter(e.target.value as typeof paidFilter)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
           <option value="all">すべて</option>
           <option value="paid">入金済</option>
@@ -65,12 +65,12 @@ export default function OrderList({ orders }: { orders: OrderWithCustomer[] }) {
               filtered.map((o) => (
                 <tr key={o.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
-                    <Link href={`/orders/${o.id}`} className="text-pink-600 hover:text-pink-800 font-medium">
+                    <Link href={`/orders/${o.id}`} className="text-brand hover:text-brand-dark font-medium">
                       {o.orderDate}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-700">
-                    <Link href={`/customers/${o.customerId}`} className="hover:text-pink-600">
+                    <Link href={`/customers/${o.customerId}`} className="hover:text-brand">
                       {o.customerName}
                     </Link>
                   </td>

@@ -238,7 +238,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
                   placeholder="スタッフ向けメモ..."
                 />
               </div>
@@ -249,7 +249,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                     type="number"
                     value={customTotal}
                     onChange={(e) => setCustomTotal(Number(e.target.value))}
-                    className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                    className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                     min={0}
                   />
                   <button
@@ -265,7 +265,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
               <button
                 onClick={saveNote}
                 disabled={saving}
-                className="px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
               >
                 {saving ? '保存中...' : '保存'}
               </button>
@@ -295,7 +295,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </div>
                 <Link
                   href={`/customers/${customer.id}`}
-                  className="block text-center text-xs text-pink-600 hover:text-pink-800 border border-pink-200 rounded-lg px-3 py-2 hover:bg-pink-50 transition-colors"
+                  className="block text-center text-xs text-brand hover:text-brand-dark border border-brand/20 rounded-lg px-3 py-2 hover:bg-brand-light transition-colors"
                 >
                   顧客詳細を見る →
                 </Link>
@@ -336,7 +336,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </div>
                 <div className="flex justify-between font-bold text-gray-900 text-base pt-1">
                   <span>合計（税込）</span>
-                  <span className="text-pink-600">{formatCurrency(customTotal)}</span>
+                  <span className="text-brand">{formatCurrency(customTotal)}</span>
                 </div>
               </div>
             </div>
@@ -371,7 +371,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
               <button
                 onClick={() => changeStatus(nextStatus)}
                 disabled={loading}
-                className="w-full py-2.5 bg-pink-500 text-white text-sm font-medium rounded-lg hover:bg-pink-600 disabled:opacity-50 transition-colors"
+                className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
               >
                 {loading ? '処理中...' : NEXT_STATUS_LABEL[nextStatus]}
               </button>

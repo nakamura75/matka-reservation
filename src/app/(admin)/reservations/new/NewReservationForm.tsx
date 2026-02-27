@@ -180,7 +180,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <select
               value={scene}
               onChange={(e) => handleSceneChange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
               required
             >
               <option value="">選択...</option>
@@ -195,7 +195,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <select
               value={planId}
               onChange={(e) => setPlanId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
               required
             >
               <option value="">選択...</option>
@@ -213,7 +213,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
               type="date"
               value={date}
               onChange={(e) => handleDateChange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
               required
             />
             {date && (
@@ -228,7 +228,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <select
               value={timeSlot}
               onChange={(e) => setTimeSlot(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
               required
             >
               <option value="">選択...</option>
@@ -247,7 +247,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
               value={childrenCount}
               onChange={(e) => setChildrenCount(e.target.value)}
               min={0}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
           <div>
@@ -256,7 +256,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
               type="text"
               value={adultCount}
               onChange={(e) => setAdultCount(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
         </div>
@@ -267,7 +267,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             value={familyNote}
             onChange={(e) => setFamilyNote(e.target.value)}
             rows={2}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
             placeholder="例: 長男5歳・長女7歳"
           />
         </div>
@@ -286,7 +286,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
                   id={`opt-${opt.id}`}
                   checked={!!selected}
                   onChange={() => toggleOption(opt.id)}
-                  className="w-4 h-4 accent-pink-500"
+                  className="w-4 h-4 accent-brand"
                 />
                 <label htmlFor={`opt-${opt.id}`} className="flex-1 text-sm text-gray-700 cursor-pointer">
                   {opt.name}
@@ -315,14 +315,14 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <button
               type="button"
               onClick={() => setCustomerMode('new')}
-              className={`px-3 py-1.5 transition-colors ${customerMode === 'new' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 transition-colors ${customerMode === 'new' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               新規
             </button>
             <button
               type="button"
               onClick={() => setCustomerMode('existing')}
-              className={`px-3 py-1.5 transition-colors ${customerMode === 'existing' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 transition-colors ${customerMode === 'existing' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               既存顧客
             </button>
@@ -335,7 +335,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <select
               value={selectedCustomerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             >
               <option value="">選択...</option>
               {customers.map((c) => (
@@ -350,32 +350,32 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <div>
               <label className="block text-sm text-gray-500 mb-1">氏名 *</label>
               <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">フリガナ</label>
               <input type="text" value={furigana} onChange={(e) => setFurigana(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">電話番号 *</label>
               <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">メールアドレス</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">郵便番号</label>
               <input type="text" value={zipCode} onChange={(e) => setZipCode(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">住所</label>
               <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
           </div>
         )}
@@ -388,7 +388,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
           placeholder="スタッフメモ..."
         />
       </section>
@@ -402,7 +402,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         <button
           type="submit"
           disabled={loading}
-          className="px-8 py-2.5 bg-pink-500 text-white font-medium rounded-lg hover:bg-pink-600 disabled:opacity-50 transition-colors"
+          className="px-8 py-2.5 bg-brand text-white font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
         >
           {loading ? '登録中...' : '予約を登録する'}
         </button>

@@ -29,7 +29,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
           placeholder="氏名・フリガナ・電話番号・メールで検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+          className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         <span className="text-sm text-gray-400 self-center">{filtered.length}件</span>
       </div>
@@ -60,12 +60,12 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3">
                     <Link
                       href={`/customers/${c.id}`}
-                      className="text-pink-600 hover:text-pink-800 font-medium"
+                      className="text-brand hover:text-brand-dark font-medium"
                     >
                       {c.name}
                     </Link>
                     {c.reservationCount > 1 && (
-                      <span className="ml-2 text-xs bg-pink-100 text-pink-600 px-1.5 py-0.5 rounded-full">
+                      <span className="ml-2 text-xs bg-brand-light text-brand px-1.5 py-0.5 rounded-full">
                         リピーター
                       </span>
                     )}

@@ -61,7 +61,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
         <h1 className="text-xl font-bold text-gray-900 flex-1">
           {customer.name}
           {isRepeater && (
-            <span className="ml-2 text-sm bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full font-normal">
+            <span className="ml-2 text-sm bg-brand-light text-brand px-2 py-0.5 rounded-full font-normal">
               リピーター
             </span>
           )}
@@ -97,7 +97,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                       type={type}
                       value={form[key as keyof typeof form]}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </div>
                 ))}
@@ -105,7 +105,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600 disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark disabled:opacity-50"
                   >
                     <CheckIcon className="w-4 h-4" />
                     {saving ? '保存中...' : '保存'}
@@ -204,7 +204,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                   {reservations.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <Link href={`/reservations/${r.id}`} className="text-pink-600 hover:text-pink-800">
+                        <Link href={`/reservations/${r.id}`} className="text-brand hover:text-brand-dark">
                           {r.reservationNumber || r.id.slice(0, 8)}
                         </Link>
                       </td>
@@ -242,7 +242,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                   {orders.map((o) => (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <Link href={`/orders/${o.id}`} className="text-pink-600 hover:text-pink-800">
+                        <Link href={`/orders/${o.id}`} className="text-brand hover:text-brand-dark">
                           {o.orderDate}
                         </Link>
                       </td>

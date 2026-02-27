@@ -23,7 +23,7 @@ function EditableRow<T extends { id: string; name: string }>({
 }) {
   const [form, setForm] = useState<Partial<T>>(item);
   return (
-    <tr className="bg-pink-50">
+    <tr className="bg-brand-light">
       {fields.map(({ key, type }) => (
         <td key={String(key)} className="px-4 py-2">
           <input
@@ -35,7 +35,7 @@ function EditableRow<T extends { id: string; name: string }>({
                 [key]: type === 'number' ? Number(e.target.value) : e.target.value,
               }))
             }
-            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-pink-300"
+            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
           />
         </td>
       ))}
@@ -43,7 +43,7 @@ function EditableRow<T extends { id: string; name: string }>({
         <div className="flex gap-1">
           <button
             onClick={() => onSave(form)}
-            className="p-1 bg-pink-500 text-white rounded hover:bg-pink-600"
+            className="p-1 bg-brand text-white rounded hover:bg-brand-dark"
           >
             <CheckIcon className="w-4 h-4" />
           </button>
@@ -110,7 +110,7 @@ function PlansTab() {
       <div className="flex justify-end mb-3">
         <button
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1 text-sm text-pink-600 hover:text-pink-800 border border-pink-200 rounded-lg px-3 py-1.5 hover:bg-pink-50"
+          className="flex items-center gap-1 text-sm text-brand hover:text-brand-dark border border-brand/20 rounded-lg px-3 py-1.5 hover:bg-brand-light"
         >
           <PlusIcon className="w-4 h-4" />
           プラン追加
@@ -155,7 +155,7 @@ function PlansTab() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setEditingId(plan.id)} className="text-gray-400 hover:text-pink-600">
+                    <button onClick={() => setEditingId(plan.id)} className="text-gray-400 hover:text-brand">
                       <PencilSquareIcon className="w-4 h-4" />
                     </button>
                   </td>
@@ -222,7 +222,7 @@ function OptionsTab() {
     <div>
       <div className="flex justify-end mb-3">
         <button onClick={() => setAdding(true)}
-          className="flex items-center gap-1 text-sm text-pink-600 hover:text-pink-800 border border-pink-200 rounded-lg px-3 py-1.5 hover:bg-pink-50">
+          className="flex items-center gap-1 text-sm text-brand hover:text-brand-dark border border-brand/20 rounded-lg px-3 py-1.5 hover:bg-brand-light">
           <PlusIcon className="w-4 h-4" />オプション追加
         </button>
       </div>
@@ -265,7 +265,7 @@ function OptionsTab() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setEditingId(opt.id)} className="text-gray-400 hover:text-pink-600">
+                    <button onClick={() => setEditingId(opt.id)} className="text-gray-400 hover:text-brand">
                       <PencilSquareIcon className="w-4 h-4" />
                     </button>
                   </td>
@@ -332,7 +332,7 @@ function ProductsTab() {
     <div>
       <div className="flex justify-end mb-3">
         <button onClick={() => setAdding(true)}
-          className="flex items-center gap-1 text-sm text-pink-600 hover:text-pink-800 border border-pink-200 rounded-lg px-3 py-1.5 hover:bg-pink-50">
+          className="flex items-center gap-1 text-sm text-brand hover:text-brand-dark border border-brand/20 rounded-lg px-3 py-1.5 hover:bg-brand-light">
           <PlusIcon className="w-4 h-4" />商品追加
         </button>
       </div>
@@ -375,7 +375,7 @@ function ProductsTab() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setEditingId(p.id)} className="text-gray-400 hover:text-pink-600">
+                    <button onClick={() => setEditingId(p.id)} className="text-gray-400 hover:text-brand">
                       <PencilSquareIcon className="w-4 h-4" />
                     </button>
                   </td>
@@ -438,7 +438,7 @@ function StaffTab() {
     <div>
       <div className="flex justify-end mb-3">
         <button onClick={() => { setAdding(true); setNewName(''); }}
-          className="flex items-center gap-1 text-sm text-pink-600 hover:text-pink-800 border border-pink-200 rounded-lg px-3 py-1.5 hover:bg-pink-50">
+          className="flex items-center gap-1 text-sm text-brand hover:text-brand-dark border border-brand/20 rounded-lg px-3 py-1.5 hover:bg-brand-light">
           <PlusIcon className="w-4 h-4" />スタッフ追加
         </button>
       </div>
@@ -453,20 +453,20 @@ function StaffTab() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {adding && (
-              <tr className="bg-pink-50">
+              <tr className="bg-brand-light">
                 <td className="px-4 py-2">
                   <input
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="スタッフ名"
-                    className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-pink-300"
+                    className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
                   />
                 </td>
                 <td className="px-4 py-2 text-xs text-gray-400">有効</td>
                 <td className="px-4 py-2">
                   <div className="flex gap-1">
-                    <button onClick={handleAdd} className="p-1 bg-pink-500 text-white rounded">
+                    <button onClick={handleAdd} className="p-1 bg-brand text-white rounded">
                       <CheckIcon className="w-4 h-4" />
                     </button>
                     <button onClick={() => setAdding(false)} className="p-1 text-gray-400 border border-gray-200 rounded">
@@ -478,19 +478,19 @@ function StaffTab() {
             )}
             {staff.map((member) =>
               editingId === member.id ? (
-                <tr key={member.id} className="bg-pink-50">
+                <tr key={member.id} className="bg-brand-light">
                   <td className="px-4 py-2">
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-pink-300"
+                      className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
                     />
                   </td>
                   <td className="px-4 py-2 text-xs text-gray-400">有効</td>
                   <td className="px-4 py-2">
                     <div className="flex gap-1">
-                      <button onClick={() => handleUpdate(member)} className="p-1 bg-pink-500 text-white rounded">
+                      <button onClick={() => handleUpdate(member)} className="p-1 bg-brand text-white rounded">
                         <CheckIcon className="w-4 h-4" />
                       </button>
                       <button onClick={() => setEditingId(null)} className="p-1 text-gray-400 border border-gray-200 rounded">
@@ -507,7 +507,7 @@ function StaffTab() {
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => { setEditingId(member.id); setEditName(member.name); }}
-                      className="text-gray-400 hover:text-pink-600">
+                      className="text-gray-400 hover:text-brand">
                       <PencilSquareIcon className="w-4 h-4" />
                     </button>
                   </td>
@@ -545,7 +545,7 @@ export default function SettingsPage() {
             onClick={() => setTab(t.key)}
             className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors
               ${tab === t.key
-                ? 'border-pink-500 text-pink-600'
+                ? 'border-brand text-brand'
                 : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             {t.label}

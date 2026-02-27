@@ -128,11 +128,11 @@ export default function ReservationCalendar({ reservations }: Props) {
           return (
             <div
               key={day}
-              className={`border-b border-r border-gray-100 min-h-24 p-1.5 ${isToday ? 'bg-pink-50' : ''}`}
+              className={`border-b border-r border-gray-100 min-h-24 p-1.5 ${isToday ? 'bg-brand-light' : ''}`}
             >
               <div
                 className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full
-                  ${isToday ? 'bg-pink-500 text-white' : isSunday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-700'}`}
+                  ${isToday ? 'bg-brand text-white' : isSunday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-700'}`}
               >
                 {day}
               </div>

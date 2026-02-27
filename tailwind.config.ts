@@ -12,13 +12,14 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         brand: {
-          DEFAULT: '#E8431A',
+          DEFAULT: '#E8552B',
           light: '#FDF0EB',
-          dark: '#C93515',
+          dark: '#D04420',
         },
         'brand-green': {
-          DEFAULT: '#3DB54A',
+          DEFAULT: '#4CBF68',
           light: '#EBF7ED',
+          dark: '#3DA855',
         },
         cream: {
           DEFAULT: '#FAF3E8',

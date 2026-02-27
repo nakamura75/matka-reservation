@@ -790,7 +790,7 @@ export default function ReserveForm() {
                     value={option}
                     checked={phoneCallPreference === option}
                     onChange={(e) => setPhoneCallPreference(e.target.value)}
-                    className="w-4 h-4 accent-pink-500"
+                    className="w-4 h-4 accent-brand"
                   />
                   <span className="text-sm text-gray-700">{option}</span>
                 </label>
@@ -810,7 +810,7 @@ export default function ReserveForm() {
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 w-4 h-4 accent-pink-500"
+              className="mt-0.5 w-4 h-4 accent-brand"
             />
             <span className="text-sm text-gray-700">
               キャンセルポリシーに同意します <span className="text-red-500">*</span>
