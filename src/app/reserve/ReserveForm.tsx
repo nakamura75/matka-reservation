@@ -852,46 +852,46 @@ export default function ReserveForm() {
   const stepRenderers = [renderStep0, renderStep1, renderStep2, renderStep3, renderStep4];
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4 pb-32">
-      <div className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden">
+    <div className="max-w-lg mx-auto px-4 py-4">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <StepIndicator current={step} />
 
-        <div className="px-4 pb-6">
+        <div className="px-4 pb-4">
           {stepRenderers[step]?.()}
         </div>
-      </div>
 
-      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 max-w-lg mx-auto`}>
-        {step > 0 && (
-          <button
-            type="button"
-            onClick={() => setStep((s) => s - 1)}
-            className="flex items-center gap-1 px-4 py-3 border border-gray-400 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
-          >
-            <ChevronLeftIcon className="w-4 h-4" />
-            戻る
-          </button>
-        )}
+        <div className="border-t border-gray-100 px-4 py-3 flex gap-3">
+          {step > 0 && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s - 1)}
+              className="flex items-center gap-1 px-4 py-3 border border-gray-400 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+              戻る
+            </button>
+          )}
 
-        {step < STEPS.length - 1 ? (
-          <button
-            type="button"
-            onClick={() => setStep((s) => s + 1)}
-            disabled={!canProceed()}
-            className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            次へ
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting || !canProceed()}
-            className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {submitting ? '送信中...' : '予約を送信する'}
-          </button>
-        )}
+          {step < STEPS.length - 1 ? (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s + 1)}
+              disabled={!canProceed()}
+              className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              次へ
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || !canProceed()}
+              className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {submitting ? '送信中...' : '予約を送信する'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
