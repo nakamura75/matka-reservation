@@ -39,19 +39,19 @@ function StepIndicator({ current }: { current: number }) {
         {STEPS.map((_, i) => (
           <div key={i} className="flex items-center">
             <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors
-              ${i < current ? 'bg-pink-500 text-white' :
-                i === current ? 'bg-pink-100 text-pink-600 ring-2 ring-pink-400' :
+              ${i < current ? 'bg-brand text-white' :
+                i === current ? 'bg-brand-light text-brand ring-2 ring-brand' :
                 'bg-gray-100 text-gray-400'}`}
             >
               {i < current ? <CheckCircleIcon className="w-5 h-5" /> : i + 1}
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`w-8 h-px ${i < current ? 'bg-pink-400' : 'bg-gray-200'}`} />
+              <div className={`w-8 h-px ${i < current ? 'bg-brand' : 'bg-gray-200'}`} />
             )}
           </div>
         ))}
       </div>
-      <p className="text-center text-xs text-pink-600 font-medium mt-1">
+      <p className="text-center text-xs text-brand font-medium mt-1">
         {STEPS[current]}
       </p>
     </div>
@@ -298,9 +298,9 @@ export default function ReserveForm() {
           <p className="text-sm text-gray-500 mb-6">
             3日以内に担当者よりご連絡いたします。
           </p>
-          <div className="bg-pink-50 rounded-xl p-4 mb-6">
+          <div className="bg-brand-light rounded-xl p-4 mb-6">
             <p className="text-xs text-gray-500 mb-1">予約番号</p>
-            <p className="text-2xl font-bold text-pink-600 tracking-wide">{reservationNumber}</p>
+            <p className="text-2xl font-bold text-brand tracking-wide">{reservationNumber}</p>
           </div>
           {!isInLine && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
@@ -347,8 +347,8 @@ export default function ReserveForm() {
                 onClick={() => handleSceneChange(s as ShootingScene)}
                 className={`py-3 px-4 rounded-xl border-2 text-sm font-medium transition-colors
                   ${scene === s
-                    ? 'border-pink-500 bg-pink-50 text-pink-700'
-                    : 'border-gray-200 text-gray-600 hover:border-pink-200 hover:bg-pink-50'
+                    ? 'border-brand bg-brand-light text-brand-dark'
+                    : 'border-gray-200 text-gray-600 hover:border-brand-light hover:bg-brand-light'
                   }`}
               >
                 {s}
@@ -368,7 +368,7 @@ export default function ReserveForm() {
               onChange={(e) => setOtherSceneNote(e.target.value)}
               rows={3}
               placeholder="撮影したいシーンをご記入ください..."
-              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
             />
           </div>
         )}
@@ -438,10 +438,10 @@ export default function ReserveForm() {
                       return (
                         <button key={dateStr} type="button" onClick={() => handleDateSelect(dateStr)}
                           className={`aspect-square flex items-center justify-center text-xs font-medium rounded-lg transition-colors
-                            ${isSelected ? 'bg-pink-500 text-white shadow-sm' :
+                            ${isSelected ? 'bg-brand text-white shadow-sm' :
                               isRed ? 'text-red-500 hover:bg-red-50' :
                               isBlue ? 'text-blue-500 hover:bg-blue-50' :
-                              'text-gray-700 hover:bg-pink-50'}`}
+                              'text-gray-700 hover:bg-brand-light'}`}
                         >
                           {day}
                         </button>
@@ -468,8 +468,8 @@ export default function ReserveForm() {
                   onClick={() => setSelectedTime(s.time)}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-colors
                     ${selectedTime === s.time
-                      ? 'border-pink-500 bg-pink-50 text-pink-700'
-                      : 'border-gray-200 text-gray-600 hover:border-pink-200'
+                      ? 'border-brand bg-brand-light text-brand-dark'
+                      : 'border-gray-200 text-gray-600 hover:border-brand-light'
                     }`}
                 >
                   {s.time}
@@ -478,7 +478,7 @@ export default function ReserveForm() {
             </div>
             {selectedPlan && selectedTime && (
               <div className="mt-4 space-y-3">
-                <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
+                <div className="bg-brand-light border border-brand-light rounded-xl p-4 flex justify-between items-center">
                   <div>
                     <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
                     <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
@@ -486,7 +486,7 @@ export default function ReserveForm() {
                       <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
                     )}
                   </div>
-                  <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
+                  <p className="text-xl font-bold text-brand">{formatCurrency(selectedPlan.price)}</p>
                 </div>
                 <div className="text-xs text-red-600 space-y-1 leading-relaxed">
                   <p>※ {selectedTime}は撮影開始時刻の目安です。お支度時間が別途必要となります。</p>
@@ -523,7 +523,7 @@ export default function ReserveForm() {
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
-              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
         ))}
@@ -544,7 +544,7 @@ export default function ReserveForm() {
           <select
             value={childrenCount}
             onChange={(e) => handleChildrenCountChange(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">選択...</option>
             {['0', '1', '2', '3', '4', '5'].map((v) => (
@@ -558,7 +558,7 @@ export default function ReserveForm() {
           <select
             value={adultCount}
             onChange={(e) => setAdultCount(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">選択...</option>
             {['0', '1', '2', '3', '4', '5以上'].map((v) => (
@@ -568,8 +568,8 @@ export default function ReserveForm() {
         </div>
 
         {childrenDetails.map((child, i) => (
-          <div key={i} className="border border-pink-100 rounded-xl p-4 space-y-3 bg-pink-50/40">
-            <p className="text-sm font-semibold text-pink-600">お子様 {i + 1}人目</p>
+          <div key={i} className="border border-brand-light rounded-xl p-4 space-y-3 bg-brand-light/40">
+            <p className="text-sm font-semibold text-brand">お子様 {i + 1}人目</p>
 
             <div>
               <label className="block text-xs text-gray-600 mb-1">お名前 *</label>
@@ -578,7 +578,7 @@ export default function ReserveForm() {
                 value={child.name}
                 onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
                 placeholder="例：さくら"
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
 
@@ -592,8 +592,8 @@ export default function ReserveForm() {
                     onClick={() => updateChildDetail(i, 'gender', g)}
                     className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
                       ${child.gender === g
-                        ? 'border-pink-500 bg-pink-50 text-pink-700'
-                        : 'border-gray-200 text-gray-600 hover:border-pink-200'
+                        ? 'border-brand bg-brand-light text-brand-dark'
+                        : 'border-gray-200 text-gray-600 hover:border-brand-light'
                       }`}
                   >
                     {g}
@@ -608,7 +608,7 @@ export default function ReserveForm() {
                 type="date"
                 value={child.birthday}
                 onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
 
@@ -619,7 +619,7 @@ export default function ReserveForm() {
                 value={child.clothingSize}
                 onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
                 placeholder="例：100cm / 3歳用"
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
           </div>
@@ -644,10 +644,10 @@ export default function ReserveForm() {
                 key={opt.id}
                 onClick={() => toggleOption(opt.id)}
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors
-                  ${selected ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:border-pink-200'}`}
+                  ${selected ? 'border-brand bg-brand-light' : 'border-gray-200 hover:border-brand-light'}`}
               >
                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
-                  ${selected ? 'border-pink-500 bg-pink-500' : 'border-gray-300'}`}>
+                  ${selected ? 'border-brand bg-brand' : 'border-gray-300'}`}>
                   {selected && <span className="text-white text-xs">✓</span>}
                 </div>
                 <div className="flex-1">
@@ -666,7 +666,7 @@ export default function ReserveForm() {
                     value={selected.quantity}
                     onChange={(e) => { e.stopPropagation(); setOptionQty(opt.id, Number(e.target.value)); }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-14 text-center text-sm border border-pink-300 rounded-lg px-2 py-1"
+                    className="w-14 text-center text-sm border border-brand rounded-lg px-2 py-1"
                   />
                 )}
               </div>
@@ -721,7 +721,7 @@ export default function ReserveForm() {
           })}
           <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200">
             <span>合計（税込）</span>
-            <span className="text-pink-600">{formatCurrency(total)}</span>
+            <span className="text-brand">{formatCurrency(total)}</span>
           </div>
         </div>
 
@@ -738,8 +738,8 @@ export default function ReserveForm() {
         {childrenDetails.length > 0 && (
           <div className="space-y-3">
             {childrenDetails.map((child, i) => (
-              <div key={i} className="bg-pink-50 border border-pink-100 rounded-xl p-4 text-sm space-y-1">
-                <p className="font-semibold text-pink-600">お子様 {i + 1}人目</p>
+              <div key={i} className="bg-brand-light border border-brand-light rounded-xl p-4 text-sm space-y-1">
+                <p className="font-semibold text-brand">お子様 {i + 1}人目</p>
                 <div className="flex justify-between">
                   <span className="text-gray-500">お名前</span>
                   <span className="font-medium">{child.name}</span>
@@ -769,7 +769,7 @@ export default function ReserveForm() {
             onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="ご要望・ご質問があればご記入ください..."
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
           />
         </div>
 
@@ -876,7 +876,7 @@ export default function ReserveForm() {
             type="button"
             onClick={() => setStep((s) => s + 1)}
             disabled={!canProceed()}
-            className="flex-1 py-3 bg-pink-500 text-white text-sm font-medium rounded-xl hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             次へ
           </button>
@@ -885,7 +885,7 @@ export default function ReserveForm() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !canProceed()}
-            className="flex-1 py-3 bg-pink-500 text-white text-sm font-medium rounded-xl hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? '送信中...' : '予約を送信する'}
           </button>
@@ -894,3 +894,4 @@ export default function ReserveForm() {
     </div>
   );
 }
+
