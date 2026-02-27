@@ -34,7 +34,7 @@ const config: Config = {
           rgba(232,67,26,0.06) 24px,
           rgba(232,67,26,0.06) 25px
         )`,
-        'check-grid': `linear-gradient(#ebebeb 8px, transparent 8px), linear-gradient(90deg, #ebebeb 8px, transparent 8px)`,
+        'check-grid': `linear-gradient(#ebebeb 12px, transparent 12px), linear-gradient(90deg, #ebebeb 12px, transparent 12px)`,
       },
       backgroundSize: {
         'check-grid': '60px 60px',
