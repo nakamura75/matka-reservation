@@ -40,6 +40,7 @@ export async function PATCH(
     status?: ReservationStatus;
     note?: string;
     totalAmount?: number; // ③ 合計金額（T列に保存）
+    staffAssignment?: string; // 担当割り当てJSON（Y列に保存）
   };
 
   const reservation = await getReservationById(params.id);
@@ -69,8 +70,8 @@ export async function PATCH(
     }
   }
 
-  // 備考・合計金額更新（M列: 備考, T列: 合計金額手動設定）
-  if (body.note !== undefined || body.totalAmount !== undefined) {
+  // 備考・合計金額・担当割り当て更新
+  if (body.note !== undefined || body.totalAmount !== undefined || body.staffAssignment !== undefined) {
     const { getSheetsClient } = await import('@/lib/google-sheets');
     const sheets = getSheetsClient();
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID ?? '';
@@ -79,6 +80,7 @@ export async function PATCH(
     const updates: { range: string; value: string | number }[] = [];
     if (body.note !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!M${row}`, value: body.note }); // M: 備考
     if (body.totalAmount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!T${row}`, value: body.totalAmount }); // T: 合計金額（手動設定）
+    if (body.staffAssignment !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!Y${row}`, value: body.staffAssignment }); // Y: 担当割り当てJSON
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,

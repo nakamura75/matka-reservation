@@ -218,6 +218,7 @@ export async function getStaff(): Promise<Staff[]> {
     id: r[0] ?? '',       // A: IDスタッフ
     name: r[1] ?? '',     // B: スタッフ名
     isActive: r[2],       // C: 有効
+    role: r[3],           // D: 担当
   }));
 }
 
@@ -289,7 +290,8 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
   // 7=H(お子様人数), 8=I(大人人数), 9=J(構成メモ), 10=K(ステータス),
   // 11=L(参考写真), 12=M(備考), 13=N(登録日), 14=O(LINE_UserID),
   // 15=P(フラグ), 16=Q(電話希望), 17=R(撮影シーン), 18=S(予約番号),
-  // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間)
+  // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間),
+  // 23=X(GoogleカレンダーイベントID), 24=Y(担当割り当てJSON)
   return {
     _rowNumber: rowNumber,
     id: r[0] ?? '',             // A: ID予約
@@ -316,6 +318,7 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     checkInTime: r[21],         // V: 入店時間
     checkOutTime: r[22],        // W: 退店時間
     calendarEventId: r[23],     // X: GoogleカレンダーイベントID
+    staffAssignmentJson: r[24], // Y: 担当割り当てJSON
   };
 }
 
@@ -619,6 +622,7 @@ export async function createStaff(data: Omit<Staff, '_rowNumber'>): Promise<void
     data.id,
     data.name,
     data.isActive ?? 'TRUE',
+    data.role ?? '',      // D: 担当
   ]);
 }
 
@@ -628,6 +632,7 @@ export async function updateStaff(data: Staff): Promise<void> {
     data.id,
     data.name,
     data.isActive ?? 'TRUE',
+    data.role ?? '',      // D: 担当
   ]);
 }
 
