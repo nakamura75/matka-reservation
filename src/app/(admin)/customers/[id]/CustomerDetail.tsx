@@ -18,9 +18,10 @@ interface Props {
   customer: Customer;
   reservations: (Reservation & { planName?: string })[];
   orders: Order[];
+  isRepeater: boolean;
 }
 
-export default function CustomerDetail({ customer, reservations, orders }: Props) {
+export default function CustomerDetail({ customer, reservations, orders, isRepeater }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -48,8 +49,6 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
       setSaving(false);
     }
   }
-
-  const isRepeater = reservations.length > 1;
 
   return (
     <div className="max-w-4xl mx-auto">

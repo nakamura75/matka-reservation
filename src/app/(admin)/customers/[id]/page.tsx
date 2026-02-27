@@ -26,11 +26,30 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     .filter((o) => o.customerId === params.id)
     .sort((a, b) => b.orderDate.localeCompare(a.orderDate));
 
+  // リピーター判定: 電話番号またはLINE IDが一致する予約が複数あるか
+  const samePhoneIds = customer.phone?.trim()
+    ? customers.filter((c) => c.phone?.trim() === customer.phone?.trim()).map((c) => c.id)
+    : [customer.id];
+  const totalByPhone = samePhoneIds.reduce(
+    (sum, id) => sum + reservations.filter((r) => r.customerId === id).length,
+    0,
+  );
+  const customerLineIds = new Set(
+    reservations
+      .filter((r) => r.customerId === customer.id && r.lineUserId?.trim())
+      .map((r) => r.lineUserId!.trim()),
+  );
+  const isRepeaterByLine = [...customerLineIds].some(
+    (lineId) => reservations.filter((r) => r.lineUserId?.trim() === lineId).length > 1,
+  );
+  const isRepeater = totalByPhone > 1 || isRepeaterByLine;
+
   return (
     <CustomerDetail
       customer={customer}
       reservations={customerReservations}
       orders={customerOrders}
+      isRepeater={isRepeater}
     />
   );
 }

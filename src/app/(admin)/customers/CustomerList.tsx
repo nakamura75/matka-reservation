@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { Customer } from '@/types';
 
-type CustomerWithCount = Customer & { reservationCount: number };
+type CustomerWithCount = Customer & { reservationCount: number; isRepeater: boolean };
 
 export default function CustomerList({ customers }: { customers: CustomerWithCount[] }) {
   const [search, setSearch] = useState('');
@@ -64,7 +64,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                     >
                       {c.name}
                     </Link>
-                    {c.reservationCount > 1 && (
+                    {c.isRepeater && (
                       <span className="ml-2 text-xs bg-brand-light text-brand px-1.5 py-0.5 rounded-full">
                         リピーター
                       </span>
