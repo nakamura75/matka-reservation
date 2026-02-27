@@ -852,14 +852,16 @@ export default function ReserveForm() {
   const stepRenderers = [renderStep0, renderStep1, renderStep2, renderStep3, renderStep4];
 
   return (
-    <div className="max-w-lg mx-auto px-4 pb-28">
-      <StepIndicator current={step} />
+    <div className="max-w-lg mx-auto px-4 py-4 pb-32">
+      <div className="bg-white rounded-2xl border border-gray-300 shadow-sm overflow-hidden">
+        <StepIndicator current={step} />
 
-      <div className="mt-2">
-        {stepRenderers[step]?.()}
+        <div className="px-4 pb-6">
+          {stepRenderers[step]?.()}
+        </div>
       </div>
 
-      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-3 max-w-lg mx-auto`}>
+      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex gap-3 max-w-lg mx-auto`}>
         {step > 0 && (
           <button
             type="button"
