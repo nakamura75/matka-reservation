@@ -877,7 +877,7 @@ export default function ReserveForm() {
               type="button"
               onClick={() => setStep((s) => s + 1)}
               disabled={!canProceed()}
-              className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 py-3 bg-brand-green text-white text-sm font-medium rounded-xl hover:bg-brand-green-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               次へ
             </button>
