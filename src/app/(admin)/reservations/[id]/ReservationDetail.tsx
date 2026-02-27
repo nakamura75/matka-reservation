@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import type { Reservation, Customer, Plan, ReservationOption } from '@/types';
-import { formatDate, formatCurrency } from '@/lib/utils';
+import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment } from '@/types';
+import { formatDate, formatCurrency, isWeekend } from '@/lib/utils';
+import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 
@@ -51,14 +52,45 @@ interface Props {
   customer: Customer | null;
   plan: Plan | null;
   options: OptionWithInfo[];
+  staff: Staff[];
 }
 
-export default function ReservationDetail({ reservation, customer, plan, options }: Props) {
+function parseAssignment(json?: string): StaffAssignment {
+  if (!json) return {};
+  try { return JSON.parse(json); } catch { return {}; }
+}
+
+export default function ReservationDetail({ reservation, customer, plan, options, staff }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState(reservation.note ?? '');
   const [saving, setSaving] = useState(false);
+
+  // 担当割り当て
+  const photographers = staff.filter((s) => s.role === 'フォトグラファー' && s.isActive !== 'FALSE');
+  const hairMakeupStaff = staff.filter((s) => s.role === 'ヘアメイク' && s.isActive !== 'FALSE');
+  const planType: 'Discovery' | 'Maternity' = reservation.scene === 'マタニティ' ? 'Maternity' : 'Discovery';
+  const breakdown = PLAN_STAFF_BREAKDOWN[planType];
+  const hasHolidayFee = isWeekend(reservation.date);
+  const [assignment, setAssignment] = useState<StaffAssignment>(
+    parseAssignment(reservation.staffAssignmentJson)
+  );
+  const [assignSaving, setAssignSaving] = useState(false);
+
+  async function saveAssignment() {
+    setAssignSaving(true);
+    try {
+      await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffAssignment: JSON.stringify(assignment) }),
+      });
+      router.refresh();
+    } finally {
+      setAssignSaving(false);
+    }
+  }
 
   // ③ 合計金額を直接編集（値引き額フィールドを廃止し、T列を合計金額として再利用）
   const optionTotal = options.reduce((sum, o) => sum + o.price * o.quantity, 0);
@@ -223,6 +255,131 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </tbody>
               </table>
             )}
+          </section>
+
+          {/* 担当割り当て */}
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+              <UserGroupIcon className="w-4 h-4" />
+              担当割り当て
+            </h2>
+            <div className="space-y-3">
+              {/* フォト */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-700">フォト</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.photo)}</p>
+                </div>
+                <select
+                  value={assignment.photo ?? ''}
+                  onChange={(e) => setAssignment((a) => ({ ...a, photo: e.target.value || undefined }))}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                >
+                  <option value="">未選択</option>
+                  {photographers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* アシスタント */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-700">アシスタント</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.assistant)}</p>
+                </div>
+                <select
+                  value={assignment.assistant ?? ''}
+                  onChange={(e) => setAssignment((a) => ({ ...a, assistant: e.target.value || undefined }))}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                >
+                  <option value="">未選択</option>
+                  {photographers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ヘア */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-700">ヘア</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.hair)}</p>
+                </div>
+                <select
+                  value={assignment.hair ?? ''}
+                  onChange={(e) => setAssignment((a) => ({ ...a, hair: e.target.value || undefined }))}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                >
+                  <option value="">未選択</option>
+                  {hairMakeupStaff.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* メイク */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-700">メイク</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.makeup)}</p>
+                </div>
+                <select
+                  value={assignment.makeup ?? ''}
+                  onChange={(e) => setAssignment((a) => ({ ...a, makeup: e.target.value || undefined }))}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                >
+                  <option value="">未選択</option>
+                  {hairMakeupStaff.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 休日料金（土日のみ表示） */}
+              {hasHolidayFee && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">休日料金</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(HOLIDAY_FEE)}</p>
+                  </div>
+                  <span className="text-sm text-gray-500 min-w-[140px] px-2">{STORE_STAFF_ID}</span>
+                </div>
+              )}
+
+              {/* オプション（各自選択） */}
+              {options.map((o) => (
+                <div key={o.id} className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">{o.optionName}</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(o.price * o.quantity)}</p>
+                  </div>
+                  <select
+                    value={assignment.options?.[o.optionId] ?? ''}
+                    onChange={(e) =>
+                      setAssignment((a) => ({
+                        ...a,
+                        options: { ...(a.options ?? {}), [o.optionId]: e.target.value || '' },
+                      }))
+                    }
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                  >
+                    <option value="">未選択</option>
+                    {hairMakeupStaff.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+
+              <button
+                onClick={saveAssignment}
+                disabled={assignSaving}
+                className="mt-2 px-4 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
+              >
+                {assignSaving ? '保存中...' : '担当を保存'}
+              </button>
+            </div>
           </section>
 
           {/* ③ 備考・合計金額（値引きフィールド削除、合計直接編集） */}

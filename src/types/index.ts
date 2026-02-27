@@ -51,6 +51,18 @@ export interface Staff {
   id: string;          // IDスタッフ
   name: string;        // スタッフ名
   isActive?: string;   // 有効
+  role?: string;       // 担当（フォトグラファー | ヘアメイク）
+}
+
+// ============================================================
+// 担当割り当て
+// ============================================================
+export interface StaffAssignment {
+  photo?: string;      // フォト担当 staffId
+  assistant?: string;  // アシスタント担当 staffId
+  hair?: string;       // ヘア担当 staffId
+  makeup?: string;     // メイク担当 staffId
+  options?: Record<string, string>; // { optionId: staffId }
 }
 
 // ============================================================
@@ -89,6 +101,7 @@ export interface Reservation {
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
   calendarEventId?: string; // GoogleカレンダーイベントID（X列）
+  staffAssignmentJson?: string; // 担当割り当てJSON（Y列）
   optionTotal?: number;    // オプション合計（VC）
   total?: number;          // 総計（VC）
   options?: ReservationOption[]; // 予約オプション一覧

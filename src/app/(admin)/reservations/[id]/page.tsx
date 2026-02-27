@@ -4,6 +4,7 @@ import {
   getCustomerById,
   getPlans,
   getOptions,
+  getStaff,
 } from '@/lib/google-sheets';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
@@ -15,10 +16,11 @@ export default async function ReservationDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [reservation, plans, options] = await Promise.all([
+  const [reservation, plans, options, staff] = await Promise.all([
     getReservationById(params.id),
     getPlans(),
     getOptions(),
+    getStaff(),
   ]);
 
   if (!reservation) notFound();
@@ -41,6 +43,7 @@ export default async function ReservationDetailPage({
       customer={customer}
       plan={plan ?? null}
       options={optionsWithInfo}
+      staff={staff}
     />
   );
 }

@@ -43,3 +43,20 @@ export const RESERVATION_STATUSES = ['予約済', '予約確定', '完了', 'キ
 
 // 注文詳細ステータス
 export const ORDER_ITEM_STATUSES = ['受注', '発注済', '制作完了', '入荷', '発送済'] as const;
+
+// 担当割り当て：店舗売上のスタッフID
+export const STORE_STAFF_ID = 'matka.';
+
+// 休日料金（税込）
+export const HOLIDAY_FEE = 5500;
+
+// プラン種別ごとの売上内訳（税込）
+export const PLAN_STAFF_BREAKDOWN: Record<'Discovery' | 'Maternity', {
+  photo: number;
+  assistant: number;
+  hair: number;
+  makeup: number;
+}> = {
+  Discovery: { photo: 20350, assistant: 20350, hair: 4400, makeup: 4400 },
+  Maternity: { photo: 12100, assistant: 12100, hair: 4400, makeup: 4400 },
+};
