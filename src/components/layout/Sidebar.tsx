@@ -45,7 +45,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* ロゴ */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-cream-dark">
-          <img src="/logo.svg" alt="Matka Studio" className="h-8 w-auto" />
+          <img src="https://matka-photostudio.jp/wp-content/uploads/2025/03/%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97-5474@2x.png" alt="Matka Studio" className="h-8 w-auto" />
           <button
             onClick={onClose}
             className="lg:hidden text-gray-400 hover:text-gray-600"
