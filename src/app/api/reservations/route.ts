@@ -13,7 +13,7 @@ import {
 import { createCalendarEvent } from '@/lib/google-calendar';
 import { sendLinePush, buildTentativeMessage } from '@/lib/line';
 import { generateId, generateReservationNumber, toJSTDatetime } from '@/lib/utils';
-import type { ReservationFormData } from '@/types';
+import type { ReservationFormData, Reservation } from '@/types';
 
 /** GET /api/reservations - 予約一覧 */
 export async function GET() {
@@ -129,7 +129,7 @@ export async function POST(req: import('next/server').NextRequest) {
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
 
       await sendLinePush(body.lineUserId, [
-        buildTentativeMessage(reservation as any, plan.name, plan.price, optionsWithInfo),
+        buildTentativeMessage(reservation as Reservation, plan.name, plan.price, optionsWithInfo),
       ]).catch((e) => console.error('LINE Push failed:', e));
     }
 
