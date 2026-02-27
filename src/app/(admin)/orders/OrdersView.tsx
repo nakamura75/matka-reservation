@@ -21,7 +21,7 @@ interface Props {
 }
 
 export default function OrdersView({ orders, items }: Props) {
-  const [view, setView] = useState<'list' | 'board'>('list');
+  const [view, setView] = useState<'list' | 'board'>('board');
 
   return (
     <div>
