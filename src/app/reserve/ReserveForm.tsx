@@ -348,7 +348,7 @@ export default function ReserveForm() {
                 className={`py-3 px-4 rounded-xl border-2 text-sm font-medium transition-colors
                   ${scene === s
                     ? 'border-brand bg-brand-light text-brand-dark'
-                    : 'border-gray-200 text-gray-600 hover:border-brand-light hover:bg-brand-light'
+                    : 'border-gray-300 text-gray-600 hover:border-brand-light hover:bg-brand-light'
                   }`}
               >
                 {s}
@@ -368,7 +368,7 @@ export default function ReserveForm() {
               onChange={(e) => setOtherSceneNote(e.target.value)}
               rows={3}
               placeholder="撮影したいシーンをご記入ください..."
-              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+              className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
             />
           </div>
         )}
@@ -469,7 +469,7 @@ export default function ReserveForm() {
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-colors
                     ${selectedTime === s.time
                       ? 'border-brand bg-brand-light text-brand-dark'
-                      : 'border-gray-200 text-gray-600 hover:border-brand-light'
+                      : 'border-gray-300 text-gray-600 hover:border-brand-light'
                     }`}
                 >
                   {s.time}
@@ -523,7 +523,7 @@ export default function ReserveForm() {
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
-              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
+              className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
         ))}
@@ -544,7 +544,7 @@ export default function ReserveForm() {
           <select
             value={childrenCount}
             onChange={(e) => handleChildrenCountChange(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
+            className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">選択...</option>
             {['0', '1', '2', '3', '4', '5'].map((v) => (
@@ -558,7 +558,7 @@ export default function ReserveForm() {
           <select
             value={adultCount}
             onChange={(e) => setAdultCount(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
+            className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">選択...</option>
             {['0', '1', '2', '3', '4', '5以上'].map((v) => (
@@ -568,7 +568,7 @@ export default function ReserveForm() {
         </div>
 
         {childrenDetails.map((child, i) => (
-          <div key={i} className="border border-brand-light rounded-xl p-4 space-y-3 bg-brand-light/40">
+          <div key={i} className="border border-brand rounded-xl p-4 space-y-3 bg-brand-light/40">
             <p className="text-sm font-semibold text-brand">お子様 {i + 1}人目</p>
 
             <div>
@@ -578,7 +578,7 @@ export default function ReserveForm() {
                 value={child.name}
                 onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
                 placeholder="例：さくら"
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
 
@@ -593,7 +593,7 @@ export default function ReserveForm() {
                     className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
                       ${child.gender === g
                         ? 'border-brand bg-brand-light text-brand-dark'
-                        : 'border-gray-200 text-gray-600 hover:border-brand-light'
+                        : 'border-gray-300 text-gray-600 hover:border-brand-light'
                       }`}
                   >
                     {g}
@@ -608,7 +608,7 @@ export default function ReserveForm() {
                 type="date"
                 value={child.birthday}
                 onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
 
@@ -619,7 +619,7 @@ export default function ReserveForm() {
                 value={child.clothingSize}
                 onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
                 placeholder="例：100cm / 3歳用"
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
           </div>
@@ -769,7 +769,7 @@ export default function ReserveForm() {
             onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="ご要望・ご質問があればご記入ください..."
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
+            className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
           />
         </div>
 
@@ -864,7 +864,7 @@ export default function ReserveForm() {
           <button
             type="button"
             onClick={() => setStep((s) => s - 1)}
-            className="flex items-center gap-1 px-4 py-3 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1 px-4 py-3 border border-gray-400 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
           >
             <ChevronLeftIcon className="w-4 h-4" />
             戻る
@@ -894,4 +894,5 @@ export default function ReserveForm() {
     </div>
   );
 }
+
 
