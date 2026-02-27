@@ -309,24 +309,24 @@ export default function ReserveForm() {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
               <p className="text-sm font-semibold text-green-800 mb-2">📲 LINEで予約番号を送信してください</p>
               <p className="text-xs text-green-700 mb-3">
-                予約内容の確認・通知をLINEで受け取るために、友だち追加後に以下のメッセージを送信してください。
+                予約内容の確認・通知をLINEで受け取るために、以下のボタンから予約番号を送信してください。
               </p>
               <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
                 matka予約: {reservationNumber}
               </div>
               {/* QRコード（常に表示） */}
               <div className="flex flex-col items-center bg-white rounded-xl border border-green-200 p-4 mb-3">
-                <QRCodeSVG value="https://line.me/R/ti/p/@671kcyek" size={120} />
+                <QRCodeSVG value={`https://line.me/R/oaMessage/@671kcyek/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`} size={120} />
                 <p className="text-xs text-gray-500 mt-2">カメラでスキャン または ボタンをタップ</p>
               </div>
               {/* ボタン（常に表示） */}
               <a
-                href="https://line.me/R/ti/p/@671kcyek"
+                href={`https://line.me/R/oaMessage/@671kcyek/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center py-2.5 bg-[#06C755] text-white text-sm font-medium rounded-lg hover:bg-[#05a847] transition-colors"
               >
-                LINE友だち追加
+                LINEで予約番号を送信する
               </a>
             </div>
           )}
