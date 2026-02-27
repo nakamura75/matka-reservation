@@ -40,20 +40,20 @@ function StepIndicator({ current }: { current: number }) {
         {STEPS.map((_, i) => (
           <div key={i} className="flex items-center">
             <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors
-              ${i < current ? 'bg-pink-500 text-white' :
-                i === current ? 'bg-pink-100 text-pink-600 ring-2 ring-pink-400' :
+              ${i < current ? 'bg-brand text-white' :
+                i === current ? 'bg-brand-light text-brand ring-2 ring-brand' :
                 'bg-gray-100 text-gray-400'}`}
             >
               {i < current ? <CheckCircleIcon className="w-5 h-5" /> : i + 1}
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`w-8 h-px ${i < current ? 'bg-pink-400' : 'bg-gray-200'}`} />
+              <div className={`w-8 h-px ${i < current ? 'bg-brand' : 'bg-gray-200'}`} />
             )}
           </div>
         ))}
       </div>
       {/* 現在のステップ名 */}
-      <p className="text-center text-xs text-pink-600 font-medium mt-1">
+      <p className="text-center text-xs text-brand font-medium mt-1">
         {STEPS[current]}
       </p>
     </div>
@@ -175,7 +175,6 @@ export default function ReserveForm() {
     const t = new Date();
     setCalendarYM({ year: t.getFullYear(), month: t.getMonth() });
     const planType = SCENE_PLAN_MAP[s];
-    // 仮の平日プランを設定（日付選択後に更新）、なければ同種の任意プラン
     const match = plans.find((p) => p.name.includes(planType) && p.name.includes('平日'))
       ?? plans.find((p) => p.name.includes(planType))
       ?? plans[0];
@@ -186,7 +185,6 @@ export default function ReserveForm() {
   function handleDateSelect(dateStr: string) {
     setSelectedDate(dateStr);
     setSelectedTime('');
-    // 平日/休日でプランを切り替え
     if (scene) {
       const planType = SCENE_PLAN_MAP[scene];
       const weekend = isWeekend(dateStr);
@@ -291,25 +289,25 @@ export default function ReserveForm() {
   if (submitted) {
     return (
       <div className="max-w-lg mx-auto px-4 py-12 text-center">
-        <div className="bg-white rounded-2xl border border-gray-200 p-8">
-          <CheckCircleIcon className="w-16 h-16 text-green-400 mx-auto mb-4" />
+        <div className="bg-white rounded-2xl border border-cream-dark p-8">
+          <CheckCircleIcon className="w-16 h-16 text-brand-green mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900 mb-2">仮予約を受け付けました</h2>
           <p className="text-sm text-gray-500 mb-6">
             3日以内に担当者よりご連絡いたします。
           </p>
 
-          <div className="bg-pink-50 rounded-xl p-4 mb-6">
+          <div className="bg-brand-light rounded-xl p-4 mb-6">
             <p className="text-xs text-gray-500 mb-1">予約番号</p>
-            <p className="text-2xl font-bold text-pink-600 tracking-wide">{reservationNumber}</p>
+            <p className="text-2xl font-bold text-brand tracking-wide">{reservationNumber}</p>
           </div>
 
           {!isInLine && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
-              <p className="text-sm font-semibold text-green-800 mb-2">📲 LINEで予約番号を送信してください</p>
-              <p className="text-xs text-green-700 mb-3">
+            <div className="bg-brand-green-light border border-brand-green/30 rounded-xl p-4 text-left">
+              <p className="text-sm font-semibold text-brand-green mb-2">📲 LINEで予約番号を送信してください</p>
+              <p className="text-xs text-brand-green/80 mb-3">
                 予約内容の確認・通知をLINEで受け取るために、友だち追加後に以下のメッセージを送信してください。
               </p>
-              <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
+              <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-brand-green/20 mb-3">
                 matka予約: {reservationNumber}
               </div>
               <a
@@ -324,7 +322,7 @@ export default function ReserveForm() {
           )}
 
           {isInLine && (
-            <p className="text-sm text-green-600 bg-green-50 rounded-xl p-3">
+            <p className="text-sm text-brand-green bg-brand-green-light rounded-xl p-3">
               ✅ LINEで予約確認メッセージをお送りしました
             </p>
           )}
@@ -349,8 +347,8 @@ export default function ReserveForm() {
                 onClick={() => handleSceneChange(s as ShootingScene)}
                 className={`py-3 px-4 rounded-xl border-2 text-sm font-medium transition-colors
                   ${scene === s
-                    ? 'border-pink-500 bg-pink-50 text-pink-700'
-                    : 'border-gray-200 text-gray-600 hover:border-pink-200 hover:bg-pink-50'
+                    ? 'border-brand bg-brand-light text-brand-dark'
+                    : 'border-gray-200 text-gray-600 hover:border-brand/30 hover:bg-brand-light'
                   }`}
               >
                 {s}
@@ -368,7 +366,7 @@ export default function ReserveForm() {
             {loadingSlots ? (
               <div className="text-center py-8 text-gray-400 text-sm">空き枠を確認中...</div>
             ) : (
-              <div className="border border-gray-200 rounded-2xl p-3">
+              <div className="border border-cream-dark rounded-2xl p-3 bg-white">
                 {/* 月ナビゲーション */}
                 {(() => {
                   const today = new Date();
@@ -380,11 +378,11 @@ export default function ReserveForm() {
                   const canNext = year < maxY || (year === maxY && month < maxM);
                   return (
                     <div className="flex items-center justify-between mb-3">
-                      <button type="button" onClick={() => setCalendarYM(({ year: y, month: m }) => { const d = new Date(y, m - 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })} disabled={!canPrev} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed">
+                      <button type="button" onClick={() => setCalendarYM(({ year: y, month: m }) => { const d = new Date(y, m - 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })} disabled={!canPrev} className="p-1.5 rounded-lg hover:bg-cream disabled:opacity-20 disabled:cursor-not-allowed">
                         <ChevronLeftIcon className="w-4 h-4 text-gray-500" />
                       </button>
-                      <span className="text-sm font-semibold text-gray-700">{year}年{month + 1}月</span>
-                      <button type="button" onClick={() => setCalendarYM(({ year: y, month: m }) => { const d = new Date(y, m + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })} disabled={!canNext} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-20 disabled:cursor-not-allowed">
+                      <span className="text-sm font-semibold text-gray-700">{calendarYM.year}年{calendarYM.month + 1}月</span>
+                      <button type="button" onClick={() => setCalendarYM(({ year: y, month: m }) => { const d = new Date(y, m + 1, 1); return { year: d.getFullYear(), month: d.getMonth() }; })} disabled={!canNext} className="p-1.5 rounded-lg hover:bg-cream disabled:opacity-20 disabled:cursor-not-allowed">
                         <ChevronRightIcon className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
@@ -430,10 +428,10 @@ export default function ReserveForm() {
                       return (
                         <button key={dateStr} type="button" onClick={() => handleDateSelect(dateStr)}
                           className={`aspect-square flex items-center justify-center text-xs font-medium rounded-lg transition-colors
-                            ${isSelected ? 'bg-pink-500 text-white shadow-sm' :
+                            ${isSelected ? 'bg-brand text-white shadow-sm' :
                               isRed ? 'text-red-500 hover:bg-red-50' :
                               isBlue ? 'text-blue-500 hover:bg-blue-50' :
-                              'text-gray-700 hover:bg-pink-50'}`}
+                              'text-gray-700 hover:bg-brand-light'}`}
                         >
                           {day}
                         </button>
@@ -460,8 +458,8 @@ export default function ReserveForm() {
                   onClick={() => setSelectedTime(s.time)}
                   className={`flex-1 py-3 rounded-xl border-2 text-sm font-medium transition-colors
                     ${selectedTime === s.time
-                      ? 'border-pink-500 bg-pink-50 text-pink-700'
-                      : 'border-gray-200 text-gray-600 hover:border-pink-200'
+                      ? 'border-brand bg-brand-light text-brand-dark'
+                      : 'border-gray-200 text-gray-600 hover:border-brand/30'
                     }`}
                 >
                   {s.time}
@@ -470,7 +468,7 @@ export default function ReserveForm() {
             </div>
             {selectedPlan && selectedTime && (
               <div className="mt-4 space-y-3">
-                <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 flex justify-between items-center">
+                <div className="bg-brand-light border border-brand/20 rounded-xl p-4 flex justify-between items-center">
                   <div>
                     <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
                     <p className="text-sm font-medium text-gray-800">{selectedPlan.name}</p>
@@ -478,7 +476,7 @@ export default function ReserveForm() {
                       <p className="text-xs text-gray-400 mt-0.5">{selectedPlan.duration}分</p>
                     )}
                   </div>
-                  <p className="text-xl font-bold text-pink-600">{formatCurrency(selectedPlan.price)}</p>
+                  <p className="text-xl font-bold text-brand">{formatCurrency(selectedPlan.price)}</p>
                 </div>
                 <div className="text-xs text-red-600 space-y-1 leading-relaxed">
                   <p>※ {selectedTime}は撮影開始時刻の目安です。お支度時間が別途必要となります。</p>
@@ -515,7 +513,7 @@ export default function ReserveForm() {
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
-              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50"
             />
           </div>
         ))}
@@ -537,7 +535,7 @@ export default function ReserveForm() {
           <select
             value={childrenCount}
             onChange={(e) => handleChildrenCountChange(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50"
           >
             <option value="">選択...</option>
             {['0', '1', '2', '3', '4', '5'].map((v) => (
@@ -552,7 +550,7 @@ export default function ReserveForm() {
           <select
             value={adultCount}
             onChange={(e) => setAdultCount(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/50"
           >
             <option value="">選択...</option>
             {['0', '1', '2', '3', '4', '5以上'].map((v) => (
@@ -563,8 +561,8 @@ export default function ReserveForm() {
 
         {/* お子様詳細フォーム（人数分） */}
         {childrenDetails.map((child, i) => (
-          <div key={i} className="border border-pink-100 rounded-xl p-4 space-y-3 bg-pink-50/40">
-            <p className="text-sm font-semibold text-pink-600">お子様 {i + 1}人目</p>
+          <div key={i} className="border border-brand/20 rounded-xl p-4 space-y-3 bg-brand-light/40">
+            <p className="text-sm font-semibold text-brand">お子様 {i + 1}人目</p>
 
             <div>
               <label className="block text-xs text-gray-600 mb-1">お名前 *</label>
@@ -573,7 +571,7 @@ export default function ReserveForm() {
                 value={child.name}
                 onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
                 placeholder="例：さくら"
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
               />
             </div>
 
@@ -587,8 +585,8 @@ export default function ReserveForm() {
                     onClick={() => updateChildDetail(i, 'gender', g)}
                     className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
                       ${child.gender === g
-                        ? 'border-pink-500 bg-pink-50 text-pink-700'
-                        : 'border-gray-200 text-gray-600 hover:border-pink-200'
+                        ? 'border-brand bg-brand-light text-brand-dark'
+                        : 'border-gray-200 text-gray-600 hover:border-brand/30'
                       }`}
                   >
                     {g}
@@ -603,7 +601,7 @@ export default function ReserveForm() {
                 type="date"
                 value={child.birthday}
                 onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
               />
             </div>
 
@@ -614,7 +612,7 @@ export default function ReserveForm() {
                 value={child.clothingSize}
                 onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
                 placeholder="例：100cm / 3歳用"
-                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
               />
             </div>
           </div>
@@ -639,15 +637,19 @@ export default function ReserveForm() {
                 key={opt.id}
                 onClick={() => toggleOption(opt.id)}
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors
-                  ${selected ? 'border-pink-400 bg-pink-50' : 'border-gray-200 hover:border-pink-200'}`}
+                  ${selected ? 'border-brand bg-brand-light' : 'border-gray-200 bg-white hover:border-brand/30'}`}
               >
                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
-                  ${selected ? 'border-pink-500 bg-pink-500' : 'border-gray-300'}`}>
+                  ${selected ? 'border-brand bg-brand' : 'border-gray-300'}`}>
                   {selected && <span className="text-white text-xs">✓</span>}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800">{opt.name}</p>
-                  {opt.description && <p className="text-xs text-gray-400">{opt.description}</p>}
+                  {opt.description && (
+                    <p className={`text-xs mt-0.5 ${opt.description.startsWith('※') ? 'text-red-500' : 'text-gray-400'}`}>
+                      {opt.description}
+                    </p>
+                  )}
                 </div>
                 <p className="text-sm font-medium text-gray-700 flex-shrink-0">{formatCurrency(opt.price)}</p>
                 {selected && (
@@ -657,7 +659,7 @@ export default function ReserveForm() {
                     value={selected.quantity}
                     onChange={(e) => { e.stopPropagation(); setOptionQty(opt.id, Number(e.target.value)); }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-14 text-center text-sm border border-pink-300 rounded-lg px-2 py-1"
+                    className="w-14 text-center text-sm border border-brand/30 rounded-lg px-2 py-1"
                   />
                 )}
               </div>
@@ -677,7 +679,7 @@ export default function ReserveForm() {
         <h2 className="text-base font-bold text-gray-900">ご予約内容の確認</h2>
 
         {/* 予約サマリー */}
-        <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+        <div className="bg-white rounded-xl border border-cream-dark p-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-500">撮影シーン</span>
             <span className="font-medium">{scene}</span>
@@ -704,14 +706,14 @@ export default function ReserveForm() {
               </div>
             );
           })}
-          <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200">
+          <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-cream-dark">
             <span>合計（税込）</span>
-            <span className="text-pink-600">{formatCurrency(total)}</span>
+            <span className="text-brand">{formatCurrency(total)}</span>
           </div>
         </div>
 
         {/* お客様情報サマリー */}
-        <div className="bg-gray-50 rounded-xl p-4 text-sm space-y-1">
+        <div className="bg-white rounded-xl border border-cream-dark p-4 text-sm space-y-1">
           <p className="font-medium text-gray-900">{name}（{furigana}）</p>
           <p className="text-gray-500">📞 {phone}</p>
           {email && <p className="text-gray-500">✉️ {email}</p>}
@@ -727,14 +729,14 @@ export default function ReserveForm() {
             onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="ご要望・ご質問があればご記入ください..."
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
           />
         </div>
 
         {/* キャンセルポリシー */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-2">キャンセルポリシー</h3>
-          <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-500 whitespace-pre-line max-h-40 overflow-y-auto">
+          <div className="bg-white rounded-xl border border-cream-dark p-4 text-xs text-gray-500 whitespace-pre-line max-h-40 overflow-y-auto">
             {CANCEL_POLICY}
           </div>
           <label className="flex items-start gap-3 mt-3 cursor-pointer">
@@ -742,7 +744,7 @@ export default function ReserveForm() {
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 w-4 h-4 accent-pink-500"
+              className="mt-0.5 w-4 h-4 accent-brand"
             />
             <span className="text-sm text-gray-700">
               キャンセルポリシーに同意します <span className="text-red-500">*</span>
@@ -789,12 +791,12 @@ export default function ReserveForm() {
       </div>
 
       {/* ナビゲーションボタン */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-3 max-w-lg mx-auto`}>
+      <div className={`fixed bottom-0 left-0 right-0 bg-white border-t border-cream-dark px-4 py-3 flex gap-3 max-w-lg mx-auto`}>
         {step > 0 && (
           <button
             type="button"
             onClick={() => setStep((s) => s - 1)}
-            className="flex items-center gap-1 px-4 py-3 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1 px-4 py-3 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-cream transition-colors"
           >
             <ChevronLeftIcon className="w-4 h-4" />
             戻る
@@ -806,7 +808,7 @@ export default function ReserveForm() {
             type="button"
             onClick={() => setStep((s) => s + 1)}
             disabled={!canProceed()}
-            className="flex-1 py-3 bg-pink-500 text-white text-sm font-medium rounded-xl hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             次へ
           </button>
@@ -815,7 +817,7 @@ export default function ReserveForm() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || !canProceed()}
-            className="flex-1 py-3 bg-pink-500 text-white text-sm font-medium rounded-xl hover:bg-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 py-3 bg-brand text-white text-sm font-medium rounded-xl hover:bg-brand-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? '送信中...' : '予約を送信する'}
           </button>
