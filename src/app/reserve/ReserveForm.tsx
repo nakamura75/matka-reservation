@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
@@ -311,14 +312,24 @@ export default function ReserveForm() {
               <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
                 matka予約: {reservationNumber}
               </div>
+              {/* PC向け：QRコード表示 */}
+              <div className="hidden sm:flex flex-col items-center bg-white rounded-xl border border-green-200 p-4 mb-3">
+                <QRCodeSVG value="https://line.me/R/ti/p/@671kcyek" size={120} />
+                <p className="text-xs text-gray-500 mt-2">スマートフォンでスキャン</p>
+              </div>
+              {/* スマホ向け：ボタン表示 */}
               <a
                 href={`https://line.me/R/ti/p/@671kcyek`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-full text-center py-2.5 bg-[#06C755] text-white text-sm font-medium rounded-lg hover:bg-[#05a847] transition-colors"
+                className="block w-full text-center py-2.5 bg-[#06C755] text-white text-sm font-medium rounded-lg hover:bg-[#05a847] transition-colors sm:hidden"
               >
                 LINE友だち追加
               </a>
+              {/* PC向け：補足テキスト */}
+              <p className="hidden sm:block text-xs text-center text-green-700 mt-1">
+                またはスマートフォンで<a href="https://line.me/R/ti/p/@671kcyek" target="_blank" rel="noopener noreferrer" className="underline">こちら</a>から友だち追加
+              </p>
             </div>
           )}
           {isInLine && (
