@@ -76,7 +76,6 @@ function PlansTab() {
     { key: 'name', label: 'プラン名', type: 'text' },
     { key: 'price', label: '単価', type: 'number' },
     { key: 'duration', label: '所要時間(分)', type: 'number' },
-    { key: 'commissionPrice', label: '歩合単価', type: 'number' },
   ];
 
   async function handleSave(data: Partial<Plan>, isNew = false) {
@@ -128,7 +127,7 @@ function PlansTab() {
           <tbody className="divide-y divide-gray-100">
             {adding && (
               <EditableRow<Plan>
-                item={{ name: '', price: 0, duration: 90, commissionPrice: 0 }}
+                item={{ name: '', price: 0, duration: 90 }}
                 fields={fields}
                 onSave={(d) => handleSave(d, true)}
                 onCancel={() => setAdding(false)}
@@ -148,7 +147,6 @@ function PlansTab() {
                   <td className="px-4 py-3 font-medium text-gray-900">{plan.name}</td>
                   <td className="px-4 py-3 text-gray-700">{formatCurrency(plan.price)}</td>
                   <td className="px-4 py-3 text-gray-700">{plan.duration}分</td>
-                  <td className="px-4 py-3 text-gray-500">{formatCurrency(plan.commissionPrice ?? 0)}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${plan.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {plan.isActive ? '有効' : '無効'}
@@ -189,7 +187,6 @@ function OptionsTab() {
     { key: 'name', label: 'オプション名', type: 'text' },
     { key: 'price', label: '単価', type: 'number' },
     { key: 'description', label: '説明', type: 'text' },
-    { key: 'commissionPrice', label: '歩合単価', type: 'number' },
   ];
 
   async function handleSave(data: Partial<Option>, isNew = false) {
@@ -238,7 +235,7 @@ function OptionsTab() {
           <tbody className="divide-y divide-gray-100">
             {adding && (
               <EditableRow<Option>
-                item={{ name: '', price: 0, description: '', commissionPrice: 0 }}
+                item={{ name: '', price: 0, description: '' }}
                 fields={fields}
                 onSave={(d) => handleSave(d, true)}
                 onCancel={() => setAdding(false)}
@@ -258,7 +255,6 @@ function OptionsTab() {
                   <td className="px-4 py-3 font-medium text-gray-900">{opt.name}</td>
                   <td className="px-4 py-3 text-gray-700">{formatCurrency(opt.price)}</td>
                   <td className="px-4 py-3 text-gray-500">{opt.description || '—'}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatCurrency(opt.commissionPrice ?? 0)}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${opt.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {opt.isActive ? '有効' : '無効'}
@@ -299,7 +295,6 @@ function ProductsTab() {
     { key: 'name', label: '商品名', type: 'text' },
     { key: 'price', label: '単価', type: 'number' },
     { key: 'description', label: '説明', type: 'text' },
-    { key: 'commissionPrice', label: '歩合単価', type: 'number' },
   ];
 
   async function handleSave(data: Partial<Product>, isNew = false) {
@@ -348,7 +343,7 @@ function ProductsTab() {
           <tbody className="divide-y divide-gray-100">
             {adding && (
               <EditableRow<Product>
-                item={{ name: '', price: 0, description: '', commissionPrice: 0 }}
+                item={{ name: '', price: 0, description: '' }}
                 fields={fields}
                 onSave={(d) => handleSave(d, true)}
                 onCancel={() => setAdding(false)}
@@ -368,7 +363,6 @@ function ProductsTab() {
                   <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                   <td className="px-4 py-3 text-gray-700">{formatCurrency(p.price)}</td>
                   <td className="px-4 py-3 text-gray-500">{p.description || '—'}</td>
-                  <td className="px-4 py-3 text-gray-500">{formatCurrency(p.commissionPrice ?? 0)}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${p.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {p.isActive ? '有効' : '無効'}

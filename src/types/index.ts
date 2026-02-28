@@ -26,7 +26,6 @@ export interface Plan {
   duration: number;    // 所要時間（分）
   description?: string;
   isActive: boolean;   // 有効
-  commissionPrice?: number; // 歩合単価
 }
 
 // ============================================================
@@ -40,7 +39,6 @@ export interface Option {
   description?: string;
   isActive: boolean;   // 有効
   externalCode?: string; // 外部コード（Square連携用）
-  commissionPrice?: number; // 歩合単価
 }
 
 // ============================================================
@@ -119,7 +117,6 @@ export interface ReservationOption {
   quantity: number;        // 数量
   note?: string;           // 備考
   subtotal?: number;       // 小計（VC）
-  commissionAmount?: number; // 歩合対象金額（VC）
 }
 
 // ============================================================
@@ -161,7 +158,6 @@ export interface OrderItem {
   trackingNumber?: string; // 追跡番号
   note?: string;           // 備考
   subtotal?: number;       // 小計（VC）
-  commissionAmount?: number; // 歩合対象金額（VC）
 }
 
 // ============================================================
@@ -178,8 +174,6 @@ export interface SalesRecord {
   amount: number;          // 金額
   staffId?: string;        // 担当者
   staffName?: string;
-  commissionRate?: number; // 歩合率
-  commissionAmount?: number; // 歩合額
 }
 
 // ============================================================
@@ -193,7 +187,6 @@ export interface Product {
   image?: string;        // 商品画像
   description?: string;  // 説明
   isActive: boolean;     // 有効
-  commissionPrice?: number; // 歩合単価
 }
 
 // ============================================================

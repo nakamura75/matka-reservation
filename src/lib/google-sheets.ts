@@ -179,7 +179,6 @@ function rowToPlan(r: string[], rowNumber: number): Plan {
     duration: Number(r[3]) || 90, // D: 所要時間
     description: r[4],      // E: 説明
     isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
-    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   };
 }
 
@@ -202,7 +201,6 @@ function rowToOption(r: string[], rowNumber: number): Option {
     description: r[3],      // D: 説明
     isActive: r[4] === 'TRUE' || r[4] === '1' || r[4] === 'true', // E: 有効
     externalCode: r[5],     // F: 外部コード
-    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   };
 }
 
@@ -526,7 +524,6 @@ export async function getProducts(): Promise<Product[]> {
     image: r[3],                // D: 商品画像
     description: r[4],          // E: 説明
     isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
-    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   } as Product));
 }
 
@@ -538,7 +535,6 @@ export async function createProduct(data: Omit<Product, '_rowNumber'>): Promise<
     data.image ?? '',
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -551,7 +547,6 @@ export async function updateProduct(data: Product): Promise<void> {
     data.image ?? '',
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -567,7 +562,6 @@ export async function createPlan(data: Omit<Plan, '_rowNumber'>): Promise<void> 
     data.duration,
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -580,7 +574,6 @@ export async function updatePlan(data: Plan): Promise<void> {
     data.duration,
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -596,7 +589,6 @@ export async function createOption(data: Omit<Option, '_rowNumber'>): Promise<vo
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
     data.externalCode ?? '',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -609,7 +601,6 @@ export async function updateOption(data: Option): Promise<void> {
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
     data.externalCode ?? '',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -653,7 +644,5 @@ export async function getSalesRecords(): Promise<SalesRecord[]> {
     category: r[5] ?? '',       // F: 区分
     amount: Number(r[6]) || 0,  // G: 金額
     staffId: r[7],              // H: 担当者
-    commissionRate: Number(r[8]) || 0, // I: 歩合率
-    commissionAmount: Number(r[9]) || 0, // J: 歩合額
   } as SalesRecord));
 }
