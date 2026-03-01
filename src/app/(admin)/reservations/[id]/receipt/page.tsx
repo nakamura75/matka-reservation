@@ -72,7 +72,7 @@ export default async function ReceiptPage({
           .title { font-size: 28px; font-weight: bold; letter-spacing: 0.3em; margin-bottom: 24px; }
           .meta { display: flex; justify-content: space-between; margin-bottom: 32px; font-size: 13px; }
           .meta-left { font-size: 15px; }
-          .meta-left .customer { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
+          .meta-left .customer { font-size: 20px; font-weight: bold; margin-bottom: 4px; border-bottom: 2px solid #222; min-width: 200px; padding-bottom: 4px; }
           .meta-right { text-align: right; color: #555; }
           .amount-box { border: 2px solid #222; padding: 16px 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; }
           .amount-label { font-size: 14px; }
@@ -119,7 +119,7 @@ export default async function ReceiptPage({
           {/* 宛名・発行情報 */}
           <div className="meta">
             <div className="meta-left">
-              <div className="customer">{customer?.name ?? '—'}　様</div>
+              <div className="customer">　　　　　　　　　　様</div>
               <div style={{ fontSize: 12, color: '#888' }}>予約番号：{reservation.reservationNumber}</div>
             </div>
             <div className="meta-right">
