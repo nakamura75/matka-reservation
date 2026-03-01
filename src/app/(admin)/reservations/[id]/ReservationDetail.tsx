@@ -278,15 +278,17 @@ export default function ReservationDetail({ reservation, customer, plan, options
     }
   }
 
-  // ③ 合計金額を直接編集（値引き額フィールドを廃止し、T列を合計金額として再利用）
+  // 撮影合計（プラン＋オプション）
   const optionTotal = currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
   const computedTotal = planPrice + optionTotal;
-  const [customTotal, setCustomTotal] = useState(
-    reservation.discountAmount != null && reservation.discountAmount > 0
-      ? reservation.discountAmount
-      : computedTotal
-  );
+  // 撮影合計の手動調整値（常に最新の computedTotal で初期化）
+  const [customTotal, setCustomTotal] = useState(computedTotal);
+
+  // 商品合計（linkedOrders の合計）
+  const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
+  // 全体合計（領収書と一致）
+  const grandTotal = customTotal + orderItemTotal;
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -853,7 +855,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">合計金額（税込）</label>
+                <label className="block text-xs text-gray-400 mb-1">撮影合計（税込）※値引き等を調整する場合に変更</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -871,6 +873,11 @@ export default function ReservationDetail({ reservation, customer, plan, options
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal)}</p>
+                {orderItemTotal > 0 && (
+                  <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                    全体合計（撮影＋商品）: {formatCurrency(grandTotal)}
+                  </p>
+                )}
               </div>
               <button
                 onClick={saveNote}
@@ -919,34 +926,51 @@ export default function ReservationDetail({ reservation, customer, plan, options
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">料金</h2>
             <div className="space-y-2 text-sm">
+              {/* 撮影 */}
+              <div className="flex justify-between text-gray-500 text-xs font-semibold uppercase tracking-wide mb-1">
+                <span>撮影</span>
+              </div>
               <div className="flex justify-between text-gray-600">
                 <span>プラン料金</span>
-                <div className="text-right">
-                  <div>{formatCurrency(planPrice)}</div>
-                  <div className="text-xs text-gray-400">税抜 {formatCurrency(taxExcluded(planPrice))}</div>
-                </div>
+                <span>{formatCurrency(planPrice)}</span>
               </div>
               {optionTotal > 0 && (
                 <div className="flex justify-between text-gray-600">
                   <span>オプション合計</span>
-                  <div className="text-right">
-                    <div>{formatCurrency(optionTotal)}</div>
-                    <div className="text-xs text-gray-400">税抜 {formatCurrency(taxExcluded(optionTotal))}</div>
-                  </div>
+                  <span>{formatCurrency(optionTotal)}</span>
                 </div>
               )}
-              <div className="pt-2 border-t border-gray-100 space-y-1">
+              <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-100 pt-2">
+                <span>撮影合計</span>
+                <span>{formatCurrency(customTotal)}</span>
+              </div>
+
+              {/* 商品 */}
+              {orderItemTotal > 0 && (
+                <>
+                  <div className="flex justify-between text-gray-500 text-xs font-semibold uppercase tracking-wide mt-3 mb-1">
+                    <span>商品</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-gray-800">
+                    <span>商品合計</span>
+                    <span>{formatCurrency(orderItemTotal)}</span>
+                  </div>
+                </>
+              )}
+
+              {/* 全体合計 */}
+              <div className="pt-3 mt-1 border-t border-gray-200 space-y-1">
                 <div className="flex justify-between text-gray-500 text-xs">
                   <span>税抜合計</span>
-                  <span>{formatCurrency(taxExcluded(customTotal))}</span>
+                  <span>{formatCurrency(taxExcluded(grandTotal))}</span>
                 </div>
                 <div className="flex justify-between text-gray-500 text-xs">
                   <span>消費税（10%）</span>
-                  <span>{formatCurrency(customTotal - taxExcluded(customTotal))}</span>
+                  <span>{formatCurrency(grandTotal - taxExcluded(grandTotal))}</span>
                 </div>
                 <div className="flex justify-between font-bold text-gray-900 text-base pt-1">
                   <span>合計（税込）</span>
-                  <span className="text-brand">{formatCurrency(customTotal)}</span>
+                  <span className="text-brand">{formatCurrency(grandTotal)}</span>
                 </div>
               </div>
             </div>
