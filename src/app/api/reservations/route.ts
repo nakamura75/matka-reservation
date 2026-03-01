@@ -81,7 +81,7 @@ export async function POST(req: import('next/server').NextRequest) {
       adultCount: body.adultCount,
       familyNote: body.childrenDetail,
       status: '予約済' as const,
-      note: body.note,
+      customerNote: body.note,
       createdAt: new Date().toISOString(),
       lineUserId: body.lineUserId ?? '',
       flag: false,

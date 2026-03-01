@@ -289,7 +289,8 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
   // 11=L(参考写真), 12=M(備考), 13=N(登録日), 14=O(LINE_UserID),
   // 15=P(フラグ), 16=Q(電話希望), 17=R(撮影シーン), 18=S(予約番号),
   // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間),
-  // 23=X(GoogleカレンダーイベントID), 24=Y(担当割り当てJSON)
+  // 23=X(GoogleカレンダーイベントID), 24=Y(担当割り当てJSON),
+  // 25=Z(お客様備考)
   return {
     _rowNumber: rowNumber,
     id: r[0] ?? '',             // A: ID予約
@@ -326,6 +327,7 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     calendarEventId: r[23],     // X: GoogleカレンダーイベントID
     pdfUrl: r[23]?.startsWith('http') ? r[23] : undefined, // X: 引継ぎPDF URL（matka_V6）
     staffAssignmentJson: r[24], // Y: 担当割り当てJSON
+    customerNote: r[25],        // Z: お客様備考
   };
 }
 
@@ -355,6 +357,8 @@ function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number 
     r.checkInTime ?? '',             // V: 入店時間
     r.checkOutTime ?? '',            // W: 退店時間
     r.calendarEventId ?? '',         // X: GoogleカレンダーイベントID
+    r.staffAssignmentJson ?? '',     // Y: 担当割り当てJSON
+    r.customerNote ?? '',            // Z: お客様備考
   ];
 }
 

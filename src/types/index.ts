@@ -87,7 +87,8 @@ export interface Reservation {
   familyNote?: string;     // 構成メモ
   status: ReservationStatus; // ステータス
   referencePhoto?: string; // 参考写真
-  note?: string;           // 備考
+  note?: string;           // 備考（スタッフメモ）
+  customerNote?: string;   // お客様備考（フォーム入力）
   createdAt?: string;      // 登録日
   lineUserId?: string;     // LINE_UserID
   flag?: boolean;          // フラグ

@@ -228,6 +228,12 @@ export default function ReservationDetail({ reservation, customer, plan, options
                   <dd className="font-medium text-gray-900 mt-0.5">{reservation.familyNote}</dd>
                 </div>
               )}
+              {reservation.customerNote && (
+                <div className="col-span-2">
+                  <dt className="text-gray-400">お客様備考</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.customerNote}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-gray-400">電話希望</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">{reservation.phonePreference ?? '—'}</dd>
