@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import {
   getReservationById,
   getReservationOptions,
-  getCustomerById,
   getPlans,
   getOptions,
 } from '@/lib/google-sheets';
@@ -31,10 +30,7 @@ export default async function ReceiptPage({
 
   if (!reservation) notFound();
 
-  const [customer, reservationOptions] = await Promise.all([
-    getCustomerById(reservation.customerId),
-    getReservationOptions(reservation.id),
-  ]);
+  const reservationOptions = await getReservationOptions(reservation.id);
 
   const plan = plans.find((p) => p.id === reservation.planId);
 
