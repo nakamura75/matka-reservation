@@ -101,6 +101,7 @@ export interface Reservation {
   reservationNumber?: string; // 予約番号（M-YYYYMMDD-XXXX）
   discountAmount?: number; // 値引額
   discountReason?: string; // 値引理由
+  paymentMethod?: string;  // 支払方法（現金/カード/振込・AC列）
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
   calendarEventId?: string; // GoogleカレンダーイベントID（X列）

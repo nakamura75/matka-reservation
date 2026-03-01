@@ -69,7 +69,9 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [saving, setSaving] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState(reservation.paymentStatus);
   const [paymentDate, setPaymentDate] = useState(reservation.paymentDate ?? '');
+  const [paymentMethod, setPaymentMethod] = useState(reservation.paymentMethod ?? '');
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [showMethodPicker, setShowMethodPicker] = useState(false);
 
   // 担当割り当て
   const photographers = staff.filter((s) => s.role === 'フォトグラファー' && s.isActive !== 'FALSE');
@@ -144,19 +146,38 @@ export default function ReservationDetail({ reservation, customer, plan, options
     }
   }
 
-  async function togglePayment() {
-    const newStatus = !paymentStatus;
-    const newDate = newStatus ? new Date().toLocaleDateString('ja-JP') : '';
+  async function handlePayWithMethod(method: string) {
+    const newDate = new Date().toLocaleDateString('ja-JP');
+    setPaymentSaving(true);
+    setShowMethodPicker(false);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: true, paymentDate: newDate, paymentMethod: method }),
+      });
+      if (res.ok) {
+        setPaymentStatus(true);
+        setPaymentDate(newDate);
+        setPaymentMethod(method);
+      }
+    } finally {
+      setPaymentSaving(false);
+    }
+  }
+
+  async function togglePaymentOff() {
     setPaymentSaving(true);
     try {
       const res = await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus: newStatus, paymentDate: newDate }),
+        body: JSON.stringify({ paymentStatus: false, paymentDate: '', paymentMethod: '' }),
       });
       if (res.ok) {
-        setPaymentStatus(newStatus);
-        setPaymentDate(newDate);
+        setPaymentStatus(false);
+        setPaymentDate('');
+        setPaymentMethod('');
       }
     } finally {
       setPaymentSaving(false);
@@ -550,21 +571,41 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </div>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">支払状況</span>
-                <button
-                  onClick={togglePayment}
-                  disabled={paymentSaving}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors disabled:opacity-50
-                    ${paymentStatus
-                      ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
-                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                    }`}
-                >
-                  {paymentSaving ? '...' : paymentStatus ? `支払済 (${paymentDate})` : '未払い → 支払済にする'}
-                </button>
+                {paymentStatus ? (
+                  <button
+                    onClick={togglePaymentOff}
+                    disabled={paymentSaving}
+                    className="px-3 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-700 border-green-200 hover:bg-green-200 disabled:opacity-50 transition-colors"
+                  >
+                    {paymentSaving ? '...' : `支払済 ${paymentMethod ? `(${paymentMethod})` : ''} ${paymentDate}`}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowMethodPicker((v) => !v)}
+                    disabled={paymentSaving}
+                    className="px-3 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                  >
+                    {paymentSaving ? '...' : '未払い → 支払済にする'}
+                  </button>
+                )}
               </div>
+              {showMethodPicker && !paymentStatus && (
+                <div className="flex gap-2 justify-end">
+                  {['現金', 'カード', '振込'].map((method) => (
+                    <button
+                      key={method}
+                      onClick={() => handlePayWithMethod(method)}
+                      disabled={paymentSaving}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-brand text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
 
