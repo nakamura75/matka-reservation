@@ -302,7 +302,15 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     childrenCount: Number(r[7]) || undefined, // H: お子様人数
     adultCount: r[8],           // I: 大人人数
     familyNote: r[9],           // J: 構成メモ
-    status: (r[10] ?? '予約済') as Reservation['status'], // K: ステータス
+    status: (() => {
+      const s = (r[10] ?? '予約済') as Reservation['status'];
+      // 予約確定済で予約日が過ぎていたら自動的に完了扱い
+      if (s === '予約確定' && r[5]) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (new Date(r[5]) < today) return '完了' as Reservation['status'];
+      }
+      return s;
+    })(), // K: ステータス（予約日過去なら自動完了）
     referencePhoto: r[11],      // L: 参考写真
     note: r[12],                // M: 備考
     createdAt: r[13],           // N: 登録日

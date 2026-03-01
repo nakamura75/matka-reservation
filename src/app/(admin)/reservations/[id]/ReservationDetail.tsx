@@ -27,14 +27,13 @@ const STATUS_COLORS = {
 
 const NEXT_STATUS: Record<Reservation['status'], Reservation['status'] | null> = {
   '予約済': '予約確定',
-  '予約確定': '完了',
+  '予約確定': null, // 完了は予約日経過で自動
   '完了': null,
   'キャンセル': null,
 };
 
 const NEXT_STATUS_LABEL: Record<string, string> = {
   '予約確定': '予約確定にする',
-  '完了': '完了にする',
 };
 
 // ④ 税計算ヘルパー（税込前提、消費税10%）
