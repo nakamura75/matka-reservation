@@ -7,7 +7,8 @@ import {
 } from '@/lib/google-sheets';
 import { sendLinePush, buildConfirmMessage } from '@/lib/line';
 import { getPlans } from '@/lib/google-sheets';
-import { deleteCalendarEvent } from '@/lib/google-calendar';
+import { deleteCalendarEvent, createCalendarEvent } from '@/lib/google-calendar';
+import { toJSTDatetime } from '@/lib/utils';
 import { SHEET_NAMES } from '@/lib/constants';
 import type { ReservationStatus } from '@/types';
 
@@ -120,6 +121,36 @@ export async function PATCH(
     if (body.paymentMethod !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!AC${row}`, value: body.paymentMethod }); // AC: 支払方法
     if (body.date !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!F${row}`, value: body.date }); // F: 予約日
     if (body.timeSlot !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!G${row}`, value: body.timeSlot }); // G: 予約時間帯
+
+    // 日時変更時はGoogleカレンダーイベントを作り直す
+    const dateChanged = body.date !== undefined && body.date !== reservation.date;
+    const timeSlotChanged = body.timeSlot !== undefined && body.timeSlot !== reservation.timeSlot;
+    if (dateChanged || timeSlotChanged) {
+      const oldEventId = reservation.calendarEventId && !reservation.calendarEventId.startsWith('http')
+        ? reservation.calendarEventId : null;
+      if (oldEventId) {
+        await deleteCalendarEvent(oldEventId).catch((e) => console.error('Calendar event deletion failed:', e));
+      }
+      const newDate = body.date ?? reservation.date;
+      const newTimeSlot = body.timeSlot ?? reservation.timeSlot;
+      const plans = await getPlans();
+      const plan = plans.find((p) => p.id === reservation.planId);
+      if (plan && newDate && newTimeSlot) {
+        const startISO = toJSTDatetime(newDate, newTimeSlot);
+        const endDate = new Date(startISO);
+        endDate.setMinutes(endDate.getMinutes() + plan.duration);
+        const endISO = endDate.toISOString().replace('Z', '+09:00');
+        const newEventId = await createCalendarEvent({
+          title: `【仮予約】${reservation.customerId} 様 (${body.scene ?? reservation.scene ?? ''})`,
+          startDateTime: startISO,
+          endDateTime: endISO,
+          description: `予約番号: ${reservation.reservationNumber ?? ''}\nプラン: ${plan.name}`,
+        }).catch((e) => { console.error('Calendar event creation failed:', e); return null; });
+        if (newEventId) {
+          updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!X${row}`, value: newEventId }); // X: カレンダーイベントID
+        }
+      }
+    }
     if (body.scene !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!R${row}`, value: body.scene }); // R: 撮影シーン
     if (body.otherSceneNote !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!AA${row}`, value: body.otherSceneNote }); // AA: その他シーン詳細
     if (body.childrenCount !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!H${row}`, value: body.childrenCount }); // H: お子様人数
