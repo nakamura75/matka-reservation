@@ -152,7 +152,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                   {customer.lineUserId && (
                     <dd className="mt-2">
                       <a
-                        href={`https://manager.line.biz/account/@671kcyek/chat/${customer.lineUserId}`}
+                        href={`https://chat.line.biz/${customer.lineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
