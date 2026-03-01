@@ -90,11 +90,6 @@ export default function SalesSummary({ reservations, staff }: Props) {
     () => calcByStaff(completedReservations, staffById),
     [completedReservations, staffById]
   );
-  const byStaffPending = useMemo(
-    () => calcByStaff(pendingReservations, staffById),
-    [pendingReservations, staffById]
-  );
-
   // サマリーカード用：担当割当の有無に関係なく全予約の r.total を合計
   const grandTotal = useMemo(
     () => completedReservations.reduce((s, r) => s + (r.total ?? 0), 0),
