@@ -249,7 +249,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 <dd className="mt-0.5">
                   {reservation.lineUserId ? (
                     <a
-                      href={`https://manager.line.biz/account/@082mluna/chat/${reservation.lineUserId}`}
+                      href={`https://manager.line.biz/account/@671kcyek/chat/${reservation.lineUserId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"

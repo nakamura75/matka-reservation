@@ -76,7 +76,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3">
                     {c.lineUserId ? (
                       <a
-                        href={`https://manager.line.biz/account/@082mluna/chat/${c.lineUserId}`}
+                        href={`https://manager.line.biz/account/@671kcyek/chat/${c.lineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
