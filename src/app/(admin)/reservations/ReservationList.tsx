@@ -107,9 +107,6 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                   <td className="px-4 py-3">
                     {/* ① 表示ラベル変更 */}
                     <div className="flex items-center gap-1.5">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
-                        {STATUS_LABEL[r.status]}
-                      </span>
                       {r.pdfUrl && (
                         <a
                           href={r.pdfUrl}
@@ -117,11 +114,14 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           title="引継ぎPDFを開く"
-                          className="text-blue-500 hover:text-blue-700 text-xs border border-blue-200 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors whitespace-nowrap"
+                          className="text-white text-xs font-medium bg-green-500 hover:bg-green-600 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
                         >
-                          PDF
+                          PDF📒
                         </a>
                       )}
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
+                        {STATUS_LABEL[r.status]}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
