@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment } from '@/types';
 import { formatDate, formatCurrency, isWeekend } from '@/lib/utils';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID } from '@/lib/constants';
@@ -72,6 +72,61 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [paymentMethod, setPaymentMethod] = useState(reservation.paymentMethod ?? '');
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [showMethodPicker, setShowMethodPicker] = useState(false);
+
+  // 予約情報編集
+  const [infoEditing, setInfoEditing] = useState(false);
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [editDate, setEditDate] = useState(reservation.date ?? '');
+  const [editTimeSlot, setEditTimeSlot] = useState<Reservation['timeSlot']>(reservation.timeSlot ?? '9:00');
+  const [editScene, setEditScene] = useState(reservation.scene ?? '');
+  const [editOtherSceneNote, setEditOtherSceneNote] = useState(reservation.otherSceneNote ?? '');
+  const [editChildrenCount, setEditChildrenCount] = useState(String(reservation.childrenCount ?? ''));
+  const [editAdultCount, setEditAdultCount] = useState(reservation.adultCount ?? '');
+  const [editFamilyNote, setEditFamilyNote] = useState(reservation.familyNote ?? '');
+  const [editCustomerNote, setEditCustomerNote] = useState(reservation.customerNote ?? '');
+  const [editPhonePreference, setEditPhonePreference] = useState(reservation.phonePreference ?? '');
+
+  function cancelInfoEdit() {
+    setEditDate(reservation.date ?? '');
+    setEditTimeSlot(reservation.timeSlot ?? '9:00');
+    setEditScene(reservation.scene ?? '');
+    setEditOtherSceneNote(reservation.otherSceneNote ?? '');
+    setEditChildrenCount(String(reservation.childrenCount ?? ''));
+    setEditAdultCount(reservation.adultCount ?? '');
+    setEditFamilyNote(reservation.familyNote ?? '');
+    setEditCustomerNote(reservation.customerNote ?? '');
+    setEditPhonePreference(reservation.phonePreference ?? '');
+    setInfoEditing(false);
+  }
+
+  async function saveInfo() {
+    setInfoSaving(true);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: editDate,
+          timeSlot: editTimeSlot,
+          scene: editScene || undefined,
+          otherSceneNote: editOtherSceneNote,
+          childrenCount: editChildrenCount !== '' ? Number(editChildrenCount) : '',
+          adultCount: editAdultCount,
+          familyNote: editFamilyNote,
+          customerNote: editCustomerNote,
+          phonePreference: editPhonePreference,
+        }),
+      });
+      if (res.ok) {
+        setInfoEditing(false);
+        router.refresh();
+      } else {
+        alert('保存に失敗しました');
+      }
+    } finally {
+      setInfoSaving(false);
+    }
+  }
 
   // 担当割り当て
   const photographers = staff.filter((s) => s.role === 'フォトグラファー' && s.isActive !== 'FALSE');
@@ -214,92 +269,217 @@ export default function ReservationDetail({ reservation, customer, plan, options
         <div className="lg:col-span-2 space-y-6">
           {/* 予約情報 */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">予約情報</h2>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <dt className="text-gray-400">撮影日</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{formatDate(reservation.date)}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-400">時間帯</dt>
-                {/* ② 秒を削除 */}
-                <dd className="font-medium text-gray-900 mt-0.5">{stripSeconds(reservation.timeSlot)}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-400">撮影シーン</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{reservation.scene ?? '—'}</dd>
-              </div>
-              {reservation.otherSceneNote && (
-                <div className="col-span-2">
-                  <dt className="text-gray-400">希望の撮影シーン（その他）</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.otherSceneNote}</dd>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">予約情報</h2>
+              {!infoEditing ? (
+                <button
+                  onClick={() => setInfoEditing(true)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand transition-colors"
+                >
+                  <PencilSquareIcon className="w-3.5 h-3.5" />
+                  編集
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={saveInfo}
+                    disabled={infoSaving}
+                    className="flex items-center gap-1 text-xs text-white bg-brand hover:bg-brand-dark px-2.5 py-1 rounded-lg disabled:opacity-50 transition-colors"
+                  >
+                    <CheckIcon className="w-3.5 h-3.5" />
+                    {infoSaving ? '保存中...' : '保存'}
+                  </button>
+                  <button
+                    onClick={cancelInfoEdit}
+                    disabled={infoSaving}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="w-3.5 h-3.5" />
+                    キャンセル
+                  </button>
                 </div>
               )}
-              <div>
-                <dt className="text-gray-400">プラン</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {plan?.name ?? reservation.planId}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-400">お子様人数</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{reservation.childrenCount ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-400">大人人数</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{reservation.adultCount ?? '—'}</dd>
-              </div>
-              {reservation.familyNote && (
-                <div className="col-span-2">
-                  <dt className="text-gray-400">家族構成メモ</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.familyNote}</dd>
+            </div>
+            {infoEditing ? (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">撮影日</label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
                 </div>
-              )}
-              {reservation.customerNote && (
-                <div className="col-span-2">
-                  <dt className="text-gray-400">お客様備考</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.customerNote}</dd>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">時間帯</label>
+                  <select
+                    value={editTimeSlot}
+                    onChange={(e) => setEditTimeSlot(e.target.value as Reservation['timeSlot'])}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  >
+                    {(['9:00', '12:00', '15:00'] as const).map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
-              )}
-              <div>
-                <dt className="text-gray-400">電話希望</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{reservation.phonePreference ?? '—'}</dd>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">撮影シーン</label>
+                  <select
+                    value={editScene}
+                    onChange={(e) => setEditScene(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  >
+                    <option value="">—</option>
+                    {['七五三', 'マタニティ', 'バースデー', 'ベビー', 'その他'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                {(editScene === 'その他' || editOtherSceneNote) && (
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-400 mb-1">希望の撮影シーン（その他）</label>
+                    <input
+                      type="text"
+                      value={editOtherSceneNote}
+                      onChange={(e) => setEditOtherSceneNote(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">お子様人数</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editChildrenCount}
+                    onChange={(e) => setEditChildrenCount(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">大人人数</label>
+                  <input
+                    type="text"
+                    value={editAdultCount}
+                    onChange={(e) => setEditAdultCount(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-gray-400 mb-1">家族構成メモ（生年月日など）</label>
+                  <textarea
+                    value={editFamilyNote}
+                    onChange={(e) => setEditFamilyNote(e.target.value)}
+                    rows={3}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-gray-400 mb-1">お客様備考</label>
+                  <textarea
+                    value={editCustomerNote}
+                    onChange={(e) => setEditCustomerNote(e.target.value)}
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">電話希望</label>
+                  <input
+                    type="text"
+                    value={editPhonePreference}
+                    onChange={(e) => setEditPhonePreference(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                </div>
               </div>
-              <div>
-                <dt className="text-gray-400">LINE連携</dt>
-                <dd className="mt-0.5">
-                  {reservation.chatLineUserId ? (
-                    <a
-                      href={`https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat/${reservation.chatLineUserId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
-                      style={{ backgroundColor: '#06C755' }}
-                    >
-                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-white shrink-0" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C6.477 2 2 6.032 2 11c0 2.99 1.566 5.634 3.988 7.32-.175.614-.635 2.22-.728 2.566-.115.42.154.414.323.302.133-.089 2.11-1.43 2.967-2.012.444.062.898.094 1.45.094 5.523 0 10-4.032 10-9S17.523 2 12 2zm-3.5 12.5h-1.25a.25.25 0 0 1-.25-.25v-4.5a.25.25 0 0 1 .25-.25H8.5a.25.25 0 0 1 .25.25v4.5a.25.25 0 0 1-.25.25zm2.5 0h-1.25a.25.25 0 0 1-.25-.25v-2.5l-1.5-2.087A.25.25 0 0 1 8.2 9.5H9.5a.25.25 0 0 1 .2.1l.8 1.114.8-1.114a.25.25 0 0 1 .2-.1h1.3a.25.25 0 0 1 .2.413L11.5 11.75v2.5a.25.25 0 0 1-.25.25zm5.25 0H13a.25.25 0 0 1-.25-.25v-4.5A.25.25 0 0 1 13 9.5h2.75a.25.25 0 0 1 0 .5H13.5v1.25h2.25a.25.25 0 0 1 0 .5H13.5v1.25h2.75a.25.25 0 0 1 0 .5z"/>
-                      </svg>
-                      LINEトークを開く
-                    </a>
-                  ) : reservation.lineUserId ? (
-                    <span className="inline-flex items-center gap-1 text-green-700 text-xs font-medium">
-                      <span className="w-2 h-2 bg-green-400 rounded-full" />
-                      連携済み
-                    </span>
-                  ) : (
-                    <span className="text-gray-400">未連携</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-400">登録日</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {reservation.createdAt
-                    ? new Date(reservation.createdAt).toLocaleDateString('ja-JP')
-                    : '—'}
-                </dd>
-              </div>
-            </dl>
+            ) : (
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <dt className="text-gray-400">撮影日</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{formatDate(reservation.date)}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">時間帯</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{stripSeconds(reservation.timeSlot)}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">撮影シーン</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.scene ?? '—'}</dd>
+                </div>
+                {reservation.otherSceneNote && (
+                  <div className="col-span-2">
+                    <dt className="text-gray-400">希望の撮影シーン（その他）</dt>
+                    <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.otherSceneNote}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-400">プラン</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">
+                    {plan?.name ?? reservation.planId}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">お子様人数</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.childrenCount ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">大人人数</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.adultCount ?? '—'}</dd>
+                </div>
+                {reservation.familyNote && (
+                  <div className="col-span-2">
+                    <dt className="text-gray-400">家族構成メモ</dt>
+                    <dd className="font-medium text-gray-900 mt-0.5">{reservation.familyNote}</dd>
+                  </div>
+                )}
+                {reservation.customerNote && (
+                  <div className="col-span-2">
+                    <dt className="text-gray-400">お客様備考</dt>
+                    <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.customerNote}</dd>
+                  </div>
+                )}
+                <div>
+                  <dt className="text-gray-400">電話希望</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.phonePreference ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">LINE連携</dt>
+                  <dd className="mt-0.5">
+                    {reservation.chatLineUserId ? (
+                      <a
+                        href={`https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat/${reservation.chatLineUserId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
+                        style={{ backgroundColor: '#06C755' }}
+                      >
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-white shrink-0" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 2C6.477 2 2 6.032 2 11c0 2.99 1.566 5.634 3.988 7.32-.175.614-.635 2.22-.728 2.566-.115.42.154.414.323.302.133-.089 2.11-1.43 2.967-2.012.444.062.898.094 1.45.094 5.523 0 10-4.032 10-9S17.523 2 12 2zm-3.5 12.5h-1.25a.25.25 0 0 1-.25-.25v-4.5a.25.25 0 0 1 .25-.25H8.5a.25.25 0 0 1 .25.25v4.5a.25.25 0 0 1-.25.25zm2.5 0h-1.25a.25.25 0 0 1-.25-.25v-2.5l-1.5-2.087A.25.25 0 0 1 8.2 9.5H9.5a.25.25 0 0 1 .2.1l.8 1.114.8-1.114a.25.25 0 0 1 .2-.1h1.3a.25.25 0 0 1 .2.413L11.5 11.75v2.5a.25.25 0 0 1-.25.25zm5.25 0H13a.25.25 0 0 1-.25-.25v-4.5A.25.25 0 0 1 13 9.5h2.75a.25.25 0 0 1 0 .5H13.5v1.25h2.25a.25.25 0 0 1 0 .5H13.5v1.25h2.75a.25.25 0 0 1 0 .5z"/>
+                        </svg>
+                        LINEトークを開く
+                      </a>
+                    ) : reservation.lineUserId ? (
+                      <span className="inline-flex items-center gap-1 text-green-700 text-xs font-medium">
+                        <span className="w-2 h-2 bg-green-400 rounded-full" />
+                        連携済み
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">未連携</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-400">登録日</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5">
+                    {reservation.createdAt
+                      ? new Date(reservation.createdAt).toLocaleDateString('ja-JP')
+                      : '—'}
+                  </dd>
+                </div>
+              </dl>
+            )}
           </section>
 
           {/* オプション */}
