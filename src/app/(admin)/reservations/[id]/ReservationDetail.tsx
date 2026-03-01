@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
-import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product } from '@/types';
+import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option } from '@/types';
 import { formatDate, formatCurrency, isWeekend } from '@/lib/utils';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID } from '@/lib/constants';
 
@@ -53,6 +53,7 @@ interface Props {
   customer: Customer | null;
   plan: Plan | null;
   options: OptionWithInfo[];
+  allOptions: Option[];
   staff: Staff[];
   products: Product[];
   linkedOrders: LinkedOrder[];
@@ -63,7 +64,7 @@ function parseAssignment(json?: string): StaffAssignment {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-export default function ReservationDetail({ reservation, customer, plan, options, staff, products, linkedOrders: initialLinkedOrders }: Props) {
+export default function ReservationDetail({ reservation, customer, plan, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
@@ -217,8 +218,68 @@ export default function ReservationDetail({ reservation, customer, plan, options
     }
   }
 
+  // オプション state（追加・削除でリアクティブに更新）
+  const [currentOptions, setCurrentOptions] = useState<OptionWithInfo[]>(initialOptions);
+  const [addingOptionId, setAddingOptionId] = useState('');
+  const [addingOptionQty, setAddingOptionQty] = useState(1);
+  const [optionAdding, setOptionAdding] = useState(false);
+  const [optionDeleting, setOptionDeleting] = useState<string | null>(null);
+
+  async function handleAddOption() {
+    if (!addingOptionId) return;
+    const master = allOptions.find((o) => o.id === addingOptionId);
+    if (!master) return;
+    setOptionAdding(true);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}/options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ optionId: addingOptionId, quantity: addingOptionQty }),
+      });
+      const data = await res.json();
+      if (!data.success) return;
+      const newOpt: OptionWithInfo = {
+        ...data.data,
+        optionName: master.name,
+        price: master.price,
+      };
+      setCurrentOptions((prev) => [...prev, newOpt]);
+      // 合計金額が自動計算モードなら連動して更新
+      setCustomTotal((prev) => {
+        const oldComputed = planPrice + currentOptions.reduce((s, o) => s + o.price * o.quantity, 0);
+        return prev === oldComputed ? prev + master.price * addingOptionQty : prev;
+      });
+      setAddingOptionId('');
+      setAddingOptionQty(1);
+    } finally {
+      setOptionAdding(false);
+    }
+  }
+
+  async function handleDeleteOption(reservationOptionId: string) {
+    const target = currentOptions.find((o) => o.id === reservationOptionId);
+    if (!target) return;
+    setOptionDeleting(reservationOptionId);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}/options`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservationOptionId }),
+      });
+      if (!(await res.json()).success) return;
+      setCurrentOptions((prev) => prev.filter((o) => o.id !== reservationOptionId));
+      // 合計金額が自動計算モードなら連動して更新
+      setCustomTotal((prev) => {
+        const oldComputed = planPrice + currentOptions.reduce((s, o) => s + o.price * o.quantity, 0);
+        return prev === oldComputed ? prev - target.price * target.quantity : prev;
+      });
+    } finally {
+      setOptionDeleting(null);
+    }
+  }
+
   // ③ 合計金額を直接編集（値引き額フィールドを廃止し、T列を合計金額として再利用）
-  const optionTotal = options.reduce((sum, o) => sum + o.price * o.quantity, 0);
+  const optionTotal = currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
   const computedTotal = planPrice + optionTotal;
   const [customTotal, setCustomTotal] = useState(
@@ -584,30 +645,69 @@ export default function ReservationDetail({ reservation, customer, plan, options
           {/* オプション */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">オプション</h2>
-            {options.length === 0 ? (
-              <p className="text-sm text-gray-400">オプションなし</p>
+            {currentOptions.length === 0 ? (
+              <p className="text-sm text-gray-400 mb-3">オプションなし</p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="w-full text-sm mb-3">
                 <thead className="text-gray-400 text-xs">
                   <tr>
                     <th className="text-left pb-2">オプション名</th>
                     <th className="text-right pb-2">単価</th>
                     <th className="text-right pb-2">数量</th>
                     <th className="text-right pb-2">小計</th>
+                    <th className="pb-2" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {options.map((o) => (
+                  {currentOptions.map((o) => (
                     <tr key={o.id}>
                       <td className="py-2 text-gray-700">{o.optionName}</td>
                       <td className="py-2 text-right text-gray-600">{formatCurrency(o.price)}</td>
                       <td className="py-2 text-right text-gray-600">×{o.quantity}</td>
                       <td className="py-2 text-right font-medium">{formatCurrency(o.price * o.quantity)}</td>
+                      <td className="py-2 pl-2">
+                        <button
+                          onClick={() => handleDeleteOption(o.id)}
+                          disabled={optionDeleting === o.id}
+                          className="text-gray-300 hover:text-red-400 disabled:opacity-40 transition-colors"
+                          title="削除"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
+            {/* オプション追加フォーム */}
+            <div className="flex gap-1.5 pt-2 border-t border-gray-100">
+              <select
+                value={addingOptionId}
+                onChange={(e) => setAddingOptionId(e.target.value)}
+                className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+              >
+                <option value="">オプションを追加...</option>
+                {allOptions.map((o) => (
+                  <option key={o.id} value={o.id}>{o.name}（¥{o.price.toLocaleString()}）</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min="1"
+                value={addingOptionQty}
+                onChange={(e) => setAddingOptionQty(Math.max(1, Number(e.target.value)))}
+                className="w-14 text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-brand/30"
+              />
+              <button
+                onClick={handleAddOption}
+                disabled={optionAdding || !addingOptionId}
+                className="shrink-0 flex items-center gap-1 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                {optionAdding ? '追加中...' : '追加'}
+              </button>
+            </div>
           </section>
 
           {/* 担当割り当て */}
@@ -701,7 +801,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
               )}
 
               {/* オプション（各自選択） */}
-              {options.map((o) => (
+              {currentOptions.map((o) => (
                 <div key={o.id} className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">{o.optionName}</p>

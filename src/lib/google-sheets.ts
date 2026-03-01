@@ -381,15 +381,28 @@ function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number 
 export async function getReservationOptions(reservationId?: string): Promise<ReservationOption[]> {
   const rows = await getSheetData(SHEET_NAMES.RESERVATION_OPTIONS);
   if (rows.length < 2) return [];
-  const all = rows.slice(1).map((r, i) => ({
-    _rowNumber: i + 2,
-    id: r[0] ?? '',             // A: ID予約オプション
-    reservationId: r[1] ?? '',  // B: ID予約
-    optionId: r[2] ?? '',       // C: IDオプション
-    quantity: Number(r[3]) || 1, // D: 数量
-    note: r[4],                 // E: 備考
-  } as ReservationOption));
+  const all = rows.slice(1)
+    .map((r, i) => ({
+      _rowNumber: i + 2,
+      id: r[0] ?? '',             // A: ID予約オプション
+      reservationId: r[1] ?? '',  // B: ID予約
+      optionId: r[2] ?? '',       // C: IDオプション
+      quantity: Number(r[3]) || 1, // D: 数量
+      note: r[4],                 // E: 備考
+    } as ReservationOption))
+    .filter((o) => o.id !== ''); // 削除済み行をスキップ
   return reservationId ? all.filter((o) => o.reservationId === reservationId) : all;
+}
+
+export async function deleteReservationOption(rowNumber: number): Promise<void> {
+  const sheets = getSheetsClient();
+  // 行を空文字で上書きして論理削除（getReservationOptionsでid===''の行を除外）
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAMES.RESERVATION_OPTIONS}!A${rowNumber}:E${rowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [['', '', '', '', '']] },
+  });
 }
 
 export async function createReservationOption(data: Omit<ReservationOption, '_rowNumber' | 'subtotal' | 'commissionAmount'>): Promise<void> {

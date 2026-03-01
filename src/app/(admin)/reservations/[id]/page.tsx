@@ -22,7 +22,7 @@ export default async function ReservationDetailPage({
   const [reservation, plans, options, staff, allOrders, allOrderItems, products] = await Promise.all([
     getReservationById(params.id),
     getPlans(),
-    getOptions(),
+    getOptions(), // マスターオプション一覧（予約オプション選択肢＆enrichに使用）
     getStaff(),
     getOrders().catch(() => []),
     getOrderItems().catch(() => []),
@@ -59,6 +59,7 @@ export default async function ReservationDetailPage({
       customer={customer}
       plan={plan ?? null}
       options={optionsWithInfo}
+      allOptions={options.filter((o) => o.isActive)}
       staff={staff}
       products={products.filter((p) => p.isActive)}
       linkedOrders={linkedOrders}
