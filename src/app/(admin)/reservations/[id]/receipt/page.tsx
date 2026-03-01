@@ -121,6 +121,7 @@ export default async function ReceiptPage({
             <div className="meta-right">
               <div>発行日：{issueDate}</div>
               <div style={{ marginTop: 4 }}>撮影日：{formatDate(reservation.date)}</div>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#888' }}>登録番号：T7180001117109</div>
             </div>
           </div>
 
@@ -182,6 +183,7 @@ export default async function ReceiptPage({
           {/* フッター */}
           <div className="footer">
             <div>matka photo studio</div>
+            <div style={{ marginTop: 4 }}>適格請求書発行事業者登録番号：T7180001117109</div>
           </div>
         </div>
       </body>
