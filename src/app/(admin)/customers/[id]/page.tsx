@@ -1,16 +1,20 @@
 import { notFound } from 'next/navigation';
-import { getCustomers, getReservations, getOrders, getPlans } from '@/lib/google-sheets';
+import { getCustomers, getReservations, getOrders, getPlans, getOrderItems, getProducts } from '@/lib/google-sheets';
 import CustomerDetail from './CustomerDetail';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const [customers, reservations, orders, plans] = await Promise.all([
+  const [customers, reservations, orders, plans, orderItems, products] = await Promise.all([
     getCustomers().catch(() => []),
     getReservations().catch(() => []),
     getOrders().catch(() => []),
     getPlans().catch(() => []),
+    getOrderItems().catch(() => []),
+    getProducts().catch(() => []),
   ]);
+
+  const productMap = Object.fromEntries(products.map((p) => [p.id, p.name]));
 
   const customer = customers.find((c) => c.id === params.id);
   if (!customer) notFound();
@@ -24,6 +28,12 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
 
   const customerOrders = orders
     .filter((o) => o.customerId === params.id)
+    .map((o) => ({
+      ...o,
+      items: orderItems
+        .filter((i) => i.orderId === o.id)
+        .map((i) => ({ ...i, productName: productMap[i.productId] ?? i.productId })),
+    }))
     .sort((a, b) => b.orderDate.localeCompare(a.orderDate));
 
   // リピーター判定: 電話番号またはLINE IDが一致する予約が複数あるか

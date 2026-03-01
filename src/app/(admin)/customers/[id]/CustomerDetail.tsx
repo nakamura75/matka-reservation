@@ -288,7 +288,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                 <thead className="bg-gray-50 text-gray-400 text-xs">
                   <tr>
                     <th className="px-4 py-2 text-left">注文日</th>
-                    <th className="px-4 py-2 text-left">備考</th>
+                    <th className="px-4 py-2 text-left">商品</th>
                     <th className="px-4 py-2 text-left">入金</th>
                   </tr>
                 </thead>
@@ -300,7 +300,11 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                           {o.orderDate}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{o.note || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {o.items && o.items.length > 0
+                          ? o.items.map((i) => `${i.productName}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join('、')
+                          : '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${o.isPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {o.isPaid ? '入金済' : '未入金'}
