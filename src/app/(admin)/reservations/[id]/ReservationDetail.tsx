@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment } from '@/types';
+import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product } from '@/types';
 import { formatDate, formatCurrency, isWeekend } from '@/lib/utils';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
+type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number };
+type NewOrderItem = { productId: string; productName: string; price: number; quantity: number };
 
 // ① 表示ラベル（DBの値 '予約済' は変えない）
 const STATUS_LABEL: Record<Reservation['status'], string> = {
@@ -52,6 +54,8 @@ interface Props {
   plan: Plan | null;
   options: OptionWithInfo[];
   staff: Staff[];
+  products: Product[];
+  linkedOrders: LinkedOrder[];
 }
 
 function parseAssignment(json?: string): StaffAssignment {
@@ -59,7 +63,7 @@ function parseAssignment(json?: string): StaffAssignment {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-export default function ReservationDetail({ reservation, customer, plan, options, staff }: Props) {
+export default function ReservationDetail({ reservation, customer, plan, options, staff, products, linkedOrders: initialLinkedOrders }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
@@ -69,6 +73,64 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [saving, setSaving] = useState(false);
   const [lineIdInput, setLineIdInput] = useState('');
   const [lineIdSaving, setLineIdSaving] = useState(false);
+
+  // 商品注文
+  const [linkedOrders, setLinkedOrders] = useState(initialLinkedOrders);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [orderItems, setOrderItems] = useState<NewOrderItem[]>([]);
+  const [addingProductId, setAddingProductId] = useState('');
+  const [addingQty, setAddingQty] = useState(1);
+  const [orderCreating, setOrderCreating] = useState(false);
+
+  function handleAddToOrder() {
+    if (!addingProductId) return;
+    const product = products.find((p) => p.id === addingProductId);
+    if (!product) return;
+    setOrderItems((prev) => {
+      const existing = prev.find((i) => i.productId === addingProductId);
+      if (existing) {
+        return prev.map((i) => i.productId === addingProductId ? { ...i, quantity: i.quantity + addingQty } : i);
+      }
+      return [...prev, { productId: product.id, productName: product.name, price: product.price, quantity: addingQty }];
+    });
+    setAddingProductId('');
+    setAddingQty(1);
+  }
+
+  async function handleCreateOrder() {
+    if (orderItems.length === 0) return;
+    setOrderCreating(true);
+    try {
+      const orderRes = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: reservation.customerId, reservationId: reservation.id }),
+      });
+      const orderData = await orderRes.json();
+      if (!orderData.success) return;
+      const orderId = orderData.data.id as string;
+
+      await Promise.all(
+        orderItems.map((item) =>
+          fetch(`/api/orders/${orderId}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: item.productId, quantity: item.quantity }),
+          })
+        )
+      );
+
+      const total = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      setLinkedOrders((prev) => [
+        ...prev,
+        { id: orderId, orderDate: new Date().toLocaleDateString('ja-JP'), isPaid: false, total, itemCount: orderItems.length },
+      ]);
+      setShowOrderForm(false);
+      setOrderItems([]);
+    } finally {
+      setOrderCreating(false);
+    }
+  }
   const [paymentStatus, setPaymentStatus] = useState(reservation.paymentStatus);
   const [paymentDate, setPaymentDate] = useState(reservation.paymentDate ?? '');
   const [paymentMethod, setPaymentMethod] = useState(reservation.paymentMethod ?? '');
@@ -824,6 +886,121 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </div>
               )}
             </div>
+          </section>
+
+          {/* 商品注文 */}
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">商品注文</h2>
+              {!showOrderForm && (
+                <button
+                  onClick={() => setShowOrderForm(true)}
+                  className="flex items-center gap-1 text-xs text-brand hover:text-brand-dark"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  注文を追加
+                </button>
+              )}
+            </div>
+
+            {/* 既存の注文リスト */}
+            {linkedOrders.length > 0 && (
+              <ul className="space-y-1.5 mb-3">
+                {linkedOrders.map((order) => (
+                  <li key={order.id}>
+                    <Link
+                      href={`/orders/${order.id}`}
+                      className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50"
+                    >
+                      <span className="text-gray-600">{order.orderDate}（{order.itemCount}点）</span>
+                      <div className="flex items-center gap-2">
+                        {order.total > 0 && <span className="text-gray-700">¥{order.total.toLocaleString()}</span>}
+                        <span className={`px-1.5 py-0.5 rounded-full ${order.isPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {order.isPaid ? '入金済' : '未入金'}
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {linkedOrders.length === 0 && !showOrderForm && (
+              <p className="text-sm text-gray-400">注文なし</p>
+            )}
+
+            {/* 新規注文フォーム */}
+            {showOrderForm && (
+              <div className="space-y-3 border-t border-gray-100 pt-3">
+                {/* 商品選択行 */}
+                <div className="flex gap-1.5">
+                  <select
+                    value={addingProductId}
+                    onChange={(e) => setAddingProductId(e.target.value)}
+                    className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+                  >
+                    <option value="">商品を選択</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}（¥{p.price.toLocaleString()}）</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={addingQty}
+                    onChange={(e) => setAddingQty(Math.max(1, Number(e.target.value)))}
+                    className="w-14 text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                  <button
+                    onClick={handleAddToOrder}
+                    disabled={!addingProductId}
+                    className="shrink-0 text-xs px-2.5 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-40"
+                  >
+                    追加
+                  </button>
+                </div>
+
+                {/* 追加済みアイテム */}
+                {orderItems.length > 0 && (
+                  <ul className="space-y-1">
+                    {orderItems.map((item, i) => (
+                      <li key={i} className="flex items-center justify-between text-xs px-2 py-1.5 bg-gray-50 rounded-lg">
+                        <span className="text-gray-700">{item.productName} × {item.quantity}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-500">¥{(item.price * item.quantity).toLocaleString()}</span>
+                          <button
+                            onClick={() => setOrderItems((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    <li className="flex justify-end text-xs font-medium text-gray-700 pt-1 pr-1">
+                      合計 ¥{orderItems.reduce((s, i) => s + i.price * i.quantity, 0).toLocaleString()}
+                    </li>
+                  </ul>
+                )}
+
+                {/* 保存・キャンセル */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateOrder}
+                    disabled={orderCreating || orderItems.length === 0}
+                    className="flex-1 text-xs py-2 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50"
+                  >
+                    {orderCreating ? '作成中...' : '注文として保存'}
+                  </button>
+                  <button
+                    onClick={() => { setShowOrderForm(false); setOrderItems([]); setAddingProductId(''); setAddingQty(1); }}
+                    className="px-3 py-2 text-gray-400 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    <XMarkIcon className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* ⑤ 領収書ボタン */}
