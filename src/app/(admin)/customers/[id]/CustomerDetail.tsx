@@ -19,12 +19,15 @@ interface Props {
   reservations: (Reservation & { planName?: string })[];
   orders: Order[];
   isRepeater: boolean;
+  linkTargetReservationId: string | null;
 }
 
-export default function CustomerDetail({ customer, reservations, orders, isRepeater }: Props) {
+export default function CustomerDetail({ customer, reservations, orders, isRepeater, linkTargetReservationId }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lineIdInput, setLineIdInput] = useState('');
+  const [lineIdSaving, setLineIdSaving] = useState(false);
   const [form, setForm] = useState({
     name: customer.name,
     furigana: customer.furigana ?? '',
@@ -166,6 +169,41 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                       </a>
                     </dd>
                   ) : null}
+                  {!customer.lineUserId && !customer.chatLineUserId && linkTargetReservationId && (
+                    <dd className="mt-2">
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={lineIdInput}
+                          onChange={(e) => setLineIdInput(e.target.value)}
+                          placeholder="LINE IDをペースト"
+                          className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+                        />
+                        <button
+                          onClick={async () => {
+                            const id = lineIdInput.trim();
+                            if (!id) return;
+                            setLineIdSaving(true);
+                            try {
+                              await fetch(`/api/reservations/${linkTargetReservationId}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ lineUserId: id }),
+                              });
+                              setLineIdInput('');
+                              router.refresh();
+                            } finally {
+                              setLineIdSaving(false);
+                            }
+                          }}
+                          disabled={lineIdSaving || !lineIdInput.trim()}
+                          className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {lineIdSaving ? '保存中...' : '登録'}
+                        </button>
+                      </div>
+                    </dd>
+                  )}
                 </div>
                 {customer.note && (
                   <div>

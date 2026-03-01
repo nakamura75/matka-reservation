@@ -47,6 +47,8 @@ export async function PATCH(
     paymentStatus?: boolean; // 支払ステータス（D列に保存）
     paymentDate?: string;    // 支払日（E列に保存）
     paymentMethod?: string;  // 支払方法（AC列に保存）
+    lineUserId?: string;     // LINE UserID（O列）
+    chatLineUserId?: string; // LINE ChatUserID（AB列）
     // 予約情報編集
     date?: string;
     timeSlot?: string;
@@ -106,7 +108,8 @@ export async function PATCH(
   if (body.note !== undefined || body.totalAmount !== undefined || body.staffAssignment !== undefined || body.paymentStatus !== undefined || body.paymentMethod !== undefined ||
       body.date !== undefined || body.timeSlot !== undefined || body.scene !== undefined || body.otherSceneNote !== undefined ||
       body.childrenCount !== undefined || body.adultCount !== undefined || body.familyNote !== undefined ||
-      body.customerNote !== undefined || body.phonePreference !== undefined) {
+      body.customerNote !== undefined || body.phonePreference !== undefined ||
+      body.lineUserId !== undefined || body.chatLineUserId !== undefined) {
     const { getSheetsClient } = await import('@/lib/google-sheets');
     const sheets = getSheetsClient();
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID ?? '';
@@ -158,6 +161,8 @@ export async function PATCH(
     if (body.familyNote !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!J${row}`, value: body.familyNote }); // J: 家族構成メモ
     if (body.customerNote !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!Z${row}`, value: body.customerNote }); // Z: お客様備考
     if (body.phonePreference !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!Q${row}`, value: body.phonePreference }); // Q: 電話希望
+    if (body.lineUserId !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!O${row}`, value: body.lineUserId }); // O: LINE UserID
+    if (body.chatLineUserId !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!AB${row}`, value: body.chatLineUserId }); // AB: LINE ChatUserID
 
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,

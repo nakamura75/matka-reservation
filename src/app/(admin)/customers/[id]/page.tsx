@@ -50,12 +50,18 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
   const chatLineUserId = customerReservations.find((r) => r.chatLineUserId?.trim())?.chatLineUserId ?? undefined;
   const customerWithLine = { ...customer, lineUserId, chatLineUserId };
 
+  // LINE未連携の場合に紐づける先の予約（最新の非キャンセル予約）
+  const linkTargetReservationId = !lineUserId
+    ? customerReservations.find((r) => r.status !== 'キャンセル')?.id ?? null
+    : null;
+
   return (
     <CustomerDetail
       customer={customerWithLine}
       reservations={customerReservations}
       orders={customerOrders}
       isRepeater={isRepeater}
+      linkTargetReservationId={linkTargetReservationId}
     />
   );
 }
