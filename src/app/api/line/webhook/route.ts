@@ -7,6 +7,7 @@ import {
 } from '@/lib/line';
 import {
   getReservationByNumber,
+  getCustomerById,
   linkLineUserId,
   saveChatLineUserId,
   getReservationOptions,
@@ -83,10 +84,11 @@ async function handleTextMessage(event: LineEvent) {
   }
 
   // 仮予約完了通知を送信
-  const [plans, options, reservationOptions] = await Promise.all([
+  const [plans, options, reservationOptions, customer] = await Promise.all([
     getPlans(),
     getOptions(),
     getReservationOptions(reservation.id),
+    getCustomerById(reservation.customerId),
   ]);
 
   const plan = plans.find((p) => p.id === reservation.planId);
@@ -102,7 +104,7 @@ async function handleTextMessage(event: LineEvent) {
   });
 
   const message = buildTentativeMessage(
-    { ...reservation, customerName: reservation.customerName },
+    { ...reservation, customerName: customer?.name ?? '' },
     plan.name,
     plan.price,
     optionsWithInfo
