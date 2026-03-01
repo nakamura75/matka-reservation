@@ -4,6 +4,9 @@ import {
   getReservationOptions,
   getPlans,
   getOptions,
+  getOrders,
+  getOrderItems,
+  getProducts,
 } from '@/lib/google-sheets';
 import { formatDate } from '@/lib/utils';
 import PrintButton from './PrintButton';
@@ -22,10 +25,13 @@ export default async function ReceiptPage({
 }: {
   params: { id: string };
 }) {
-  const [reservation, plans, options] = await Promise.all([
+  const [reservation, plans, options, allOrders, allOrderItems, products] = await Promise.all([
     getReservationById(params.id),
     getPlans(),
     getOptions(),
+    getOrders().catch(() => []),
+    getOrderItems().catch(() => []),
+    getProducts().catch(() => []),
   ]);
 
   if (!reservation) notFound();
@@ -39,9 +45,19 @@ export default async function ReceiptPage({
     return { ...ro, optionName: opt?.name ?? '', price: opt?.price ?? 0 };
   });
 
+  // この予約に紐づく注文の商品明細
+  const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
+  const linkedOrderIds = new Set(
+    allOrders.filter((o) => o.reservationId === reservation.id).map((o) => o.id)
+  );
+  const orderItemsWithInfo = allOrderItems
+    .filter((i) => linkedOrderIds.has(i.orderId))
+    .map((i) => ({ ...i, productName: productMap[i.productId]?.name ?? i.productId, price: productMap[i.productId]?.price ?? 0 }));
+  const orderItemTotal = orderItemsWithInfo.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
   const optionTotal = optionsWithInfo.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
-  const computedTotal = planPrice + optionTotal;
+  const computedTotal = planPrice + optionTotal + orderItemTotal;
   // T列に保存された合計（手動設定）があればそちらを優先
   const total =
     reservation.discountAmount != null && reservation.discountAmount > 0
@@ -159,6 +175,14 @@ export default async function ReceiptPage({
                   <td style={{ textAlign: 'right' }}>{formatCurrency(o.price)}</td>
                   <td style={{ textAlign: 'right' }}>{o.quantity}</td>
                   <td style={{ textAlign: 'right' }}>{formatCurrency(o.price * o.quantity)}</td>
+                </tr>
+              ))}
+              {orderItemsWithInfo.map((i) => (
+                <tr key={i.id}>
+                  <td>{i.productName}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(i.price)}</td>
+                  <td style={{ textAlign: 'right' }}>{i.quantity}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(i.price * i.quantity)}</td>
                 </tr>
               ))}
             </tbody>
