@@ -316,6 +316,7 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     checkInTime: r[21],         // V: 入店時間
     checkOutTime: r[22],        // W: 退店時間
     calendarEventId: r[23],     // X: GoogleカレンダーイベントID
+    pdfUrl: r[23]?.startsWith('http') ? r[23] : undefined, // X: 引継ぎPDF URL（matka_V6）
     staffAssignmentJson: r[24], // Y: 担当割り当てJSON
   };
 }

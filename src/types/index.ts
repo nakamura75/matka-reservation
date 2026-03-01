@@ -99,6 +99,7 @@ export interface Reservation {
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
   calendarEventId?: string; // GoogleカレンダーイベントID（X列）
+  pdfUrl?: string;          // 引継ぎPDF URL（X列・matka_V6データ）
   staffAssignmentJson?: string; // 担当割り当てJSON（Y列）
   optionTotal?: number;    // オプション合計（VC）
   total?: number;          // 総計（VC）

@@ -547,15 +547,28 @@ export default function ReservationDetail({ reservation, customer, plan, options
           {/* ⑤ 領収書ボタン */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">書類</h2>
-            <a
-              href={`/reservations/${reservation.id}/receipt`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-2.5 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <DocumentTextIcon className="w-4 h-4" />
-              領収書を開く（PDF印刷）
-            </a>
+            <div className="space-y-2">
+              <a
+                href={`/reservations/${reservation.id}/receipt`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2.5 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <DocumentTextIcon className="w-4 h-4" />
+                領収書を開く（PDF印刷）
+              </a>
+              {reservation.pdfUrl && (
+                <a
+                  href={reservation.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 border border-blue-200 text-blue-700 text-sm rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <DocumentTextIcon className="w-4 h-4" />
+                  引継ぎPDFを開く
+                </a>
+              )}
+            </div>
           </section>
 
           {/* ステータス操作 */}
