@@ -95,8 +95,17 @@ export default function SalesSummary({ reservations, staff }: Props) {
     [pendingReservations, staffById]
   );
 
-  const grandTotal = useMemo(() => byStaff.reduce((s, r) => s + r.total, 0), [byStaff]);
-  const pendingTotal = useMemo(() => byStaffPending.reduce((s, r) => s + r.total, 0), [byStaffPending]);
+  // サマリーカード用：担当割当の有無に関係なく全予約の r.total を合計
+  const grandTotal = useMemo(
+    () => completedReservations.reduce((s, r) => s + (r.total ?? 0), 0),
+    [completedReservations]
+  );
+  const pendingTotal = useMemo(
+    () => pendingReservations.reduce((s, r) => s + (r.total ?? 0), 0),
+    [pendingReservations]
+  );
+  // テーブルフッター用：担当別集計の合計
+  const staffGrandTotal = useMemo(() => byStaff.reduce((s, r) => s + r.total, 0), [byStaff]);
 
   // 役割ごとの列合計（完了のみ）
   const roleTotals = useMemo(() => {
@@ -118,7 +127,7 @@ export default function SalesSummary({ reservations, staff }: Props) {
           onChange={(e) => setSelectedMonth(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
-        <span className="text-xs text-gray-400">担当割当に基づき集計</span>
+        <span className="text-xs text-gray-400">完了・予約済・予約確定から集計</span>
       </div>
 
       {/* サマリーカード */}
@@ -191,7 +200,7 @@ export default function SalesSummary({ reservations, staff }: Props) {
                     </td>
                   ))}
                   <td className="px-5 py-3 text-right font-bold text-brand text-base">
-                    {formatYen(grandTotal)}
+                    {formatYen(staffGrandTotal)}
                   </td>
                 </tr>
               </tfoot>
