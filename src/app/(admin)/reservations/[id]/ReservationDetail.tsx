@@ -610,7 +610,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
             {nextStatus === '予約確定' && (!checkInTime || !checkOutTime) && (
               <p className="text-xs text-amber-600 text-center">来店時間・終了時間を入力してください</p>
             )}
-            {status !== 'キャンセル' && status !== '完了' && (
+            {status !== 'キャンセル' && (
               <button
                 onClick={() => {
                   if (confirm('キャンセルにしますか？')) changeStatus('キャンセル');
