@@ -126,6 +126,11 @@ export default function ReservationDetail({ reservation, customer, plan, options
         ...prev,
         { id: orderId, orderDate: new Date().toLocaleDateString('ja-JP'), isPaid: false, total, itemCount: orderItems.length },
       ]);
+      // 自動計算モードなら合計を連動更新
+      setGrandTotal((prev) => {
+        const autoTotal = computedTotal + linkedOrders.reduce((s, o) => s + o.total, 0);
+        return prev === autoTotal ? autoTotal + total : prev;
+      });
       setShowOrderForm(false);
       setOrderItems([]);
     } finally {
@@ -273,13 +278,10 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const planPrice = plan?.price ?? 0;
   const computedTotal = planPrice + optionTotal;
 
-  // 値引き額（全体合計から差し引く）
-  const [discountInput, setDiscountInput] = useState(0);
-
   // 商品合計（linkedOrders の合計）
   const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
-  // 全体合計（領収書と一致）
-  const grandTotal = computedTotal + orderItemTotal - discountInput;
+  // 全体合計（直接編集可、デフォルトは自動計算）
+  const [grandTotal, setGrandTotal] = useState(computedTotal + orderItemTotal);
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -311,7 +313,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, discountAmount: discountInput }),
+        body: JSON.stringify({ note, totalAmount: grandTotal }),
       });
       router.refresh();
     } finally {
@@ -846,33 +848,24 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">値引き額（合計から差し引く）</label>
+                <label className="block text-xs text-gray-400 mb-1">合計金額（税込）</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
-                    value={discountInput}
-                    onChange={(e) => setDiscountInput(Math.max(0, Number(e.target.value)))}
+                    value={grandTotal}
+                    onChange={(e) => setGrandTotal(Number(e.target.value))}
                     className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                     min={0}
-                    placeholder="0"
                   />
-                  {discountInput > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setDiscountInput(0)}
-                      className="text-xs text-gray-400 hover:text-gray-600 underline"
-                    >
-                      リセット
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setGrandTotal(computedTotal + orderItemTotal)}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline"
+                  >
+                    自動計算に戻す
+                  </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
-                  撮影合計: {formatCurrency(computedTotal)}
-                  {orderItemTotal > 0 && `　商品合計: ${formatCurrency(orderItemTotal)}`}
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5 font-medium">
-                  値引き後の合計: {formatCurrency(grandTotal)}
-                </p>
+                <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal + orderItemTotal)}</p>
               </div>
               <button
                 onClick={saveNote}
@@ -955,12 +948,6 @@ export default function ReservationDetail({ reservation, customer, plan, options
 
               {/* 全体合計 */}
               <div className="pt-3 mt-1 border-t border-gray-200 space-y-1">
-                {discountInput > 0 && (
-                  <div className="flex justify-between text-red-500 text-sm">
-                    <span>値引き</span>
-                    <span>-{formatCurrency(discountInput)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-gray-500 text-xs">
                   <span>税抜合計</span>
                   <span>{formatCurrency(taxExcluded(grandTotal))}</span>
