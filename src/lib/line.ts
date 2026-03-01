@@ -99,14 +99,21 @@ export function buildConfirmMessage(
 ): LineMessage {
   const formattedDate = reservation.date.replace(/-/g, '/');
   const text = `✅ ご予約が確定しました！
+
 【ご予約内容】
 ━━━━━━━━━━━━━━
-📆 予約日: ${formattedDate}
-🕐 時間: ${reservation.timeSlot}
+📆 予約日
+${formattedDate}
+
+🕐 時間
+${reservation.timeSlot}
 　※当日は${checkInTime}までにご来店ください。
 　※終了時間は${checkOutTime}ごろになる予定です。
-📸 プラン: ${planName}
+
+📸 プラン
+${planName}
 ━━━━━━━━━━━━━━
+
 当日お会いできることを楽しみにしております！
 ご不明点はLINEよりお問い合わせください😊`;
 
