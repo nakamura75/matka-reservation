@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<ReservationStatus, string> = {
 
 // ② 秒を削除
 function stripSeconds(time: string) {
-  return time ? time.replace(/:\d{2}$/, '') : time;
+  return time ? time.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1') : time;
 }
 
 export default function ReservationList({ reservations }: { reservations: Reservation[] }) {
