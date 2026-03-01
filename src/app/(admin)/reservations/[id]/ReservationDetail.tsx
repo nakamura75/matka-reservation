@@ -248,10 +248,18 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 <dt className="text-gray-400">LINE連携</dt>
                 <dd className="mt-0.5">
                   {reservation.lineUserId ? (
-                    <span className="inline-flex items-center gap-1 text-green-700 font-medium">
-                      <span className="w-2 h-2 bg-green-400 rounded-full" />
-                      紐づけ済み
-                    </span>
+                    <a
+                      href={`https://manager.line.biz/account/671kcyek/chat/${reservation.lineUserId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: '#06C755' }}
+                    >
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-white shrink-0" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.477 2 2 6.032 2 11c0 2.99 1.566 5.634 3.988 7.32-.175.614-.635 2.22-.728 2.566-.115.42.154.414.323.302.133-.089 2.11-1.43 2.967-2.012.444.062.898.094 1.45.094 5.523 0 10-4.032 10-9S17.523 2 12 2zm-3.5 12.5h-1.25a.25.25 0 0 1-.25-.25v-4.5a.25.25 0 0 1 .25-.25H8.5a.25.25 0 0 1 .25.25v4.5a.25.25 0 0 1-.25.25zm2.5 0h-1.25a.25.25 0 0 1-.25-.25v-2.5l-1.5-2.087A.25.25 0 0 1 8.2 9.5H9.5a.25.25 0 0 1 .2.1l.8 1.114.8-1.114a.25.25 0 0 1 .2-.1h1.3a.25.25 0 0 1 .2.413L11.5 11.75v2.5a.25.25 0 0 1-.25.25zm5.25 0H13a.25.25 0 0 1-.25-.25v-4.5A.25.25 0 0 1 13 9.5h2.75a.25.25 0 0 1 0 .5H13.5v1.25h2.25a.25.25 0 0 1 0 .5H13.5v1.25h2.75a.25.25 0 0 1 0 .5z"/>
+                      </svg>
+                      LINEトークを開く
+                    </a>
                   ) : (
                     <span className="text-gray-400">未連携</span>
                   )}
