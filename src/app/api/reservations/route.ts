@@ -82,6 +82,7 @@ export async function POST(req: import('next/server').NextRequest) {
       familyNote: body.childrenDetail,
       status: '予約済' as const,
       customerNote: body.note,
+      otherSceneNote: body.otherSceneNote,
       createdAt: new Date().toISOString(),
       lineUserId: body.lineUserId ?? '',
       flag: false,

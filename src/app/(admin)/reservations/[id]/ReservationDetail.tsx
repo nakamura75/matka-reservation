@@ -208,6 +208,12 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 <dt className="text-gray-400">撮影シーン</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">{reservation.scene ?? '—'}</dd>
               </div>
+              {reservation.otherSceneNote && (
+                <div className="col-span-2">
+                  <dt className="text-gray-400">希望の撮影シーン（その他）</dt>
+                  <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.otherSceneNote}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-gray-400">プラン</dt>
                 <dd className="font-medium text-gray-900 mt-0.5">

@@ -89,6 +89,7 @@ export interface Reservation {
   referencePhoto?: string; // 参考写真
   note?: string;           // 備考（スタッフメモ）
   customerNote?: string;   // お客様備考（フォーム入力）
+  otherSceneNote?: string; // その他シーン詳細（フォーム入力）
   createdAt?: string;      // 登録日
   lineUserId?: string;     // LINE_UserID
   flag?: boolean;          // フラグ
