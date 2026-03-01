@@ -51,7 +51,8 @@ export default async function CustomersPage() {
 
     const isRepeater = totalByPhone > 1 || isRepeaterByLine;
 
-    return { ...c, reservationCount, isRepeater };
+    const lineUserId = Array.from(lineIds)[0] ?? undefined;
+    return { ...c, reservationCount, isRepeater, lineUserId };
   });
 
   return (
