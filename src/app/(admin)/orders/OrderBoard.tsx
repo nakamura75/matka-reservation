@@ -48,8 +48,8 @@ export default function OrderBoard({ items }: { items: EnrichedItem[] }) {
                     href={`/orders/${item.orderId}`}
                     className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-brand/40 hover:shadow-sm transition-all"
                   >
-                    <p className="text-sm font-medium text-gray-900 truncate">{item.customerName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">{item.productName}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{item.productName}</p>
+                    <p className="text-sm text-gray-500 mt-0.5 truncate">{item.customerName}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs text-gray-400">{item.orderDate}</span>
                       <span className="text-xs text-gray-500">×{item.quantity}</span>
