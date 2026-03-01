@@ -106,9 +106,23 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                   <td className="px-4 py-3 text-gray-500">{r.scene}</td>
                   <td className="px-4 py-3">
                     {/* ① 表示ラベル変更 */}
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
-                      {STATUS_LABEL[r.status]}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
+                        {STATUS_LABEL[r.status]}
+                      </span>
+                      {r.pdfUrl && (
+                        <a
+                          href={r.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="引継ぎPDFを開く"
+                          className="text-blue-500 hover:text-blue-700 text-xs border border-blue-200 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors whitespace-nowrap"
+                        >
+                          PDF
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
                     {r.createdAt ? new Date(r.createdAt).toLocaleDateString('ja-JP') : ''}
