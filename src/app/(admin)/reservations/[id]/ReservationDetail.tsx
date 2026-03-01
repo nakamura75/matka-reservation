@@ -244,11 +244,6 @@ export default function ReservationDetail({ reservation, customer, plan, options
         price: master.price,
       };
       setCurrentOptions((prev) => [...prev, newOpt]);
-      // 合計金額が自動計算モードなら連動して更新
-      setCustomTotal((prev) => {
-        const oldComputed = planPrice + currentOptions.reduce((s, o) => s + o.price * o.quantity, 0);
-        return prev === oldComputed ? prev + master.price * addingOptionQty : prev;
-      });
       setAddingOptionId('');
       setAddingOptionQty(1);
     } finally {
@@ -268,11 +263,6 @@ export default function ReservationDetail({ reservation, customer, plan, options
       });
       if (!(await res.json()).success) return;
       setCurrentOptions((prev) => prev.filter((o) => o.id !== reservationOptionId));
-      // 合計金額が自動計算モードなら連動して更新
-      setCustomTotal((prev) => {
-        const oldComputed = planPrice + currentOptions.reduce((s, o) => s + o.price * o.quantity, 0);
-        return prev === oldComputed ? prev - target.price * target.quantity : prev;
-      });
     } finally {
       setOptionDeleting(null);
     }
@@ -282,13 +272,14 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const optionTotal = currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
   const computedTotal = planPrice + optionTotal;
-  // 撮影合計の手動調整値（常に最新の computedTotal で初期化）
-  const [customTotal, setCustomTotal] = useState(computedTotal);
+
+  // 値引き額（全体合計から差し引く）
+  const [discountInput, setDiscountInput] = useState(0);
 
   // 商品合計（linkedOrders の合計）
   const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
   // 全体合計（領収書と一致）
-  const grandTotal = customTotal + orderItemTotal;
+  const grandTotal = computedTotal + orderItemTotal - discountInput;
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -320,7 +311,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, totalAmount: customTotal }),
+        body: JSON.stringify({ note, discountAmount: discountInput }),
       });
       router.refresh();
     } finally {
@@ -855,29 +846,33 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">撮影合計（税込）※値引き等を調整する場合に変更</label>
+                <label className="block text-xs text-gray-400 mb-1">値引き額（合計から差し引く）</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
-                    value={customTotal}
-                    onChange={(e) => setCustomTotal(Number(e.target.value))}
+                    value={discountInput}
+                    onChange={(e) => setDiscountInput(Math.max(0, Number(e.target.value)))}
                     className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                     min={0}
+                    placeholder="0"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setCustomTotal(computedTotal)}
-                    className="text-xs text-gray-400 hover:text-gray-600 underline"
-                  >
-                    自動計算に戻す
-                  </button>
+                  {discountInput > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setDiscountInput(0)}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    >
+                      リセット
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal)}</p>
-                {orderItemTotal > 0 && (
-                  <p className="text-xs text-gray-500 mt-0.5 font-medium">
-                    全体合計（撮影＋商品）: {formatCurrency(grandTotal)}
-                  </p>
-                )}
+                <p className="text-xs text-gray-400 mt-1">
+                  撮影合計: {formatCurrency(computedTotal)}
+                  {orderItemTotal > 0 && `　商品合計: ${formatCurrency(orderItemTotal)}`}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5 font-medium">
+                  値引き後の合計: {formatCurrency(grandTotal)}
+                </p>
               </div>
               <button
                 onClick={saveNote}
@@ -942,7 +937,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
               )}
               <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-100 pt-2">
                 <span>撮影合計</span>
-                <span>{formatCurrency(customTotal)}</span>
+                <span>{formatCurrency(computedTotal)}</span>
               </div>
 
               {/* 商品 */}
@@ -960,6 +955,12 @@ export default function ReservationDetail({ reservation, customer, plan, options
 
               {/* 全体合計 */}
               <div className="pt-3 mt-1 border-t border-gray-200 space-y-1">
+                {discountInput > 0 && (
+                  <div className="flex justify-between text-red-500 text-sm">
+                    <span>値引き</span>
+                    <span>-{formatCurrency(discountInput)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-500 text-xs">
                   <span>税抜合計</span>
                   <span>{formatCurrency(taxExcluded(grandTotal))}</span>
