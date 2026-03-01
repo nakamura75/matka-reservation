@@ -46,7 +46,9 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
 
   // 予約シートのO列からlineUserIdを取得してcustomerに付与
   const lineUserId = Array.from(customerLineIds)[0] ?? undefined;
-  const customerWithLine = { ...customer, lineUserId };
+  // 予約シートのAB列からchatLineUserIdを取得（Messaging API userId）
+  const chatLineUserId = customerReservations.find((r) => r.chatLineUserId?.trim())?.chatLineUserId ?? undefined;
+  const customerWithLine = { ...customer, lineUserId, chatLineUserId };
 
   return (
     <CustomerDetail

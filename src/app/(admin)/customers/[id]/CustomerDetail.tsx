@@ -140,19 +140,19 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                 <div>
                   <dt className="text-gray-400 text-xs">LINE連携</dt>
                   <dd className="mt-0.5">
-                    {customer.lineName ? (
+                    {customer.lineUserId || customer.chatLineUserId ? (
                       <span className="text-green-700 text-xs flex items-center gap-1">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
-                        {customer.lineName}
+                        {customer.lineName ?? '連携済み'}
                       </span>
                     ) : (
                       <span className="text-gray-400 text-xs">未連携</span>
                     )}
                   </dd>
-                  {customer.lineUserId && (
+                  {customer.chatLineUserId ? (
                     <dd className="mt-2">
                       <a
-                        href="https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat"
+                        href={`https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat/${customer.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
@@ -165,7 +165,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                         LINEトークを開く
                       </a>
                     </dd>
-                  )}
+                  ) : null}
                 </div>
                 {customer.note && (
                   <div>

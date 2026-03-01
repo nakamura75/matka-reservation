@@ -10,9 +10,10 @@ export interface Customer {
   email?: string;      // メールアドレス
   zipCode?: string;    // 郵便番号
   address?: string;    // 住所
-  lineName?: string;   // LINE表示名
-  lineUserId?: string; // LINE UserID
-  note?: string;       // 備考
+  lineName?: string;      // LINE表示名
+  lineUserId?: string;    // LINE UserID（LIFF）
+  chatLineUserId?: string; // LINE ChatUserID（Messaging API・AB列）
+  note?: string;          // 備考
   createdAt?: string;  // 登録日
 }
 
@@ -92,7 +93,8 @@ export interface Reservation {
   customerNote?: string;   // お客様備考（フォーム入力）
   otherSceneNote?: string; // その他シーン詳細（フォーム入力）
   createdAt?: string;      // 登録日
-  lineUserId?: string;     // LINE_UserID
+  lineUserId?: string;     // LINE_UserID（LIFF）
+  chatLineUserId?: string; // LINE_ChatUserID（Messaging API・AB列）
   flag?: boolean;          // フラグ
   phonePreference?: string;// 電話希望
   scene?: ShootingScene;   // 撮影シーン

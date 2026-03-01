@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { Customer } from '@/types';
 
-type CustomerWithCount = Customer & { reservationCount: number; isRepeater: boolean };
+type CustomerWithCount = Customer & { reservationCount: number; isRepeater: boolean; chatLineUserId?: string };
 
 export default function CustomerList({ customers }: { customers: CustomerWithCount[] }) {
   const [search, setSearch] = useState('');
@@ -74,9 +74,9 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>
                   <td className="px-4 py-3 text-gray-500">{c.email ?? '—'}</td>
                   <td className="px-4 py-3">
-                    {c.lineUserId ? (
+                    {c.chatLineUserId ? (
                       <a
-                        href="https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat"
+                        href={`https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat/${c.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -88,6 +88,8 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                         </svg>
                         トーク
                       </a>
+                    ) : c.lineUserId ? (
+                      <span className="text-green-600 text-xs">連携済み</span>
                     ) : (
                       <span className="text-gray-300 text-xs">未連携</span>
                     )}

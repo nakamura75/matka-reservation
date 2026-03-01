@@ -23,6 +23,7 @@ export default async function CustomersPage() {
   const reservationCountByCustomerId: Record<string, number> = {};
   const lineIdsByCustomerId: Record<string, Set<string>> = {};
   const reservationCountByLineId: Record<string, number> = {};
+  const chatLineIdByCustomerId: Record<string, string> = {};
 
   for (const r of reservations) {
     if (r.customerId) {
@@ -35,6 +36,10 @@ export default async function CustomersPage() {
         if (!lineIdsByCustomerId[r.customerId]) lineIdsByCustomerId[r.customerId] = new Set();
         lineIdsByCustomerId[r.customerId].add(lineId);
       }
+    }
+    const chatLineId = r.chatLineUserId?.trim();
+    if (chatLineId && r.customerId && !chatLineIdByCustomerId[r.customerId]) {
+      chatLineIdByCustomerId[r.customerId] = chatLineId;
     }
   }
 
@@ -52,7 +57,8 @@ export default async function CustomersPage() {
     const isRepeater = totalByPhone > 1 || isRepeaterByLine;
 
     const lineUserId = Array.from(lineIds)[0] ?? undefined;
-    return { ...c, reservationCount, isRepeater, lineUserId };
+    const chatLineUserId = chatLineIdByCustomerId[c.id] ?? undefined;
+    return { ...c, reservationCount, isRepeater, lineUserId, chatLineUserId };
   });
 
   return (

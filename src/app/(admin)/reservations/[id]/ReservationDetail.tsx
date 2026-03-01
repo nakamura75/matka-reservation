@@ -247,9 +247,9 @@ export default function ReservationDetail({ reservation, customer, plan, options
               <div>
                 <dt className="text-gray-400">LINE連携</dt>
                 <dd className="mt-0.5">
-                  {reservation.lineUserId ? (
+                  {reservation.chatLineUserId ? (
                     <a
-                      href="https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat"
+                      href={`https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat/${reservation.chatLineUserId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
@@ -260,6 +260,11 @@ export default function ReservationDetail({ reservation, customer, plan, options
                       </svg>
                       LINEトークを開く
                     </a>
+                  ) : reservation.lineUserId ? (
+                    <span className="inline-flex items-center gap-1 text-green-700 text-xs font-medium">
+                      <span className="w-2 h-2 bg-green-400 rounded-full" />
+                      連携済み
+                    </span>
                   ) : (
                     <span className="text-gray-400">未連携</span>
                   )}

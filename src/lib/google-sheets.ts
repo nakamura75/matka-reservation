@@ -281,6 +281,11 @@ export async function linkLineUserId(rowNumber: number, lineUserId: string): Pro
   await updateCell(SHEET_NAMES.RESERVATIONS, `P${rowNumber}`, 'TRUE');
 }
 
+/** LINE ChatUserID（Messaging API）をAB列に保存 */
+export async function saveChatLineUserId(rowNumber: number, chatLineUserId: string): Promise<void> {
+  await updateCell(SHEET_NAMES.RESERVATIONS, `AB${rowNumber}`, chatLineUserId);
+}
+
 function rowToReservation(r: string[], rowNumber: number): Reservation {
   // 列対応(0-indexed, _RowNumberはシートに存在しない):
   // 0=A(ID予約), 1=B(ID顧客), 2=C(IDプラン),
@@ -290,7 +295,7 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
   // 15=P(フラグ), 16=Q(電話希望), 17=R(撮影シーン), 18=S(予約番号),
   // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間),
   // 23=X(GoogleカレンダーイベントID), 24=Y(担当割り当てJSON),
-  // 25=Z(お客様備考), 26=AA(その他シーン詳細)
+  // 25=Z(お客様備考), 26=AA(その他シーン詳細), 27=AB(LINE_ChatUserID)
   return {
     _rowNumber: rowNumber,
     id: r[0] ?? '',             // A: ID予約
@@ -329,6 +334,7 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     staffAssignmentJson: r[24], // Y: 担当割り当てJSON
     customerNote: r[25],        // Z: お客様備考
     otherSceneNote: r[26],      // AA: その他シーン詳細
+    chatLineUserId: r[27],      // AB: LINE_ChatUserID（Messaging API）
   };
 }
 
@@ -361,6 +367,7 @@ function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number 
     r.staffAssignmentJson ?? '',     // Y: 担当割り当てJSON
     r.customerNote ?? '',            // Z: お客様備考
     r.otherSceneNote ?? '',          // AA: その他シーン詳細
+    r.chatLineUserId ?? '',          // AB: LINE_ChatUserID（Messaging API）
   ];
 }
 
