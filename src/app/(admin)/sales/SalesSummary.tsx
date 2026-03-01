@@ -39,34 +39,39 @@ export default function SalesSummary({ reservations, staff }: Props) {
     return map;
   }, [staff]);
 
-  // 「完了」ステータスかつ選択月の予約に絞る
-  const targetReservations = useMemo(
-    () =>
-      reservations.filter(
-        (r) => r.status === '完了' && r.date.slice(0, 7) === selectedMonth
-      ),
+  // 選択月の予約をステータスで分類
+  const monthReservations = useMemo(
+    () => reservations.filter((r) => r.date.slice(0, 7) === selectedMonth),
     [reservations, selectedMonth]
   );
+  const completedReservations = useMemo(
+    () => monthReservations.filter((r) => r.status === '完了'),
+    [monthReservations]
+  );
+  const pendingReservations = useMemo(
+    () => monthReservations.filter((r) => r.status === '予約済' || r.status === '予約確定'),
+    [monthReservations]
+  );
 
-  // 担当者ごとに役割別金額を集計
-  const byStaff = useMemo(() => {
+  // 予約リストから担当者別金額を集計する共通関数
+  function calcByStaff(
+    targets: Reservation[],
+    nameMap: Record<string, Staff>
+  ) {
     const map: Record<
       string,
       { name: string; counts: Record<Role, number>; amounts: Record<Role, number>; total: number }
     > = {};
-
-    for (const r of targetReservations) {
+    for (const r of targets) {
       const assignment = parseAssignment(r.staffAssignmentJson);
       const planType = SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery';
       const breakdown = PLAN_STAFF_BREAKDOWN[planType];
-
       for (const role of ROLES) {
         const staffId = assignment[role];
         if (!staffId) continue;
-
         if (!map[staffId]) {
           map[staffId] = {
-            name: staffById[staffId]?.name ?? staffId,
+            name: nameMap[staffId]?.name ?? staffId,
             counts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
             amounts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
             total: 0,
@@ -77,13 +82,23 @@ export default function SalesSummary({ reservations, staff }: Props) {
         map[staffId].total += breakdown[role];
       }
     }
-
     return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [targetReservations, staffById]);
+  }
+
+  // 完了・見込みそれぞれの担当者別集計
+  const byStaff = useMemo(
+    () => calcByStaff(completedReservations, staffById),
+    [completedReservations, staffById]
+  );
+  const byStaffPending = useMemo(
+    () => calcByStaff(pendingReservations, staffById),
+    [pendingReservations, staffById]
+  );
 
   const grandTotal = useMemo(() => byStaff.reduce((s, r) => s + r.total, 0), [byStaff]);
+  const pendingTotal = useMemo(() => byStaffPending.reduce((s, r) => s + r.total, 0), [byStaffPending]);
 
-  // 役割ごとの列合計
+  // 役割ごとの列合計（完了のみ）
   const roleTotals = useMemo(() => {
     const totals: Record<Role, number> = { photo: 0, assistant: 0, hair: 0, makeup: 0 };
     for (const row of byStaff) {
@@ -103,18 +118,20 @@ export default function SalesSummary({ reservations, staff }: Props) {
           onChange={(e) => setSelectedMonth(e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
-        <span className="text-xs text-gray-400">「完了」ステータスの予約から集計</span>
+        <span className="text-xs text-gray-400">担当割当に基づき集計</span>
       </div>
 
       {/* サマリーカード */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs text-gray-500 mb-1">担当別 総売上</p>
+          <p className="text-xs text-gray-500 mb-1">確定売上</p>
+          <p className="text-xs text-gray-400 mb-2">完了 {completedReservations.length} 件</p>
           <p className="text-2xl font-bold text-gray-900">{formatYen(grandTotal)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs text-gray-500 mb-1">完了予約数</p>
-          <p className="text-2xl font-bold text-gray-900">{targetReservations.length} 件</p>
+          <p className="text-xs text-gray-500 mb-1">見込み売上</p>
+          <p className="text-xs text-gray-400 mb-2">予約済・確定 {pendingReservations.length} 件</p>
+          <p className="text-2xl font-bold text-blue-600">{formatYen(pendingTotal)}</p>
         </div>
       </div>
 
@@ -138,7 +155,7 @@ export default function SalesSummary({ reservations, staff }: Props) {
               {byStaff.length === 0 ? (
                 <tr>
                   <td colSpan={ROLES.length + 2} className="px-5 py-10 text-center text-gray-400">
-                    {selectedMonth} に「完了」ステータスの予約がありません
+                    {selectedMonth} に「完了」の予約がありません
                   </td>
                 </tr>
               ) : (
