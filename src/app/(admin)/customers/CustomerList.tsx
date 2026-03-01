@@ -1,13 +1,21 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Customer } from '@/types';
 
-type CustomerWithCount = Customer & { reservationCount: number; isRepeater: boolean; chatLineUserId?: string };
+type CustomerWithCount = Customer & {
+  reservationCount: number;
+  isRepeater: boolean;
+  chatLineUserId?: string;
+  duplicateCustomerIds: string[];
+};
 
 export default function CustomerList({ customers }: { customers: CustomerWithCount[] }) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
+  const [mergingId, setMergingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!search) return customers;
@@ -20,6 +28,33 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
         (c.email ?? '').toLowerCase().includes(q)
     );
   }, [customers, search]);
+
+  async function handleMerge(primaryId: string, duplicateIds: string[]) {
+    setMergingId(primaryId);
+    try {
+      const res = await fetch('/api/customers/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryId, duplicateIds }),
+      });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        alert('統合に失敗しました');
+      }
+    } finally {
+      setMergingId(null);
+    }
+  }
+
+  function confirmMerge(c: CustomerWithCount) {
+    const dupNames = c.duplicateCustomerIds
+      .map((id) => customers.find((x) => x.id === id)?.name ?? id)
+      .join('、');
+    if (confirm(`「${c.name}」に統合します。\n\n重複レコード（${dupNames}）を削除し、すべての予約がこの顧客に紐づけられます。\n\nよろしいですか？`)) {
+      handleMerge(c.id, c.duplicateCustomerIds);
+    }
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -56,19 +91,35 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
               </tr>
             ) : (
               filtered.map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={c.id} className={`hover:bg-gray-50 transition-colors ${c.duplicateCustomerIds.length > 0 ? 'bg-orange-50/40' : ''}`}>
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/customers/${c.id}`}
-                      className="text-brand hover:text-brand-dark font-medium"
-                    >
-                      {c.name}
-                    </Link>
-                    {c.isRepeater && (
-                      <span className="ml-2 text-xs bg-brand-light text-brand px-1.5 py-0.5 rounded-full">
-                        リピーター
-                      </span>
-                    )}
+                    <div className="flex items-center flex-wrap gap-1.5">
+                      <Link
+                        href={`/customers/${c.id}`}
+                        className="text-brand hover:text-brand-dark font-medium"
+                      >
+                        {c.name}
+                      </Link>
+                      {c.isRepeater && c.duplicateCustomerIds.length === 0 && (
+                        <span className="text-xs bg-brand-light text-brand px-1.5 py-0.5 rounded-full">
+                          リピーター
+                        </span>
+                      )}
+                      {c.duplicateCustomerIds.length > 0 && (
+                        <>
+                          <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
+                            重複
+                          </span>
+                          <button
+                            onClick={() => confirmMerge(c)}
+                            disabled={mergingId === c.id}
+                            className="text-xs text-orange-600 border border-orange-300 hover:bg-orange-50 px-2 py-0.5 rounded-full disabled:opacity-50 transition-colors"
+                          >
+                            {mergingId === c.id ? '統合中...' : 'この顧客に統合する'}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{c.furigana ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>

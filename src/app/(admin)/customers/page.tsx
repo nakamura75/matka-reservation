@@ -58,7 +58,10 @@ export default async function CustomersPage() {
 
     const lineUserId = Array.from(lineIds)[0] ?? undefined;
     const chatLineUserId = chatLineIdByCustomerId[c.id] ?? undefined;
-    return { ...c, reservationCount, isRepeater, lineUserId, chatLineUserId };
+    const duplicateCustomerIds = c.phone?.trim()
+      ? (phoneToCustomerIds[c.phone.trim()] ?? []).filter((id) => id !== c.id)
+      : [];
+    return { ...c, reservationCount, isRepeater, lineUserId, chatLineUserId, duplicateCustomerIds };
   });
 
   return (
