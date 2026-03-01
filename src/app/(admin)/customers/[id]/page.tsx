@@ -44,9 +44,13 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
   );
   const isRepeater = totalByPhone > 1 || isRepeaterByLine;
 
+  // 予約シートのO列からlineUserIdを取得してcustomerに付与
+  const lineUserId = Array.from(customerLineIds)[0] ?? undefined;
+  const customerWithLine = { ...customer, lineUserId };
+
   return (
     <CustomerDetail
-      customer={customer}
+      customer={customerWithLine}
       reservations={customerReservations}
       orders={customerOrders}
       isRepeater={isRepeater}

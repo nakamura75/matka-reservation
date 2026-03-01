@@ -10,7 +10,8 @@ export interface Customer {
   email?: string;      // メールアドレス
   zipCode?: string;    // 郵便番号
   address?: string;    // 住所
-  lineName?: string;   // LINE名（LINE UserIDも含む）
+  lineName?: string;   // LINE表示名
+  lineUserId?: string; // LINE UserID
   note?: string;       // 備考
   createdAt?: string;  // 登録日
 }
