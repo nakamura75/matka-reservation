@@ -145,7 +145,7 @@ export async function POST(req: import('next/server').NextRequest) {
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
 
       await sendLinePush(body.lineUserId, [
-        buildTentativeMessage(reservation as Reservation, plan.name, plan.price, optionsWithInfo),
+        buildTentativeMessage(reservation as Reservation, plan!.name, plan!.price, optionsWithInfo),
       ]).catch((e) => console.error('LINE Push failed:', e));
     }
 
