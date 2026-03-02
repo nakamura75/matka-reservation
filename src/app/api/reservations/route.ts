@@ -83,7 +83,7 @@ export async function POST(req: import('next/server').NextRequest) {
       childrenCount: body.childrenCount,
       adultCount: body.adultCount,
       familyNote: body.childrenDetail,
-      status: (isVisit ? '見学' : '予約済') as const,
+      status: (isVisit ? '見学' : '予約済') as import('@/types').ReservationStatus,
       customerNote: body.note,
       otherSceneNote: body.otherSceneNote,
       createdAt: new Date().toISOString(),
