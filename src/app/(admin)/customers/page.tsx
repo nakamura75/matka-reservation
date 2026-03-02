@@ -62,6 +62,11 @@ export default async function CustomersPage() {
       ? (phoneToCustomerIds[c.phone.trim()] ?? []).filter((id) => id !== c.id)
       : [];
     return { ...c, reservationCount, isRepeater, lineUserId, chatLineUserId, duplicateCustomerIds };
+  }).sort((a, b) => {
+    if (!a.createdAt && !b.createdAt) return 0;
+    if (!a.createdAt) return 1;
+    if (!b.createdAt) return -1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   return (
