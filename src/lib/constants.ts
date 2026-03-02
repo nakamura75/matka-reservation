@@ -39,7 +39,10 @@ export const SHEET_NAMES = {
 } as const;
 
 // 予約ステータス
-export const RESERVATION_STATUSES = ['予約済', '予約確定', '完了', 'キャンセル'] as const;
+export const RESERVATION_STATUSES = ['予約済', '予約確定', '見学', '完了', 'キャンセル'] as const;
+
+// Googleカレンダーイベントカラー（見学は Grape = 3）
+export const CALENDAR_COLOR_ID_VISIT = '3';
 
 // 注文詳細ステータス
 export const ORDER_ITEM_STATUSES = ['受注', '発注済', '制作完了', '入荷', '発送済'] as const;

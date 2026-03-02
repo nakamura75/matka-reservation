@@ -264,7 +264,7 @@ export default function ReserveForm() {
           adultCount,
           childrenDetail: childrenDetails.length > 0
             ? childrenDetails.map((c, i) =>
-                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} ${c.clothingSize}`
+                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} / ${c.clothingSize}`
               ).join('\n')
             : '',
           selectedOptions,
@@ -309,7 +309,8 @@ export default function ReserveForm() {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
               <p className="text-sm font-semibold text-green-800 mb-2">📲 LINEで予約番号を送信してください</p>
               <p className="text-xs text-green-700 mb-3">
-                予約内容の確認・通知をLINEで受け取るために、以下のボタンから予約番号を送信してください。
+                下のボタンを押すと、予約番号がLINEトーク内に表示されます。<br />
+                予約内容の確認・通知をLINEで受け取るために、そのまま送信してください。
               </p>
               <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
                 matka予約: {reservationNumber}

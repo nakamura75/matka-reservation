@@ -13,6 +13,7 @@ import {
 import { createCalendarEvent } from '@/lib/google-calendar';
 import { sendLinePush, buildTentativeMessage } from '@/lib/line';
 import { generateId, generateReservationNumber, toJSTDatetime } from '@/lib/utils';
+import { CALENDAR_COLOR_ID_VISIT } from '@/lib/constants';
 import type { ReservationFormData, Reservation } from '@/types';
 
 /** GET /api/reservations - 予約一覧 */
@@ -33,12 +34,14 @@ export async function GET() {
 /** POST /api/reservations - 予約作成（フォーム送信） */
 export async function POST(req: import('next/server').NextRequest) {
   try {
-    const body: ReservationFormData = await req.json();
+    const body: ReservationFormData & { isVisit?: boolean; existingCustomerId?: string } = await req.json();
 
-    // プラン情報取得
+    const isVisit = body.isVisit === true;
+
+    // プラン情報取得（見学の場合はスキップ）
     const plans = await getPlans();
-    const plan = plans.find((p) => p.id === body.planId);
-    if (!plan) {
+    const plan = isVisit ? null : plans.find((p) => p.id === body.planId);
+    if (!isVisit && !plan) {
       return NextResponse.json({ error: 'プランが見つかりません' }, { status: 400 });
     }
 
@@ -72,15 +75,15 @@ export async function POST(req: import('next/server').NextRequest) {
       id: reservationId,
       customerId: customer.id,
       customerName: customer.name,
-      planId: body.planId,
-      planName: plan.name,
+      planId: body.planId ?? '',
+      planName: plan?.name ?? '',
       paymentStatus: false,
       date: body.date,
       timeSlot: body.timeSlot,
       childrenCount: body.childrenCount,
       adultCount: body.adultCount,
       familyNote: body.childrenDetail,
-      status: '予約済' as const,
+      status: (isVisit ? '見学' : '予約済') as const,
       customerNote: body.note,
       otherSceneNote: body.otherSceneNote,
       createdAt: new Date().toISOString(),
@@ -105,14 +108,23 @@ export async function POST(req: import('next/server').NextRequest) {
     // Google Calendar イベント作成 → イベントIDをSheetsに保存
     const startISO = toJSTDatetime(body.date, body.timeSlot);
     const endDate = new Date(startISO);
-    endDate.setMinutes(endDate.getMinutes() + plan.duration);
+    // 見学は30分、撮影はプランの所要時間
+    endDate.setMinutes(endDate.getMinutes() + (isVisit ? 30 : (plan?.duration ?? 60)));
     const endISO = endDate.toISOString().replace('Z', '+09:00');
 
+    const calendarTitle = isVisit
+      ? `【見学】${body.customerName} 様`
+      : `【仮予約】${body.customerName} 様 (${body.scene})`;
+    const calendarDesc = isVisit
+      ? `予約番号: ${reservationNumber}\n電話: ${body.phone}`
+      : `予約番号: ${reservationNumber}\nプラン: ${plan?.name ?? ''}\n電話: ${body.phone}`;
+
     const calendarEventId = await createCalendarEvent({
-      title: `【仮予約】${body.customerName} 様 (${body.scene})`,
+      title: calendarTitle,
       startDateTime: startISO,
       endDateTime: endISO,
-      description: `予約番号: ${reservationNumber}\nプラン: ${plan.name}\n電話: ${body.phone}`,
+      description: calendarDesc,
+      ...(isVisit ? { colorId: CALENDAR_COLOR_ID_VISIT } : {}),
     }).catch((e) => { console.error('Calendar event creation failed:', e); return null; });
 
     if (calendarEventId) {
@@ -124,8 +136,8 @@ export async function POST(req: import('next/server').NextRequest) {
       }
     }
 
-    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信
-    if (body.lineUserId) {
+    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（見学はスキップ）
+    if (!isVisit && body.lineUserId) {
       const allOptions = await getOptions().catch(() => []);
       const optionsWithInfo = body.selectedOptions.map((sel) => {
         const opt = allOptions.find((o) => o.id === sel.optionId);

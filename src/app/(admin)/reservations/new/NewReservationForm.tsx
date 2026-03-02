@@ -23,6 +23,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   const [error, setError] = useState('');
 
   // フォーム状態
+  const [isVisit, setIsVisit] = useState(false);
   const [scene, setScene] = useState('');
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
@@ -33,6 +34,8 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   // 顧客選択 or 新規入力
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('new');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [furigana, setFurigana] = useState('');
   const [phone, setPhone] = useState('');
@@ -102,8 +105,12 @@ export default function NewReservationForm({ plans, options, customers }: Props)
     e.preventDefault();
     setError('');
 
-    if (!scene || !date || !timeSlot || !planId) {
+    if (!isVisit && (!scene || !date || !timeSlot || !planId)) {
       setError('撮影シーン、日付、時間帯、プランは必須です');
+      return;
+    }
+    if (isVisit && (!date || !timeSlot)) {
+      setError('日付、時間帯は必須です');
       return;
     }
 
@@ -139,7 +146,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         selectedOptions,
         note,
         cancelPolicyAgreed: true,
-        // 手動入力の場合は既存顧客IDも送る
+        isVisit,
         existingCustomerId: customerMode === 'existing' ? selectedCustomerId : undefined,
       };
 
@@ -170,41 +177,66 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         </div>
       )}
 
+      {/* 予約種別トグル */}
+      <div className="flex items-center gap-3">
+        <div className="flex text-sm rounded-lg border border-gray-200 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsVisit(false)}
+            className={`px-4 py-2 transition-colors ${!isVisit ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            撮影予約
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsVisit(true)}
+            className={`px-4 py-2 transition-colors ${isVisit ? 'bg-purple-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            見学
+          </button>
+        </div>
+        {isVisit && (
+          <span className="text-sm text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
+            カレンダーに紫色で表示・枠ブロックなし
+          </span>
+        )}
+      </div>
+
       {/* 撮影情報 */}
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-700">撮影情報</h2>
+        <h2 className="font-semibold text-gray-700">{isVisit ? '見学情報' : '撮影情報'}</h2>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm text-gray-500 mb-1">撮影シーン *</label>
-            <select
-              value={scene}
-              onChange={(e) => handleSceneChange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-              required
-            >
-              <option value="">選択...</option>
-              {SHOOTING_SCENES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
+        {!isVisit && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">撮影シーン *</label>
+              <select
+                value={scene}
+                onChange={(e) => handleSceneChange(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">選択...</option>
+                {SHOOTING_SCENES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm text-gray-500 mb-1">プラン *</label>
-            <select
-              value={planId}
-              onChange={(e) => setPlanId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-              required
-            >
-              <option value="">選択...</option>
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}（{formatCurrency(p.price)}）</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">プラン *</label>
+              <select
+                value={planId}
+                onChange={(e) => setPlanId(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">選択...</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}（{formatCurrency(p.price)}）</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -253,9 +285,10 @@ export default function NewReservationForm({ plans, options, customers }: Props)
           <div>
             <label className="block text-sm text-gray-500 mb-1">大人人数</label>
             <input
-              type="text"
+              type="number"
               value={adultCount}
               onChange={(e) => setAdultCount(e.target.value)}
+              min={0}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
@@ -273,8 +306,8 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         </div>
       </section>
 
-      {/* オプション */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+      {/* オプション（見学時は非表示） */}
+      {!isVisit && <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
         <h2 className="font-semibold text-gray-700">オプション</h2>
         <div className="space-y-2">
           {options.map((opt) => {
@@ -305,7 +338,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             );
           })}
         </div>
-      </section>
+      </section>}
 
       {/* 顧客情報 */}
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
@@ -330,20 +363,54 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         </div>
 
         {customerMode === 'existing' ? (
-          <div>
+          <div className="relative">
             <label className="block text-sm text-gray-500 mb-1">顧客を検索・選択</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomerId('');
+                setShowCustomerDropdown(true);
+              }}
+              onFocus={() => setShowCustomerDropdown(true)}
+              onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
+              placeholder="名前・電話番号で検索..."
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-            >
-              <option value="">選択...</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}（{c.phone}）
-                </option>
-              ))}
-            </select>
+            />
+            {showCustomerDropdown && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-56 overflow-y-auto shadow-lg">
+                {customers
+                  .filter((c) =>
+                    customerSearch === '' ||
+                    c.name.includes(customerSearch) ||
+                    (c.furigana ?? '').includes(customerSearch) ||
+                    (c.phone ?? '').includes(customerSearch)
+                  )
+                  .map((c) => (
+                    <li
+                      key={c.id}
+                      onMouseDown={() => {
+                        setSelectedCustomerId(c.id);
+                        setCustomerSearch(`${c.name}（${c.phone}）`);
+                        setShowCustomerDropdown(false);
+                      }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-brand-light ${selectedCustomerId === c.id ? 'bg-brand-light font-medium' : ''}`}
+                    >
+                      {c.name}
+                      <span className="text-gray-400 ml-2">{c.phone}</span>
+                    </li>
+                  ))}
+                {customers.filter((c) =>
+                  customerSearch === '' ||
+                  c.name.includes(customerSearch) ||
+                  (c.furigana ?? '').includes(customerSearch) ||
+                  (c.phone ?? '').includes(customerSearch)
+                ).length === 0 && (
+                  <li className="px-3 py-2 text-sm text-gray-400">該当する顧客が見つかりません</li>
+                )}
+              </ul>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
@@ -395,16 +462,21 @@ export default function NewReservationForm({ plans, options, customers }: Props)
 
       {/* 合計・送信 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-between">
-        <div className="text-sm">
-          <span className="text-gray-400">合計（税込）</span>
-          <span className="text-xl font-bold text-gray-900 ml-3">{formatCurrency(total)}</span>
-        </div>
+        {!isVisit ? (
+          <div className="text-sm">
+            <span className="text-gray-400">合計（税込）</span>
+            <span className="text-xl font-bold text-gray-900 ml-3">{formatCurrency(total)}</span>
+          </div>
+        ) : (
+          <span className="text-sm text-purple-600 font-medium">見学として登録</span>
+        )}
         <button
           type="submit"
           disabled={loading}
-          className="px-8 py-2.5 bg-brand text-white font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
+          className={`px-8 py-2.5 font-medium rounded-lg disabled:opacity-50 transition-colors text-white
+            ${isVisit ? 'bg-purple-500 hover:bg-purple-600' : 'bg-brand hover:bg-brand-dark'}`}
         >
-          {loading ? '登録中...' : '予約を登録する'}
+          {loading ? '登録中...' : isVisit ? '見学を登録する' : '予約を登録する'}
         </button>
       </div>
     </form>
