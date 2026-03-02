@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Reservation, Staff } from '@/types';
+import type { Reservation, Staff, Order, OrderItem } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP } from '@/lib/constants';
+
+interface EnrichedOrderItem extends OrderItem { productPrice: number; }
+interface EnrichedOrder extends Omit<Order, 'items'> { items: EnrichedOrderItem[]; }
 
 interface Props {
   reservations: Reservation[];
   staff: Staff[];
+  orders: EnrichedOrder[];
 }
 
 const ROLES = ['photo', 'assistant', 'hair', 'makeup'] as const;
@@ -28,7 +32,7 @@ function formatYen(amount: number): string {
   return '¥' + amount.toLocaleString('ja-JP');
 }
 
-export default function SalesSummary({ reservations, staff }: Props) {
+export default function SalesSummary({ reservations, staff, orders }: Props) {
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
@@ -51,6 +55,30 @@ export default function SalesSummary({ reservations, staff }: Props) {
   const pendingReservations = useMemo(
     () => monthReservations.filter((r) => r.status === '予約済' || r.status === '予約確定'),
     [monthReservations]
+  );
+
+  // 選択月の注文明細を分類（注文日で月絞り込み）
+  const monthOrders = useMemo(
+    () => orders.filter((o) => o.orderDate.slice(0, 7) === selectedMonth),
+    [orders, selectedMonth]
+  );
+  const shippedOrderTotal = useMemo(
+    () => monthOrders.reduce((sum, o) =>
+      sum + o.items.filter((i) => i.status === '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0), 0),
+    [monthOrders]
+  );
+  const pendingOrderTotal = useMemo(
+    () => monthOrders.reduce((sum, o) =>
+      sum + o.items.filter((i) => i.status !== '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0), 0),
+    [monthOrders]
+  );
+  const shippedItemCount = useMemo(
+    () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status === '発送済').length, 0),
+    [monthOrders]
+  );
+  const pendingItemCount = useMemo(
+    () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status !== '発送済').length, 0),
+    [monthOrders]
   );
 
   // 予約リストから担当者別金額を集計する共通関数
@@ -85,7 +113,7 @@ export default function SalesSummary({ reservations, staff }: Props) {
     return Object.values(map).sort((a, b) => b.total - a.total);
   }
 
-  // 完了・見込みそれぞれの担当者別集計
+  // 完了の担当者別集計
   const byStaff = useMemo(
     () => calcByStaff(completedReservations, staffById),
     [completedReservations, staffById]
@@ -111,6 +139,8 @@ export default function SalesSummary({ reservations, staff }: Props) {
     return totals;
   }, [byStaff]);
 
+  const hasStaffRows = byStaff.length > 0 || shippedOrderTotal > 0;
+
   return (
     <div className="space-y-4">
       {/* 月選択 */}
@@ -129,13 +159,25 @@ export default function SalesSummary({ reservations, staff }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-xs text-gray-500 mb-1">確定売上</p>
-          <p className="text-xs text-gray-400 mb-2">完了 {completedReservations.length} 件</p>
-          <p className="text-2xl font-bold text-gray-900">{formatYen(grandTotal)}</p>
+          <p className="text-xs text-gray-400 mb-2">
+            完了 {completedReservations.length} 件
+            {shippedItemCount > 0 && <span className="ml-2">＋ 発送済商品 {shippedItemCount} 点</span>}
+          </p>
+          <p className="text-2xl font-bold text-gray-900">{formatYen(grandTotal + shippedOrderTotal)}</p>
+          {shippedOrderTotal > 0 && (
+            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(shippedOrderTotal)}</p>
+          )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-xs text-gray-500 mb-1">見込み売上</p>
-          <p className="text-xs text-gray-400 mb-2">予約済・確定 {pendingReservations.length} 件</p>
-          <p className="text-2xl font-bold text-blue-600">{formatYen(pendingTotal)}</p>
+          <p className="text-xs text-gray-400 mb-2">
+            予約済・確定 {pendingReservations.length} 件
+            {pendingItemCount > 0 && <span className="ml-2">＋ 商品 {pendingItemCount} 点</span>}
+          </p>
+          <p className="text-2xl font-bold text-blue-600">{formatYen(pendingTotal + pendingOrderTotal)}</p>
+          {pendingOrderTotal > 0 && (
+            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(pendingOrderTotal)}</p>
+          )}
         </div>
       </div>
 
@@ -156,36 +198,53 @@ export default function SalesSummary({ reservations, staff }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {byStaff.length === 0 ? (
+              {!hasStaffRows ? (
                 <tr>
                   <td colSpan={ROLES.length + 2} className="px-5 py-10 text-center text-gray-400">
-                    {selectedMonth} に「完了」の予約がありません
+                    {selectedMonth} に「完了」の予約・発送済商品がありません
                   </td>
                 </tr>
               ) : (
-                byStaff.map((row) => (
-                  <tr key={row.name} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-800">{row.name}</td>
-                    {ROLES.map((role) => (
-                      <td key={role} className="px-4 py-3 text-right text-gray-600">
-                        {row.counts[role] > 0 ? (
-                          <span>
-                            {formatYen(row.amounts[role])}
-                            <span className="text-xs text-gray-400 ml-1">×{row.counts[role]}</span>
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
+                <>
+                  {byStaff.map((row) => (
+                    <tr key={row.name} className="hover:bg-gray-50">
+                      <td className="px-5 py-3 font-medium text-gray-800">{row.name}</td>
+                      {ROLES.map((role) => (
+                        <td key={role} className="px-4 py-3 text-right text-gray-600">
+                          {row.counts[role] > 0 ? (
+                            <span>
+                              {formatYen(row.amounts[role])}
+                              <span className="text-xs text-gray-400 ml-1">×{row.counts[role]}</span>
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-5 py-3 text-right font-semibold text-gray-900">
+                        {formatYen(row.total)}
                       </td>
-                    ))}
-                    <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                      {formatYen(row.total)}
-                    </td>
-                  </tr>
-                ))
+                    </tr>
+                  ))}
+                  {/* matka. 行（商品売上） */}
+                  {shippedOrderTotal > 0 && (
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-5 py-3 font-medium text-gray-800">
+                        matka.
+                        <span className="text-xs text-gray-400 font-normal ml-1">（商品）</span>
+                      </td>
+                      {ROLES.map((role) => (
+                        <td key={role} className="px-4 py-3 text-right text-gray-300">—</td>
+                      ))}
+                      <td className="px-5 py-3 text-right font-semibold text-gray-900">
+                        {formatYen(shippedOrderTotal)}
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
-            {byStaff.length > 0 && (
+            {hasStaffRows && (
               <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                 <tr>
                   <td className="px-5 py-3 font-semibold text-gray-700">合計</td>
@@ -195,7 +254,7 @@ export default function SalesSummary({ reservations, staff }: Props) {
                     </td>
                   ))}
                   <td className="px-5 py-3 text-right font-bold text-brand text-base">
-                    {formatYen(staffGrandTotal)}
+                    {formatYen(staffGrandTotal + shippedOrderTotal)}
                   </td>
                 </tr>
               </tfoot>

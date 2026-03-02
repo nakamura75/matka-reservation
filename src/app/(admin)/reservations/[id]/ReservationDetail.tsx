@@ -589,41 +589,39 @@ export default function ReservationDetail({ reservation, customer, plan, options
                       <span className="text-gray-400">未連携</span>
                     )}
                   </dd>
-                  {!reservation.lineUserId && !reservation.chatLineUserId && (
-                    <dd className="mt-2">
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          value={lineIdInput}
-                          onChange={(e) => setLineIdInput(e.target.value)}
-                          placeholder="LINE IDをペースト"
-                          className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
-                        />
-                        <button
-                          onClick={async () => {
-                            const id = lineIdInput.trim();
-                            if (!id) return;
-                            setLineIdSaving(true);
-                            try {
-                              await fetch(`/api/reservations/${reservation.id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ lineUserId: id }),
-                              });
-                              setLineIdInput('');
-                              router.refresh();
-                            } finally {
-                              setLineIdSaving(false);
-                            }
-                          }}
-                          disabled={lineIdSaving || !lineIdInput.trim()}
-                          className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
-                        >
-                          {lineIdSaving ? '保存中...' : '登録'}
-                        </button>
-                      </div>
-                    </dd>
-                  )}
+                  <dd className="mt-2">
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={lineIdInput}
+                        onChange={(e) => setLineIdInput(e.target.value)}
+                        placeholder="LINE IDをペースト"
+                        className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+                      />
+                      <button
+                        onClick={async () => {
+                          const id = lineIdInput.trim();
+                          if (!id) return;
+                          setLineIdSaving(true);
+                          try {
+                            await fetch(`/api/reservations/${reservation.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ lineUserId: id }),
+                            });
+                            setLineIdInput('');
+                            router.refresh();
+                          } finally {
+                            setLineIdSaving(false);
+                          }
+                        }}
+                        disabled={lineIdSaving || !lineIdInput.trim()}
+                        className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {lineIdSaving ? '保存中...' : (reservation.lineUserId || reservation.chatLineUserId) ? '更新' : '登録'}
+                      </button>
+                    </div>
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-gray-400">登録日</dt>

@@ -169,7 +169,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                       </a>
                     </dd>
                   ) : null}
-                  {!customer.lineUserId && !customer.chatLineUserId && linkTargetReservationId && (
+                  {linkTargetReservationId && (
                     <dd className="mt-2">
                       <div className="flex gap-1.5">
                         <input
@@ -199,7 +199,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                           disabled={lineIdSaving || !lineIdInput.trim()}
                           className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
                         >
-                          {lineIdSaving ? '保存中...' : '登録'}
+                          {lineIdSaving ? '保存中...' : (customer.lineUserId || customer.chatLineUserId) ? '更新' : '登録'}
                         </button>
                       </div>
                     </dd>
