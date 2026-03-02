@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/utils';
 const STATUS_COLORS = {
   '予約済': 'bg-yellow-100 text-yellow-800',
   '予約確定': 'bg-blue-100 text-blue-800',
+  '見学': 'bg-purple-100 text-purple-700',
   '完了': 'bg-green-100 text-green-800',
   'キャンセル': 'bg-gray-100 text-gray-500',
 } as const;

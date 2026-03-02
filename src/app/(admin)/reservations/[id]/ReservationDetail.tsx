@@ -16,6 +16,7 @@ type NewOrderItem = { productId: string; productName: string; price: number; qua
 const STATUS_LABEL: Record<Reservation['status'], string> = {
   '予約済': '仮予約',
   '予約確定': '予約確定',
+  '見学': '見学',
   '完了': '完了',
   'キャンセル': 'キャンセル',
 };
@@ -23,6 +24,7 @@ const STATUS_LABEL: Record<Reservation['status'], string> = {
 const STATUS_COLORS = {
   '予約済': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   '予約確定': 'bg-blue-100 text-blue-800 border-blue-200',
+  '見学': 'bg-purple-100 text-purple-700 border-purple-200',
   '完了': 'bg-green-100 text-green-800 border-green-200',
   'キャンセル': 'bg-gray-100 text-gray-500 border-gray-200',
 } as const;
@@ -30,6 +32,7 @@ const STATUS_COLORS = {
 const NEXT_STATUS: Record<Reservation['status'], Reservation['status'] | null> = {
   '予約済': '予約確定',
   '予約確定': null, // 完了は予約日経過で自動
+  '見学': null,
   '完了': null,
   'キャンセル': null,
 };
