@@ -392,7 +392,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         ))}
 
         <div>
-          <label className="block text-sm text-gray-500 mb-1">家族構成メモ</label>
+          <label className="block text-sm text-gray-500 mb-1">構成メモ</label>
           <textarea
             value={familyNote}
             onChange={(e) => setFamilyNote(e.target.value)}
