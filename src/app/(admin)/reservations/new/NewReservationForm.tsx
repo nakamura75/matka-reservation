@@ -45,6 +45,9 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   const [childrenCount, setChildrenCount] = useState('');
   const [adultCount, setAdultCount] = useState('');
   const [familyNote, setFamilyNote] = useState('');
+  const [childrenDetails, setChildrenDetails] = useState<{
+    name: string; gender: string; birthday: string; clothingSize: string;
+  }[]>([]);
 
   // シーン変更時にプランを自動設定
   function handleSceneChange(s: string) {
@@ -74,6 +77,24 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         if (matchingPlan) setPlanId(matchingPlan.id);
       }
     }
+  }
+
+  function handleChildrenCountChange(val: string) {
+    setChildrenCount(val);
+    const n = parseInt(val) || 0;
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      while (next.length < n) next.push({ name: '', gender: '', birthday: '', clothingSize: '' });
+      return next.slice(0, n);
+    });
+  }
+
+  function updateChildDetail(index: number, field: string, value: string) {
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
   }
 
   // オプション変更
@@ -142,7 +163,11 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         phone: customer?.phone ?? phone,
         email: customer?.email ?? email,
         peopleCount: adultCount,
-        childrenDetail: familyNote,
+        childrenDetail: childrenDetails.length > 0
+          ? childrenDetails.map((c, i) =>
+              `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} / ${c.clothingSize}`
+            ).join('\n') + (familyNote ? `\n${familyNote}` : '')
+          : familyNote,
         selectedOptions,
         note,
         cancelPolicyAgreed: true,
@@ -206,7 +231,21 @@ export default function NewReservationForm({ plans, options, customers }: Props)
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h2 className="font-semibold text-gray-700">{isVisit ? '見学情報' : '撮影情報'}</h2>
 
-        {!isVisit && (
+        {isVisit ? (
+          <div>
+            <label className="block text-sm text-gray-500 mb-1">撮影シーン（任意）</label>
+            <select
+              value={scene}
+              onChange={(e) => handleSceneChange(e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+            >
+              <option value="">選択...</option>
+              {SHOOTING_SCENES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-500 mb-1">撮影シーン *</label>
@@ -277,7 +316,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <input
               type="number"
               value={childrenCount}
-              onChange={(e) => setChildrenCount(e.target.value)}
+              onChange={(e) => handleChildrenCountChange(e.target.value)}
               min={0}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
@@ -293,6 +332,64 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             />
           </div>
         </div>
+
+        {childrenDetails.map((child, i) => (
+          <div key={i} className="border border-brand rounded-xl p-4 space-y-3 bg-brand-light/40">
+            <p className="text-sm font-semibold text-brand">お子様 {i + 1}人目</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">お名前</label>
+                <input
+                  type="text"
+                  value={child.name}
+                  onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
+                  placeholder="例：さくら"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">生年月日</label>
+                <input
+                  type="date"
+                  value={child.birthday}
+                  onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">性別</label>
+                <div className="flex gap-2">
+                  {['男の子', '女の子'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => updateChildDetail(i, 'gender', g)}
+                      className={`flex-1 py-1.5 rounded-lg border text-sm transition-colors
+                        ${child.gender === g
+                          ? 'border-brand bg-brand-light text-brand-dark font-medium'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">洋服サイズ</label>
+                <input
+                  type="text"
+                  value={child.clothingSize}
+                  onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
+                  placeholder="例：100cm"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
 
         <div>
           <label className="block text-sm text-gray-500 mb-1">家族構成メモ</label>
