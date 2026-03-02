@@ -314,6 +314,9 @@ export default function ReserveForm() {
               <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
                 matka予約: {reservationNumber}
               </div>
+              <div className="bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 mb-3">
+                <p className="text-xs font-semibold text-amber-800">⚠️ メッセージの内容は変更せずにそのまま送信してください</p>
+              </div>
               {/* QRコード（常に表示） */}
               <div className="flex flex-col items-center bg-white rounded-xl border border-green-200 p-4 mb-3">
                 <QRCodeSVG value={`https://line.me/R/oaMessage/@671kcyek/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`} size={120} />
