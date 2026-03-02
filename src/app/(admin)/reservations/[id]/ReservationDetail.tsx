@@ -277,7 +277,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
   }
 
   // 撮影合計（プラン＋オプション）※見学は料金0
-  const isVisit = reservation.status === '見学';
+  const isVisit = status === '見学';
   const optionTotal = isVisit ? 0 : currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = isVisit ? 0 : (plan?.price ?? 0);
   const computedTotal = planPrice + optionTotal;
