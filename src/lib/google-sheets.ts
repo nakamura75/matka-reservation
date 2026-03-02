@@ -107,7 +107,7 @@ export async function updateCell(
 export async function getCustomers(): Promise<Customer[]> {
   const rows = await getSheetData(SHEET_NAMES.CUSTOMERS);
   if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => rowToCustomer(r, i + 2));
+  return rows.slice(1).map((r, i) => rowToCustomer(r, i + 2)).filter((c) => c.id !== '');
 }
 
 /** ID顧客で顧客取得 */
@@ -127,6 +127,17 @@ export async function createCustomer(data: Omit<Customer, '_rowNumber'>): Promis
 export async function updateCustomer(data: Customer): Promise<void> {
   if (!data._rowNumber) throw new Error('rowNumber is required');
   await updateRow(SHEET_NAMES.CUSTOMERS, data._rowNumber, customerToRow(data));
+}
+
+/** 顧客削除（論理削除：行を空文字で上書き） */
+export async function deleteCustomer(rowNumber: number): Promise<void> {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAMES.CUSTOMERS}!A${rowNumber}:J${rowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [['', '', '', '', '', '', '', '', '', '']] },
+  });
 }
 
 function rowToCustomer(r: string[], rowNumber: number): Customer {

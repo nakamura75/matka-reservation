@@ -27,6 +27,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [lineIdInput, setLineIdInput] = useState('');
   const [lineIdSaving, setLineIdSaving] = useState(false);
   const [form, setForm] = useState({
@@ -38,6 +39,22 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
     address: customer.address ?? '',
     note: customer.note ?? '',
   });
+
+  async function handleDelete() {
+    if (!confirm(`「${customer.name}」を削除しますか？この操作は取り消せません。`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        router.push('/customers');
+      } else {
+        alert(data.error ?? '削除に失敗しました');
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -69,6 +86,15 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
             </span>
           )}
         </h1>
+        <button
+          onClick={handleDelete}
+          disabled={deleting || reservations.length > 0}
+          title={reservations.length > 0 ? '予約がある顧客は削除できません' : '顧客を削除'}
+          className="flex items-center gap-1 text-sm text-red-400 hover:text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <XMarkIcon className="w-4 h-4" />
+          {deleting ? '削除中...' : '削除'}
+        </button>
         <button
           onClick={() => setEditing(!editing)}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50"
