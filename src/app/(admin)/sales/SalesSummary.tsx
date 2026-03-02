@@ -171,7 +171,7 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <p className="text-xs text-gray-500 mb-1">見込み売上</p>
           <p className="text-xs text-gray-400 mb-2">
-            予約済・確定 {pendingReservations.length} 件
+            仮予約・確定 {pendingReservations.length} 件
             {pendingItemCount > 0 && <span className="ml-2">＋ 商品 {pendingItemCount} 点</span>}
           </p>
           <p className="text-2xl font-bold text-blue-600">{formatYen(pendingTotal + pendingOrderTotal)}</p>

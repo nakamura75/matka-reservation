@@ -13,6 +13,14 @@ const STATUS_DOT: Record<Reservation['status'], string> = {
   'キャンセル': 'bg-gray-300',
 };
 
+const STATUS_LABEL: Record<Reservation['status'], string> = {
+  '予約済': '仮予約',
+  '予約確定': '予約確定',
+  '見学': '見学',
+  '完了': '完了',
+  'キャンセル': 'キャンセル',
+};
+
 const TIME_ORDER = ['9:00', '12:00', '15:00'];
 
 interface Props {
@@ -155,7 +163,7 @@ export default function ReservationCalendar({ reservations }: Props) {
         {Object.entries(STATUS_DOT).map(([status, dot]) => (
           <span key={status} className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
-            {status}
+            {STATUS_LABEL[status as Reservation['status']]}
           </span>
         ))}
       </div>

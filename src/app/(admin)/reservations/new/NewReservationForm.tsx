@@ -296,17 +296,28 @@ export default function NewReservationForm({ plans, options, customers }: Props)
 
           <div>
             <label className="block text-sm text-gray-500 mb-1">時間帯 *</label>
-            <select
-              value={timeSlot}
-              onChange={(e) => setTimeSlot(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-              required
-            >
-              <option value="">選択...</option>
-              {timeSlots.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            {isVisit ? (
+              <input
+                type="text"
+                value={timeSlot}
+                onChange={(e) => setTimeSlot(e.target.value)}
+                placeholder="例：10:00"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                required
+              />
+            ) : (
+              <select
+                value={timeSlot}
+                onChange={(e) => setTimeSlot(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                required
+              >
+                <option value="">選択...</option>
+                {timeSlots.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 

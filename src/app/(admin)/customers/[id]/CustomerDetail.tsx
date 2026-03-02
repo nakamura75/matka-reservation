@@ -15,6 +15,14 @@ const STATUS_COLORS = {
   'キャンセル': 'bg-gray-100 text-gray-500',
 } as const;
 
+const STATUS_LABEL: Record<string, string> = {
+  '予約済': '仮予約',
+  '予約確定': '予約確定',
+  '見学': '見学',
+  '完了': '完了',
+  'キャンセル': 'キャンセル',
+};
+
 interface Props {
   customer: Customer;
   reservations: (Reservation & { planName?: string })[];
@@ -293,7 +301,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                       <td className="px-4 py-3 text-gray-500">{r.planName}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status]}`}>
-                          {r.status}
+                          {STATUS_LABEL[r.status] ?? r.status}
                         </span>
                       </td>
                     </tr>
