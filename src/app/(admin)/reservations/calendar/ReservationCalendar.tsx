@@ -8,6 +8,7 @@ import type { Reservation } from '@/types';
 const STATUS_DOT: Record<Reservation['status'], string> = {
   '予約済': 'bg-yellow-400',
   '予約確定': 'bg-blue-400',
+  '見学': 'bg-purple-400',
   '完了': 'bg-green-400',
   'キャンセル': 'bg-gray-300',
 };
@@ -215,6 +216,7 @@ export default function ReservationCalendar({ reservations }: Props) {
                         ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
                           r.status === '完了' ? 'bg-green-50 text-green-700' :
                           r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
+                          r.status === '見学' ? 'bg-purple-50 text-purple-700' :
                           'bg-yellow-50 text-yellow-700'}`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
@@ -266,6 +268,7 @@ export default function ReservationCalendar({ reservations }: Props) {
                         ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
                           r.status === '完了' ? 'bg-green-50 text-green-700' :
                           r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
+                          r.status === '見学' ? 'bg-purple-50 text-purple-700' :
                           'bg-yellow-50 text-yellow-700'}`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
