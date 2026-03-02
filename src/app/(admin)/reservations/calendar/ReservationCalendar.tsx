@@ -96,7 +96,6 @@ export default function ReservationCalendar({ reservations }: Props) {
 
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
 
-  const weekEndStr = toDateStr(addDays(weekStart, 6));
   const weekStartMonth = weekStart.getMonth() + 1;
   const weekEndMonth = addDays(weekStart, 6).getMonth() + 1;
   const weekLabel = weekStartMonth === weekEndMonth
