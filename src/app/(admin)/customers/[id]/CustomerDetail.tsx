@@ -190,7 +190,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                   {customer.chatLineUserId ? (
                     <dd className="mt-2">
                       <a
-                        href={`https://chat.line.biz/U0d18720f335c977115f56e46a46422f9/chat/${customer.chatLineUserId}`}
+                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${customer.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
