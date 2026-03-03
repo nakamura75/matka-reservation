@@ -44,6 +44,13 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
     return map;
   }, [staff]);
 
+  // 予約ID → 予約日マップ
+  const reservationDateMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of reservations) map[r.id] = r.date;
+    return map;
+  }, [reservations]);
+
   // 選択月の予約をステータスで分類
   const monthReservations = useMemo(
     () => reservations.filter((r) => r.date.slice(0, 7) === selectedMonth),
@@ -58,10 +65,13 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
     [monthReservations]
   );
 
-  // 選択月の注文明細を分類（注文日で月絞り込み）
+  // 選択月の注文明細を分類（紐づく予約日で月絞り込み、なければ注文日）
   const monthOrders = useMemo(
-    () => orders.filter((o) => o.orderDate.slice(0, 7) === selectedMonth),
-    [orders, selectedMonth]
+    () => orders.filter((o) => {
+      const date = o.reservationId ? reservationDateMap[o.reservationId] : o.orderDate;
+      return date?.slice(0, 7) === selectedMonth;
+    }),
+    [orders, reservationDateMap, selectedMonth]
   );
   const shippedOrderTotal = useMemo(
     () => monthOrders.reduce((sum, o) =>
