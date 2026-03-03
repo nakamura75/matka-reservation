@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import type { Reservation, Staff, Order, OrderItem } from '@/types';
-import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP } from '@/lib/constants';
+import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
+import { isWeekend } from '@/lib/utils';
 
 interface EnrichedOrderItem extends OrderItem { productPrice: number; }
 interface EnrichedOrder extends Omit<Order, 'items'> { items: EnrichedOrderItem[]; }
@@ -80,6 +81,14 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
     () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status !== '発送済').length, 0),
     [monthOrders]
   );
+  const holidayFeeTotal = useMemo(
+    () => completedReservations.filter((r) => isWeekend(r.date)).length * HOLIDAY_FEE,
+    [completedReservations]
+  );
+  const holidayFeeCount = useMemo(
+    () => completedReservations.filter((r) => isWeekend(r.date)).length,
+    [completedReservations]
+  );
 
   // 予約リストから担当者別金額を集計する共通関数
   function calcByStaff(
@@ -139,7 +148,7 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
     return totals;
   }, [byStaff]);
 
-  const hasStaffRows = byStaff.length > 0 || shippedOrderTotal > 0;
+  const hasStaffRows = byStaff.length > 0 || shippedOrderTotal > 0 || holidayFeeTotal > 0;
 
   return (
     <div className="space-y-4">
@@ -226,18 +235,23 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
                       </td>
                     </tr>
                   ))}
-                  {/* matka. 行（商品売上） */}
-                  {shippedOrderTotal > 0 && (
+                  {/* matka. 行（休日料金・商品売上） */}
+                  {(shippedOrderTotal > 0 || holidayFeeTotal > 0) && (
                     <tr className="hover:bg-gray-50">
                       <td className="px-5 py-3 font-medium text-gray-800">
                         matka.
-                        <span className="text-xs text-gray-400 font-normal ml-1">（商品）</span>
+                        <span className="text-xs text-gray-400 font-normal ml-1">
+                          （{[
+                            holidayFeeCount > 0 && `休日料金 ×${holidayFeeCount}`,
+                            shippedOrderTotal > 0 && '商品',
+                          ].filter(Boolean).join(' ＋ ')}）
+                        </span>
                       </td>
                       {ROLES.map((role) => (
                         <td key={role} className="px-4 py-3 text-right text-gray-300">—</td>
                       ))}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                        {formatYen(shippedOrderTotal)}
+                        {formatYen(shippedOrderTotal + holidayFeeTotal)}
                       </td>
                     </tr>
                   )}
@@ -254,7 +268,7 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
                     </td>
                   ))}
                   <td className="px-5 py-3 text-right font-bold text-brand text-base">
-                    {formatYen(staffGrandTotal + shippedOrderTotal)}
+                    {formatYen(staffGrandTotal + shippedOrderTotal + holidayFeeTotal)}
                   </td>
                 </tr>
               </tfoot>
