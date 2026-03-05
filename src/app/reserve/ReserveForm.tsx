@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
-import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID } from '@/lib/constants';
+import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID, LINE_OA_ID } from '@/lib/constants';
 import { formatCurrency, formatDate, isWeekend } from '@/lib/utils';
 
 // ============================================================
@@ -320,12 +320,12 @@ export default function ReserveForm() {
               </div>
               {/* QRコード（常に表示） */}
               <div className="flex flex-col items-center bg-white rounded-xl border border-green-200 p-4 mb-3">
-                <QRCodeSVG value={`https://line.me/R/oaMessage/@671kcyek/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`} size={120} />
+                <QRCodeSVG value={`https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`} size={120} />
                 <p className="text-xs text-gray-500 mt-2">カメラでスキャン または ボタンをタップ</p>
               </div>
               {/* ボタン（常に表示） */}
               <a
-                href={`https://line.me/R/oaMessage/@671kcyek/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`}
+                href={`https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center py-2.5 bg-[#06C755] text-white text-sm font-medium rounded-lg hover:bg-[#05a847] transition-colors"
