@@ -1,6 +1,6 @@
 export const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? '';
 export const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? '';
-export const LINE_OA_ID = '@671kcyek';
+export const LINE_OA_ID = '@082mluna';
 export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2009330357-AnI0gz2I';
 
 // 予約可能な最大日数（今日から60日後まで）
