@@ -1,7 +1,7 @@
 export const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? '';
 export const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? '';
 export const LINE_OA_ID = '@671kcyek';
-export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2008978937-JCk8uXQU';
+export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2009330357-AnI0gz2I';
 
 // 予約可能な最大日数（今日から60日後まで）
 export const BOOKING_DAYS = 60;
@@ -41,7 +41,7 @@ export const SHEET_NAMES = {
 // 予約ステータス
 export const RESERVATION_STATUSES = ['予約済', '予約確定', '見学', '完了', 'キャンセル'] as const;
 
-// Googleカレンダーイベントカラー（見学は Grape = 3）
+// Googleカレンダーイベントォラー（見学は Grape = 3）
 export const CALENDAR_COLOR_ID_VISIT = '3';
 
 // 注文詳細ステータス
