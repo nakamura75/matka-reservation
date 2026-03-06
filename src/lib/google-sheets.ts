@@ -14,6 +14,28 @@ import type {
 } from '@/types';
 
 // ============================================================
+// インメモリキャッシュ（プラン・オプション・スタッフ・商品用）
+// スロット・予約はキャッシュなし（ダブルブッキング防止）
+// ============================================================
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5分
+
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cache = new Map<string, CacheEntry<any>>();
+
+async function withCache<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const entry = cache.get(key);
+  if (entry && Date.now() < entry.expiresAt) return entry.data as T;
+  const data = await fetcher();
+  cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  return data;
+}
+
+// ============================================================
 // 認証
 // ============================================================
 function getAuth() {
@@ -176,9 +198,11 @@ function customerToRow(c: Omit<Customer, '_rowNumber'>): (string | number | bool
 // ============================================================
 
 export async function getPlans(): Promise<Plan[]> {
-  const rows = await getSheetData(SHEET_NAMES.PLANS);
-  if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => rowToPlan(r, i + 2));
+  return withCache('plans', async () => {
+    const rows = await getSheetData(SHEET_NAMES.PLANS);
+    if (rows.length < 2) return [];
+    return rows.slice(1).map((r, i) => rowToPlan(r, i + 2));
+  });
 }
 
 function rowToPlan(r: string[], rowNumber: number): Plan {
@@ -198,9 +222,11 @@ function rowToPlan(r: string[], rowNumber: number): Plan {
 // ============================================================
 
 export async function getOptions(): Promise<Option[]> {
-  const rows = await getSheetData(SHEET_NAMES.OPTIONS);
-  if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => rowToOption(r, i + 2));
+  return withCache('options', async () => {
+    const rows = await getSheetData(SHEET_NAMES.OPTIONS);
+    if (rows.length < 2) return [];
+    return rows.slice(1).map((r, i) => rowToOption(r, i + 2));
+  });
 }
 
 function rowToOption(r: string[], rowNumber: number): Option {
@@ -220,15 +246,17 @@ function rowToOption(r: string[], rowNumber: number): Option {
 // ============================================================
 
 export async function getStaff(): Promise<Staff[]> {
-  const rows = await getSheetData(SHEET_NAMES.STAFF);
-  if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => ({
-    _rowNumber: i + 2,
-    id: r[0] ?? '',       // A: IDスタッフ
-    name: r[1] ?? '',     // B: スタッフ名
-    isActive: r[2],       // C: 有効
-    role: r[3],           // D: 担当
-  }));
+  return withCache('staff', async () => {
+    const rows = await getSheetData(SHEET_NAMES.STAFF);
+    if (rows.length < 2) return [];
+    return rows.slice(1).map((r, i) => ({
+      _rowNumber: i + 2,
+      id: r[0] ?? '',       // A: IDスタッフ
+      name: r[1] ?? '',     // B: スタッフ名
+      isActive: r[2],       // C: 有効
+      role: r[3],           // D: 担当
+    }));
+  });
 }
 
 // ============================================================
@@ -563,17 +591,19 @@ export async function updateOrderItem(
 // ============================================================
 
 export async function getProducts(): Promise<Product[]> {
-  const rows = await getSheetData(SHEET_NAMES.PRODUCTS);
-  if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => ({
-    _rowNumber: i + 2,
-    id: r[0] ?? '',             // A: ID商品
-    name: r[1] ?? '',           // B: 商品名
-    price: Number(r[2]) || 0,   // C: 単価
-    image: r[3],                // D: 商品画像
-    description: r[4],          // E: 説明
-    isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
-  } as Product));
+  return withCache('products', async () => {
+    const rows = await getSheetData(SHEET_NAMES.PRODUCTS);
+    if (rows.length < 2) return [];
+    return rows.slice(1).map((r, i) => ({
+      _rowNumber: i + 2,
+      id: r[0] ?? '',             // A: ID商品
+      name: r[1] ?? '',           // B: 商品名
+      price: Number(r[2]) || 0,   // C: 単価
+      image: r[3],                // D: 商品画像
+      description: r[4],          // E: 説明
+      isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
+    } as Product));
+  });
 }
 
 export async function createProduct(data: Omit<Product, '_rowNumber'>): Promise<void> {
