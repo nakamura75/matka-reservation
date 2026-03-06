@@ -110,7 +110,8 @@ export async function POST(req: import('next/server').NextRequest) {
     const endDate = new Date(startISO);
     // 見学は30分、撮影はプランの所要時間
     endDate.setMinutes(endDate.getMinutes() + (isVisit ? 30 : (plan?.duration ?? 60)));
-    const endISO = endDate.toISOString().replace('Z', '+09:00');
+    const endJST = new Date(endDate.getTime() + 9 * 60 * 60 * 1000);
+    const endISO = endJST.toISOString().slice(0, 19) + '+09:00';
 
     const calendarTitle = isVisit
       ? `【見学】${body.customerName} 様`

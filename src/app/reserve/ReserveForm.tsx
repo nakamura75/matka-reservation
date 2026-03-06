@@ -396,7 +396,7 @@ export default function ReserveForm() {
                 {(() => {
                   const today = new Date();
                   const minY = today.getFullYear(), minM = today.getMonth();
-                  const future = new Date(today); future.setDate(today.getDate() + 60);
+                  const future = new Date(today); future.setDate(today.getDate() + 180);
                   const maxY = future.getFullYear(), maxM = future.getMonth();
                   const { year, month } = calendarYM;
                   const canPrev = year > minY || month > minM;
@@ -621,7 +621,7 @@ export default function ReserveForm() {
                 type="date"
                 value={child.birthday}
                 onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
-                className="w-full text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full max-w-full box-border text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
 
