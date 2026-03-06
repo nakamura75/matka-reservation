@@ -3,11 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
+
+// ① 表示ラベル（DBの値 '予約済' は変えない）
+const STATUS_LABEL: Record<Reservation['status'], string> = {
+  '予約済': '仮予約',
+  '予約確定': '予約確定',
+  '完了': '完了',
+  'キャンセル': 'キャンセル',
+};
 
 const STATUS_COLORS = {
   '予約済': 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -28,6 +36,16 @@ const NEXT_STATUS_LABEL: Record<string, string> = {
   '完了': '完了にする',
 };
 
+// ④ 税計算ヘルパー（税込前提、消費税10%）
+function taxExcluded(amount: number) {
+  return Math.round(amount / 1.1);
+}
+
+// ② 時間の秒を削除
+function stripSeconds(time: string) {
+  return time ? time.replace(/:\d{2}$/, '') : time;
+}
+
 interface Props {
   reservation: Reservation;
   customer: Customer | null;
@@ -40,13 +58,17 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState(reservation.note ?? '');
-  const [discount, setDiscount] = useState(reservation.discountAmount ?? 0);
-  const [discountReason, setDiscountReason] = useState(reservation.discountReason ?? '');
   const [saving, setSaving] = useState(false);
 
+  // ③ 合計金額を直接編集（値引き額フィールドを廃止し、T列を合計金額として再利用）
   const optionTotal = options.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
-  const total = planPrice + optionTotal - discount;
+  const computedTotal = planPrice + optionTotal;
+  const [customTotal, setCustomTotal] = useState(
+    reservation.discountAmount != null && reservation.discountAmount > 0
+      ? reservation.discountAmount
+      : computedTotal
+  );
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -73,7 +95,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, discountAmount: discount, discountReason }),
+        body: JSON.stringify({ note, totalAmount: customTotal }),
       });
       router.refresh();
     } finally {
@@ -100,8 +122,9 @@ export default function ReservationDetail({ reservation, customer, plan, options
             {reservation.reservationNumber}
           </span>
         </h1>
+        {/* ① 表示ラベル変更 */}
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${STATUS_COLORS[status]}`}>
-          {status}
+          {STATUS_LABEL[status]}
         </span>
       </div>
 
@@ -118,7 +141,8 @@ export default function ReservationDetail({ reservation, customer, plan, options
               </div>
               <div>
                 <dt className="text-gray-400">時間帯</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{reservation.timeSlot}</dd>
+                {/* ② 秒を削除 */}
+                <dd className="font-medium text-gray-900 mt-0.5">{stripSeconds(reservation.timeSlot)}</dd>
               </div>
               <div>
                 <dt className="text-gray-400">撮影シーン</dt>
@@ -201,11 +225,11 @@ export default function ReservationDetail({ reservation, customer, plan, options
             )}
           </section>
 
-          {/* 備考・値引き（編集可能） */}
+          {/* ③ 備考・合計金額（値引きフィールド削除、合計直接編集） */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
               <PencilSquareIcon className="w-4 h-4" />
-              備考・値引き
+              備考・合計金額
             </h2>
             <div className="space-y-4">
               <div>
@@ -218,27 +242,25 @@ export default function ReservationDetail({ reservation, customer, plan, options
                   placeholder="スタッフ向けメモ..."
                 />
               </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">値引額</label>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">合計金額（税込）</label>
+                <div className="flex items-center gap-3">
                   <input
                     type="number"
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                    value={customTotal}
+                    onChange={(e) => setCustomTotal(Number(e.target.value))}
+                    className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
                     min={0}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setCustomTotal(computedTotal)}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline"
+                  >
+                    自動計算に戻す
+                  </button>
                 </div>
-                <div className="flex-[2]">
-                  <label className="block text-xs text-gray-400 mb-1">値引理由</label>
-                  <input
-                    type="text"
-                    value={discountReason}
-                    onChange={(e) => setDiscountReason(e.target.value)}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
-                    placeholder="例: スタッフ紹介、リピーター割引"
-                  />
-                </div>
+                <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal)}</p>
               </div>
               <button
                 onClick={saveNote}
@@ -283,29 +305,39 @@ export default function ReservationDetail({ reservation, customer, plan, options
             )}
           </section>
 
-          {/* 料金サマリー */}
+          {/* ④ 料金サマリー（税抜・税込の両方表示） */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">料金</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>プラン料金</span>
-                <span>{formatCurrency(planPrice)}</span>
+                <div className="text-right">
+                  <div>{formatCurrency(planPrice)}</div>
+                  <div className="text-xs text-gray-400">税抜 {formatCurrency(taxExcluded(planPrice))}</div>
+                </div>
               </div>
               {optionTotal > 0 && (
                 <div className="flex justify-between text-gray-600">
                   <span>オプション合計</span>
-                  <span>{formatCurrency(optionTotal)}</span>
+                  <div className="text-right">
+                    <div>{formatCurrency(optionTotal)}</div>
+                    <div className="text-xs text-gray-400">税抜 {formatCurrency(taxExcluded(optionTotal))}</div>
+                  </div>
                 </div>
               )}
-              {discount > 0 && (
-                <div className="flex justify-between text-red-500">
-                  <span>値引き</span>
-                  <span>−{formatCurrency(discount)}</span>
+              <div className="pt-2 border-t border-gray-100 space-y-1">
+                <div className="flex justify-between text-gray-500 text-xs">
+                  <span>税抜合計</span>
+                  <span>{formatCurrency(taxExcluded(customTotal))}</span>
                 </div>
-              )}
-              <div className="flex justify-between font-bold text-gray-900 text-base pt-2 border-t border-gray-100">
-                <span>合計（税込）</span>
-                <span>{formatCurrency(total)}</span>
+                <div className="flex justify-between text-gray-500 text-xs">
+                  <span>消費税（10%）</span>
+                  <span>{formatCurrency(customTotal - taxExcluded(customTotal))}</span>
+                </div>
+                <div className="flex justify-between font-bold text-gray-900 text-base pt-1">
+                  <span>合計（税込）</span>
+                  <span className="text-pink-600">{formatCurrency(customTotal)}</span>
+                </div>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t border-gray-100">
@@ -316,6 +348,20 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </span>
               </div>
             </div>
+          </section>
+
+          {/* ⑤ 領収書ボタン */}
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">書類</h2>
+            <a
+              href={`/reservations/${reservation.id}/receipt`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-2.5 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <DocumentTextIcon className="w-4 h-4" />
+              領収書を開く（PDF印刷）
+            </a>
           </section>
 
           {/* ステータス操作 */}

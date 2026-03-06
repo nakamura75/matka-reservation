@@ -39,14 +39,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* サイドバー本体 */}
       <aside
-        className={`fixed top-0 left-0 z-30 h-full w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300
+        className={`fixed top-0 left-0 z-30 h-full w-64 bg-white border-r border-cream-dark flex flex-col transition-transform duration-300
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0 lg:static lg:z-auto`}
       >
         {/* ロゴ */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-cream-dark">
           <span className="text-xl font-bold text-gray-900 tracking-tight">
-            Matka<span className="text-pink-500">Studio</span>
+            Matka<span className="text-brand">Studio</span>
           </span>
           <button
             onClick={onClose}
@@ -70,11 +70,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 onClick={onClose}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                   ${isActive
-                    ? 'bg-pink-50 text-pink-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-brand-light text-brand-dark'
+                    : 'text-gray-600 hover:bg-cream hover:text-gray-900'
                   }`}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-brand' : ''}`} />
                 {item.label}
               </Link>
             );

@@ -11,7 +11,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+    <header className="sticky top-0 z-10 bg-white border-b border-cream-dark px-4 py-3 flex items-center justify-between">
       {/* ハンバーガー（モバイル） */}
       <button
         onClick={onMenuClick}
@@ -45,7 +45,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </span>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded border border-gray-200 hover:border-gray-300 transition-colors"
+              className="text-xs text-gray-400 hover:text-brand px-2 py-1 rounded border border-cream-dark hover:border-brand/30 transition-colors"
             >
               ログアウト
             </button>
