@@ -75,6 +75,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [checkInTime, setCheckInTime] = useState(reservation.checkInTime ?? '');
   const [checkOutTime, setCheckOutTime] = useState(reservation.checkOutTime ?? '');
   const [saving, setSaving] = useState(false);
+  const [isEditingNote, setIsEditingNote] = useState(false);
   const [lineIdInput, setLineIdInput] = useState('');
   const [lineIdSaving, setLineIdSaving] = useState(false);
 
@@ -319,6 +320,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note, totalAmount: grandTotal }),
       });
+      setIsEditingNote(false);
       router.refresh();
     } finally {
       setSaving(false);
@@ -837,46 +839,86 @@ export default function ReservationDetail({ reservation, customer, plan, options
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
               <PencilSquareIcon className="w-4 h-4" />
               備考・合計金額
+              {!isEditingNote && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingNote(true)}
+                  className="ml-auto text-xs text-brand hover:text-brand-dark border border-brand/30 rounded px-2 py-0.5"
+                >
+                  編集
+                </button>
+              )}
             </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">備考</label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  rows={3}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
-                  placeholder="スタッフ向けメモ..."
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">合計金額（税込）</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    value={grandTotal}
-                    onChange={(e) => setGrandTotal(Number(e.target.value))}
-                    className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-                    min={0}
+            {isEditingNote ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">備考</label>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={3}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
+                    placeholder="スタッフ向けメモ..."
                   />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">合計金額（税込）</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      value={grandTotal}
+                      onChange={(e) => setGrandTotal(Number(e.target.value))}
+                      className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                      min={0}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setGrandTotal(computedTotal + orderItemTotal)}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    >
+                      自動計算に戻す
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal + orderItemTotal)}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveNote}
+                    disabled={saving}
+                    className="px-4 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? '保存中...' : '保存'}
+                  </button>
                   <button
                     type="button"
-                    onClick={() => setGrandTotal(computedTotal + orderItemTotal)}
-                    className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    onClick={() => {
+                      setNote(reservation.note ?? '');
+                      setGrandTotal(computedTotal + orderItemTotal);
+                      setIsEditingNote(false);
+                    }}
+                    disabled={saving}
+                    className="px-4 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
                   >
-                    自動計算に戻す
+                    キャンセル
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal + orderItemTotal)}</p>
               </div>
-              <button
-                onClick={saveNote}
-                disabled={saving}
-                className="px-4 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors"
-              >
-                {saving ? '保存中...' : '保存'}
-              </button>
-            </div>
+            ) : (
+              <div className="space-y-4 text-sm text-gray-900">
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">備考</p>
+                  {note ? (
+                    <p className="whitespace-pre-wrap">{note}</p>
+                  ) : (
+                    <p className="text-gray-400">なし</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">合計金額（税込）</p>
+                  <p className="font-semibold">{formatCurrency(grandTotal)}</p>
+                </div>
+              </div>
+            )}
           </section>
         </div>
 
@@ -1147,6 +1189,17 @@ export default function ReservationDetail({ reservation, customer, plan, options
           {/* ステータス操作 */}
           <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">ステータス変更</h2>
+            {/* 確定済みの場合は来店・終了時間を表示 */}
+            {status !== '予約済' && (checkInTime || checkOutTime) && (
+              <div className="space-y-1 text-sm pb-1">
+                {checkInTime && (
+                  <p className="text-gray-700"><span className="text-xs text-gray-400 mr-2">来店時間</span>{checkInTime}</p>
+                )}
+                {checkOutTime && (
+                  <p className="text-gray-700"><span className="text-xs text-gray-400 mr-2">終了時間</span>{checkOutTime}</p>
+                )}
+              </div>
+            )}
             {/* 予約確定への遷移時のみ来店・終了時間を入力 */}
             {nextStatus === '予約確定' && (
               <div className="space-y-2 pb-1">
