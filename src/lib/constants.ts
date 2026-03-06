@@ -1,7 +1,7 @@
 export const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? '';
 export const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? '';
-export const LINE_OA_ID = '@671kcyek';
-export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2008978937-JCk8uXQU';
+export const LINE_OA_ID = '@082mluna';
+export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2009330357-AnI0gz2I';
 
 // 予約可能な最大日数（今日から60日後まで）
 export const BOOKING_DAYS = 60;
@@ -39,7 +39,27 @@ export const SHEET_NAMES = {
 } as const;
 
 // 予約ステータス
-export const RESERVATION_STATUSES = ['予約済', '予約確定', '完了', 'キャンセル'] as const;
+export const RESERVATION_STATUSES = ['予約済', '予約確定', '見学', '完了', 'キャンセル'] as const;
+
+// Googleカレンダーイベントォラー（見学は Grape = 3）
+export const CALENDAR_COLOR_ID_VISIT = '3';
 
 // 注文詳細ステータス
 export const ORDER_ITEM_STATUSES = ['受注', '発注済', '制作完了', '入荷', '発送済'] as const;
+
+// 担当割り当て：店舗売上のスタッフID
+export const STORE_STAFF_ID = 'matka.';
+
+// 休日料金（税込）
+export const HOLIDAY_FEE = 5500;
+
+// プラン種別ごとの売上内訳（税込）
+export const PLAN_STAFF_BREAKDOWN: Record<'Discovery' | 'Maternity', {
+  photo: number;
+  assistant: number;
+  hair: number;
+  makeup: number;
+}> = {
+  Discovery: { photo: 20350, assistant: 20350, hair: 4400, makeup: 4400 },
+  Maternity: { photo: 12100, assistant: 12100, hair: 4400, makeup: 4400 },
+};

@@ -90,30 +90,127 @@ ${options.length > 0 ? `￥${optionTotal.toLocaleString()}` : ''}
   return { type: 'text', text };
 }
 
+/** 撮影シーンに応じた注意事項 */
+function getSceneNotes(scene: Reservation['scene']): string {
+  if (scene === '七五三') {
+    return `⚠️撮影に関する注意事項
+※当日はヘアセット後にお着付けとなりますので、お子様は前開きのお洋服をご着用いただきますようお願いいたします。
+また、肌着は首の空いたタンクトップやキャミソールタイプのものをご着用ください。
+
+※当日は5パターンの撮影が可能です。
+なお、ご来店時間から15分以上遅れた場合、衣装着数が少なくなる可能性がございます。`;
+  }
+  if (scene === 'マタニティ') {
+    return `⚠️撮影に関する注意事項
+※当店での【ヘアメイク】をご希望の場合は、スキンケアのみご自宅でお済ませください。
+(メイク用品やヘアセット用品のお持ち込みも可能でございます。その場合は担当の美容師に当日お声がけ下さいませ。)
+
+※当日は5パターンの撮影が可能です。
+なお、ご来店時間から15分以上遅れた場合、衣装着数が少なくなる可能性がございます。`;
+  }
+  // ベビー・バースデー・その他
+  return `⚠️撮影に関する注意事項
+※肌着は首の空いたタンクトップやキャミソールタイプのものをご着用ください。
+
+※当日は5パターンの撮影が可能です。
+なお、ご来店時間から15分以上遅れた場合、衣装着数が少なくなる可能性がございます。`;
+}
+
 /** 予約確定メッセージ */
 export function buildConfirmMessage(
   reservation: Reservation,
   planName: string,
-  planPrice: number
+  checkInTime: string,
+  checkOutTime: string
 ): LineMessage {
+  const formattedDate = reservation.date.replace(/-/g, '/');
+  const sceneNotes = getSceneNotes(reservation.scene);
   const text = `✅ ご予約が確定しました！
 
 【ご予約内容】
 ━━━━━━━━━━━━━━
-📅 予約日時
-${reservation.date} ${reservation.timeSlot}
+📆 予約日
+${formattedDate}
 
-👤 代表者様
-${reservation.customerName ?? ''} 様
+🕐 撮影開始時間
+${reservation.timeSlot}
+　※当日は${checkInTime}までにご来店ください。
+　※終了時間は${checkOutTime}ごろ予定ですが、前後する場合もございます。
 
-📋 プラン
+📸 プラン
 ${planName}
-￥${planPrice.toLocaleString()}
-
 ━━━━━━━━━━━━━━
+${sceneNotes}
 
-当日お会いできることを楽しみにしております！
-ご不明点はLINEよりお問い合わせください。`;
+※お車でご来店の場合、専用駐車場を2台分設けております。
+(黄色のカラーコーンが目印です。)
+駐車場周辺の住所、外観等の詳細はLINEの【Parking】をご確認ください。
+1組様につき1台分のお貸し出しとなりますので、ご親戚様等、お車2台以上でお越しの場合、1台以外はコインパーキングをご利用ください。
+公式instagramにて、駐車場から当店までの経路をご確認いただけます。
+
+※キャンセル規定は下記の通りでございます。
+-------------------
+2日前：無料
+前日：ご予約料金の50％
+当日：ご予約料金の100％
+無断キャンセル：ご予約料金の100％
+-------------------
+体調不良等によりお日にちをご変更いただいた場合、キャンセル料金は頂戴しておりません。
+
+何かご不明な点等ございましたらお気軽にお問い合わせくださいませ。
+当日お会いできますことを楽しみにしております！
+
+matka.
+- - - - - - - - - - - - - - - - - -
+PHOTO STUDIO matka.
+☎052-846-2378
+📍名古屋市瑞穂区瑞穂通4丁目48番地 近江ビル1F
+- - - - - - - - - - - - - - - - - -`;
+
+  return { type: 'text', text };
+}
+
+/** 前日リマインドメッセージ */
+export function buildReminderMessage(
+  reservation: Reservation,
+  planName: string,
+  checkInTime: string,
+  checkOutTime: string
+): LineMessage {
+  const formattedDate = reservation.date.replace(/-/g, '/');
+  const sceneNotes = getSceneNotes(reservation.scene);
+  const text = `📅 明日のご予約のご確認
+
+【ご予約内容】
+━━━━━━━━━━━━━━
+🗓 予約日
+${formattedDate}
+
+🕐 撮影開始時間
+${reservation.timeSlot}
+　※当日は${checkInTime}までにご来店ください。
+　※終了時間は${checkOutTime}ごろ予定ですが、前後する場合もございます。
+
+📸 プラン
+${planName}
+━━━━━━━━━━━━━━
+${sceneNotes}
+
+※お車でご来店の場合、専用駐車場を2台分設けております。
+(黄色のカラーコーンが目印です。)
+駐車場周辺の住所、外観等の詳細はLINEの【Parking】をご確認ください。
+1組様につき1台分のお貸し出しとなりますので、ご親戚様等、お車2台以上でお越しの場合、1台以外はコインパーキングをご利用ください。
+公式instagramにて、駐車場から当店までの経路をご確認いただけます。
+
+明日お会いできますことを楽しみにしております！
+何かご不明な点等ございましたらお気軽にお問い合わせくださいませ。
+
+matka.
+- - - - - - - - - - - - - - - - - -
+PHOTO STUDIO matka.
+☎052-846-2378
+📍名古屋市瑞穂区瑞穂通4丁目48番地 近江ビル1F
+- - - - - - - - - - - - - - - - - -`;
 
   return { type: 'text', text };
 }

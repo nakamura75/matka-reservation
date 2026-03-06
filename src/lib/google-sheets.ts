@@ -107,7 +107,7 @@ export async function updateCell(
 export async function getCustomers(): Promise<Customer[]> {
   const rows = await getSheetData(SHEET_NAMES.CUSTOMERS);
   if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => rowToCustomer(r, i + 2));
+  return rows.slice(1).map((r, i) => rowToCustomer(r, i + 2)).filter((c) => c.id !== '');
 }
 
 /** ID顧客で顧客取得 */
@@ -127,6 +127,17 @@ export async function createCustomer(data: Omit<Customer, '_rowNumber'>): Promis
 export async function updateCustomer(data: Customer): Promise<void> {
   if (!data._rowNumber) throw new Error('rowNumber is required');
   await updateRow(SHEET_NAMES.CUSTOMERS, data._rowNumber, customerToRow(data));
+}
+
+/** 顧客削除（論理削除：行を空文字で上書き） */
+export async function deleteCustomer(rowNumber: number): Promise<void> {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAMES.CUSTOMERS}!A${rowNumber}:J${rowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [['', '', '', '', '', '', '', '', '', '']] },
+  });
 }
 
 function rowToCustomer(r: string[], rowNumber: number): Customer {
@@ -179,7 +190,6 @@ function rowToPlan(r: string[], rowNumber: number): Plan {
     duration: Number(r[3]) || 90, // D: 所要時間
     description: r[4],      // E: 説明
     isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
-    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   };
 }
 
@@ -202,7 +212,6 @@ function rowToOption(r: string[], rowNumber: number): Option {
     description: r[3],      // D: 説明
     isActive: r[4] === 'TRUE' || r[4] === '1' || r[4] === 'true', // E: 有効
     externalCode: r[5],     // F: 外部コード
-    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   };
 }
 
@@ -218,6 +227,7 @@ export async function getStaff(): Promise<Staff[]> {
     id: r[0] ?? '',       // A: IDスタッフ
     name: r[1] ?? '',     // B: スタッフ名
     isActive: r[2],       // C: 有効
+    role: r[3],           // D: 担当
   }));
 }
 
@@ -282,6 +292,11 @@ export async function linkLineUserId(rowNumber: number, lineUserId: string): Pro
   await updateCell(SHEET_NAMES.RESERVATIONS, `P${rowNumber}`, 'TRUE');
 }
 
+/** LINE ChatUserID（Messaging API）をAB列に保存 */
+export async function saveChatLineUserId(rowNumber: number, chatLineUserId: string): Promise<void> {
+  await updateCell(SHEET_NAMES.RESERVATIONS, `AB${rowNumber}`, chatLineUserId);
+}
+
 function rowToReservation(r: string[], rowNumber: number): Reservation {
   // 列対応(0-indexed, _RowNumberはシートに存在しない):
   // 0=A(ID予約), 1=B(ID顧客), 2=C(IDプラン),
@@ -289,7 +304,10 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
   // 7=H(お子様人数), 8=I(大人人数), 9=J(構成メモ), 10=K(ステータス),
   // 11=L(参考写真), 12=M(備考), 13=N(登録日), 14=O(LINE_UserID),
   // 15=P(フラグ), 16=Q(電話希望), 17=R(撮影シーン), 18=S(予約番号),
-  // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間)
+  // 19=T(値引額), 20=U(値引理由), 21=V(入店時間), 22=W(退店時間),
+  // 23=X(GoogleカレンダーイベントID), 24=Y(担当割り当てJSON),
+  // 25=Z(お客様備考), 26=AA(その他シーン詳細), 27=AB(LINE_ChatUserID),
+  // 28=AC(支払方法)
   return {
     _rowNumber: rowNumber,
     id: r[0] ?? '',             // A: ID予約
@@ -302,7 +320,15 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     childrenCount: Number(r[7]) || undefined, // H: お子様人数
     adultCount: r[8],           // I: 大人人数
     familyNote: r[9],           // J: 構成メモ
-    status: (r[10] ?? '予約済') as Reservation['status'], // K: ステータス
+    status: (() => {
+      const s = (r[10] ?? '予約済') as Reservation['status'];
+      // 予約確定済で予約日が過ぎていたら自動的に完了扱い
+      if (s === '予約確定' && r[5]) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (new Date(r[5]) < today) return '完了' as Reservation['status'];
+      }
+      return s;
+    })(), // K: ステータス（予約日過去なら自動完了）
     referencePhoto: r[11],      // L: 参考写真
     note: r[12],                // M: 備考
     createdAt: r[13],           // N: 登録日
@@ -316,6 +342,12 @@ function rowToReservation(r: string[], rowNumber: number): Reservation {
     checkInTime: r[21],         // V: 入店時間
     checkOutTime: r[22],        // W: 退店時間
     calendarEventId: r[23],     // X: GoogleカレンダーイベントID
+    pdfUrl: r[23]?.startsWith('http') ? r[23] : undefined, // X: 引継ぎPDF URL（matka_V6）
+    staffAssignmentJson: r[24], // Y: 担当割り当てJSON
+    customerNote: r[25],        // Z: お客様備考
+    otherSceneNote: r[26],      // AA: その他シーン詳細
+    chatLineUserId: r[27],      // AB: LINE_ChatUserID（Messaging API）
+    paymentMethod: r[28],       // AC: 支払方法
   };
 }
 
@@ -345,6 +377,11 @@ function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number 
     r.checkInTime ?? '',             // V: 入店時間
     r.checkOutTime ?? '',            // W: 退店時間
     r.calendarEventId ?? '',         // X: GoogleカレンダーイベントID
+    r.staffAssignmentJson ?? '',     // Y: 担当割り当てJSON
+    r.customerNote ?? '',            // Z: お客様備考
+    r.otherSceneNote ?? '',          // AA: その他シーン詳細
+    r.chatLineUserId ?? '',          // AB: LINE_ChatUserID（Messaging API）
+    r.paymentMethod ?? '',           // AC: 支払方法
   ];
 }
 
@@ -355,15 +392,28 @@ function reservationToRow(r: Omit<Reservation, '_rowNumber'>): (string | number 
 export async function getReservationOptions(reservationId?: string): Promise<ReservationOption[]> {
   const rows = await getSheetData(SHEET_NAMES.RESERVATION_OPTIONS);
   if (rows.length < 2) return [];
-  const all = rows.slice(1).map((r, i) => ({
-    _rowNumber: i + 2,
-    id: r[0] ?? '',             // A: ID予約オプション
-    reservationId: r[1] ?? '',  // B: ID予約
-    optionId: r[2] ?? '',       // C: IDオプション
-    quantity: Number(r[3]) || 1, // D: 数量
-    note: r[4],                 // E: 備考
-  } as ReservationOption));
+  const all = rows.slice(1)
+    .map((r, i) => ({
+      _rowNumber: i + 2,
+      id: r[0] ?? '',             // A: ID予約オプション
+      reservationId: r[1] ?? '',  // B: ID予約
+      optionId: r[2] ?? '',       // C: IDオプション
+      quantity: Number(r[3]) || 1, // D: 数量
+      note: r[4],                 // E: 備考
+    } as ReservationOption))
+    .filter((o) => o.id !== ''); // 削除済み行をスキップ
   return reservationId ? all.filter((o) => o.reservationId === reservationId) : all;
+}
+
+export async function deleteReservationOption(rowNumber: number): Promise<void> {
+  const sheets = getSheetsClient();
+  // 行を空文字で上書きして論理削除（getReservationOptionsでid===''の行を除外）
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAMES.RESERVATION_OPTIONS}!A${rowNumber}:E${rowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [['', '', '', '', '']] },
+  });
 }
 
 export async function createReservationOption(data: Omit<ReservationOption, '_rowNumber' | 'subtotal' | 'commissionAmount'>): Promise<void> {
@@ -523,7 +573,6 @@ export async function getProducts(): Promise<Product[]> {
     image: r[3],                // D: 商品画像
     description: r[4],          // E: 説明
     isActive: r[5] === 'TRUE' || r[5] === '1' || r[5] === 'true', // F: 有効
-    commissionPrice: Number(r[6]) || 0, // G: 歩合単価
   } as Product));
 }
 
@@ -535,7 +584,6 @@ export async function createProduct(data: Omit<Product, '_rowNumber'>): Promise<
     data.image ?? '',
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -548,7 +596,6 @@ export async function updateProduct(data: Product): Promise<void> {
     data.image ?? '',
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -564,7 +611,6 @@ export async function createPlan(data: Omit<Plan, '_rowNumber'>): Promise<void> 
     data.duration,
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -577,7 +623,6 @@ export async function updatePlan(data: Plan): Promise<void> {
     data.duration,
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -593,7 +638,6 @@ export async function createOption(data: Omit<Option, '_rowNumber'>): Promise<vo
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
     data.externalCode ?? '',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -606,7 +650,6 @@ export async function updateOption(data: Option): Promise<void> {
     data.description ?? '',
     data.isActive ? 'TRUE' : 'FALSE',
     data.externalCode ?? '',
-    data.commissionPrice ?? 0,
   ]);
 }
 
@@ -619,6 +662,7 @@ export async function createStaff(data: Omit<Staff, '_rowNumber'>): Promise<void
     data.id,
     data.name,
     data.isActive ?? 'TRUE',
+    data.role ?? '',      // D: 担当
   ]);
 }
 
@@ -628,6 +672,7 @@ export async function updateStaff(data: Staff): Promise<void> {
     data.id,
     data.name,
     data.isActive ?? 'TRUE',
+    data.role ?? '',      // D: 担当
   ]);
 }
 
@@ -648,7 +693,5 @@ export async function getSalesRecords(): Promise<SalesRecord[]> {
     category: r[5] ?? '',       // F: 区分
     amount: Number(r[6]) || 0,  // G: 金額
     staffId: r[7],              // H: 担当者
-    commissionRate: Number(r[8]) || 0, // I: 歩合率
-    commissionAmount: Number(r[9]) || 0, // J: 歩合額
   } as SalesRecord));
 }

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 40" width="168" height="40">
+  <!-- m -->
+  <rect x="0" y="0" width="32" height="34" rx="4" fill="#E63946"/>
+  <text x="16" y="23" font-family="'Arial Black', Arial, sans-serif" font-size="19" font-weight="900" fill="white" text-anchor="middle">m</text>
+
+  <!-- a -->
+  <rect x="35" y="0" width="27" height="34" rx="4" fill="#F4A261"/>
+  <text x="48" y="23" font-family="'Arial Black', Arial, sans-serif" font-size="19" font-weight="900" fill="white" text-anchor="middle">a</text>
+
+  <!-- t -->
+  <rect x="65" y="0" width="22" height="34" rx="4" fill="#2A9D8F"/>
+  <text x="76" y="23" font-family="'Arial Black', Arial, sans-serif" font-size="19" font-weight="900" fill="white" text-anchor="middle">t</text>
+
+  <!-- k -->
+  <rect x="90" y="0" width="27" height="34" rx="4" fill="#3A86FF"/>
+  <text x="103" y="23" font-family="'Arial Black', Arial, sans-serif" font-size="19" font-weight="900" fill="white" text-anchor="middle">k</text>
+
+  <!-- a -->
+  <rect x="120" y="0" width="27" height="34" rx="4" fill="#8338EC"/>
+  <text x="133" y="23" font-family="'Arial Black', Arial, sans-serif" font-size="19" font-weight="900" fill="white" text-anchor="middle">a</text>
+
+  <!-- dot -->
+  <circle cx="157" cy="29" r="6" fill="#E63946"/>
+</svg>

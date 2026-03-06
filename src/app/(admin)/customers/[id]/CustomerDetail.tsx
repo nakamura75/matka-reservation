@@ -10,20 +10,34 @@ import { formatDate } from '@/lib/utils';
 const STATUS_COLORS = {
   '予約済': 'bg-yellow-100 text-yellow-800',
   '予約確定': 'bg-blue-100 text-blue-800',
+  '見学': 'bg-purple-100 text-purple-700',
   '完了': 'bg-green-100 text-green-800',
   'キャンセル': 'bg-gray-100 text-gray-500',
 } as const;
+
+const STATUS_LABEL: Record<string, string> = {
+  '予約済': '仮予約',
+  '予約確定': '予約確定',
+  '見学': '見学',
+  '完了': '完了',
+  'キャンセル': 'キャンセル',
+};
 
 interface Props {
   customer: Customer;
   reservations: (Reservation & { planName?: string })[];
   orders: Order[];
+  isRepeater: boolean;
+  linkTargetReservationId: string | null;
 }
 
-export default function CustomerDetail({ customer, reservations, orders }: Props) {
+export default function CustomerDetail({ customer, reservations, orders, isRepeater, linkTargetReservationId }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [lineIdInput, setLineIdInput] = useState('');
+  const [lineIdSaving, setLineIdSaving] = useState(false);
   const [form, setForm] = useState({
     name: customer.name,
     furigana: customer.furigana ?? '',
@@ -33,6 +47,22 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
     address: customer.address ?? '',
     note: customer.note ?? '',
   });
+
+  async function handleDelete() {
+    if (!confirm(`「${customer.name}」を削除しますか？この操作は取り消せません。`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        router.push('/customers');
+      } else {
+        alert(data.error ?? '削除に失敗しました');
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -49,8 +79,6 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
     }
   }
 
-  const isRepeater = reservations.length > 1;
-
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
@@ -61,11 +89,20 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
         <h1 className="text-xl font-bold text-gray-900 flex-1">
           {customer.name}
           {isRepeater && (
-            <span className="ml-2 text-sm bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full font-normal">
+            <span className="ml-2 text-sm bg-brand-light text-brand px-2 py-0.5 rounded-full font-normal">
               リピーター
             </span>
           )}
         </h1>
+        <button
+          onClick={handleDelete}
+          disabled={deleting || reservations.length > 0}
+          title={reservations.length > 0 ? '予約がある顧客は削除できません' : '顧客を削除'}
+          className="flex items-center gap-1 text-sm text-red-400 hover:text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          <XMarkIcon className="w-4 h-4" />
+          {deleting ? '削除中...' : '削除'}
+        </button>
         <button
           onClick={() => setEditing(!editing)}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50"
@@ -97,7 +134,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                       type={type}
                       value={form[key as keyof typeof form]}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                     />
                   </div>
                 ))}
@@ -105,7 +142,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600 disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-1 py-2 bg-brand text-white text-sm rounded-lg hover:bg-brand-dark disabled:opacity-50"
                   >
                     <CheckIcon className="w-4 h-4" />
                     {saving ? '保存中...' : '保存'}
@@ -141,15 +178,67 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                 <div>
                   <dt className="text-gray-400 text-xs">LINE連携</dt>
                   <dd className="mt-0.5">
-                    {customer.lineName ? (
+                    {customer.lineUserId || customer.chatLineUserId ? (
                       <span className="text-green-700 text-xs flex items-center gap-1">
                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
-                        {customer.lineName}
+                        {customer.lineName ?? '連携済み'}
                       </span>
                     ) : (
                       <span className="text-gray-400 text-xs">未連携</span>
                     )}
                   </dd>
+                  {customer.chatLineUserId ? (
+                    <dd className="mt-2">
+                      <a
+                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${customer.chatLineUserId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
+                        style={{ backgroundColor: '#06C755' }}
+                      >
+                        {/* LINE icon */}
+                        <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-white" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 2C6.477 2 2 6.032 2 11c0 2.99 1.566 5.634 3.988 7.32-.175.614-.635 2.22-.728 2.566-.115.42.154.414.323.302.133-.089 2.11-1.43 2.967-2.012.444.062.898.094 1.45.094 5.523 0 10-4.032 10-9S17.523 2 12 2zm-3.5 12.5h-1.25a.25.25 0 0 1-.25-.25v-4.5a.25.25 0 0 1 .25-.25H8.5a.25.25 0 0 1 .25.25v4.5a.25.25 0 0 1-.25.25zm2.5 0h-1.25a.25.25 0 0 1-.25-.25v-2.5l-1.5-2.087A.25.25 0 0 1 8.2 9.5H9.5a.25.25 0 0 1 .2.1l.8 1.114.8-1.114a.25.25 0 0 1 .2-.1h1.3a.25.25 0 0 1 .2.413L11.5 11.75v2.5a.25.25 0 0 1-.25.25zm5.25 0H13a.25.25 0 0 1-.25-.25v-4.5A.25.25 0 0 1 13 9.5h2.75a.25.25 0 0 1 0 .5H13.5v1.25h2.25a.25.25 0 0 1 0 .5H13.5v1.25h2.75a.25.25 0 0 1 0 .5z"/>
+                        </svg>
+                        LINEトークを開く
+                      </a>
+                    </dd>
+                  ) : null}
+                  {linkTargetReservationId && (
+                    <dd className="mt-2">
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={lineIdInput}
+                          onChange={(e) => setLineIdInput(e.target.value)}
+                          placeholder="LINE IDをペースト"
+                          className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+                        />
+                        <button
+                          onClick={async () => {
+                            const id = lineIdInput.trim();
+                            if (!id) return;
+                            setLineIdSaving(true);
+                            try {
+                              await fetch(`/api/reservations/${linkTargetReservationId}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ lineUserId: id }),
+                              });
+                              setLineIdInput('');
+                              router.refresh();
+                            } finally {
+                              setLineIdSaving(false);
+                            }
+                          }}
+                          disabled={lineIdSaving || !lineIdInput.trim()}
+                          className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {lineIdSaving ? '保存中...' : (customer.lineUserId || customer.chatLineUserId) ? '更新' : '登録'}
+                        </button>
+                      </div>
+                    </dd>
+                  )}
                 </div>
                 {customer.note && (
                   <div>
@@ -204,7 +293,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                   {reservations.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <Link href={`/reservations/${r.id}`} className="text-pink-600 hover:text-pink-800">
+                        <Link href={`/reservations/${r.id}`} className="text-brand hover:text-brand-dark">
                           {r.reservationNumber || r.id.slice(0, 8)}
                         </Link>
                       </td>
@@ -212,7 +301,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                       <td className="px-4 py-3 text-gray-500">{r.planName}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[r.status]}`}>
-                          {r.status}
+                          {STATUS_LABEL[r.status] ?? r.status}
                         </span>
                       </td>
                     </tr>
@@ -234,7 +323,7 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                 <thead className="bg-gray-50 text-gray-400 text-xs">
                   <tr>
                     <th className="px-4 py-2 text-left">注文日</th>
-                    <th className="px-4 py-2 text-left">備考</th>
+                    <th className="px-4 py-2 text-left">商品</th>
                     <th className="px-4 py-2 text-left">入金</th>
                   </tr>
                 </thead>
@@ -242,11 +331,15 @@ export default function CustomerDetail({ customer, reservations, orders }: Props
                   {orders.map((o) => (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <Link href={`/orders/${o.id}`} className="text-pink-600 hover:text-pink-800">
+                        <Link href={`/orders/${o.id}`} className="text-brand hover:text-brand-dark">
                           {o.orderDate}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{o.note || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {o.items && o.items.length > 0
+                          ? o.items.map((i) => `${i.productName}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`).join('、')
+                          : '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${o.isPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {o.isPaid ? '入金済' : '未入金'}

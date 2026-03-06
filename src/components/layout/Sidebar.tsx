@@ -9,6 +9,7 @@ import {
   Cog6ToothIcon,
   XMarkIcon,
   TableCellsIcon,
+  CurrencyYenIcon,
 } from '@heroicons/react/24/outline';
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { href: '/reservations/calendar', label: 'カレンダー', icon: CalendarDaysIcon },
   { href: '/customers', label: '顧客管理', icon: UsersIcon },
   { href: '/orders', label: '注文管理', icon: ShoppingBagIcon },
+  { href: '/sales', label: '売上集計', icon: CurrencyYenIcon },
   { href: '/settings', label: '設定', icon: Cog6ToothIcon },
 ];
 
@@ -45,9 +47,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* ロゴ */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-cream-dark">
-          <span className="text-xl font-bold text-gray-900 tracking-tight">
-            Matka<span className="text-brand">Studio</span>
-          </span>
+          <img src="https://matka-photostudio.jp/wp-content/uploads/2025/03/%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97-5474@2x.png" alt="Matka Studio" className="h-8 w-auto" />
           <button
             onClick={onClose}
             className="lg:hidden text-gray-400 hover:text-gray-600"

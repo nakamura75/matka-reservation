@@ -2,9 +2,11 @@ import { notFound } from 'next/navigation';
 import {
   getReservationById,
   getReservationOptions,
-  getCustomerById,
   getPlans,
   getOptions,
+  getOrders,
+  getOrderItems,
+  getProducts,
 } from '@/lib/google-sheets';
 import { formatDate } from '@/lib/utils';
 import PrintButton from './PrintButton';
@@ -23,18 +25,18 @@ export default async function ReceiptPage({
 }: {
   params: { id: string };
 }) {
-  const [reservation, plans, options] = await Promise.all([
+  const [reservation, plans, options, allOrders, allOrderItems, products] = await Promise.all([
     getReservationById(params.id),
     getPlans(),
     getOptions(),
+    getOrders().catch(() => []),
+    getOrderItems().catch(() => []),
+    getProducts().catch(() => []),
   ]);
 
   if (!reservation) notFound();
 
-  const [customer, reservationOptions] = await Promise.all([
-    getCustomerById(reservation.customerId),
-    getReservationOptions(reservation.id),
-  ]);
+  const reservationOptions = await getReservationOptions(reservation.id);
 
   const plan = plans.find((p) => p.id === reservation.planId);
 
@@ -43,14 +45,20 @@ export default async function ReceiptPage({
     return { ...ro, optionName: opt?.name ?? '', price: opt?.price ?? 0 };
   });
 
+  // この予約に紐づく注文の商品明細
+  const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
+  const linkedOrderIds = new Set(
+    allOrders.filter((o) => o.reservationId === reservation.id).map((o) => o.id)
+  );
+  const orderItemsWithInfo = allOrderItems
+    .filter((i) => linkedOrderIds.has(i.orderId))
+    .map((i) => ({ ...i, productName: productMap[i.productId]?.name ?? i.productId, price: productMap[i.productId]?.price ?? 0 }));
+  const orderItemTotal = orderItemsWithInfo.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
   const optionTotal = optionsWithInfo.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
-  const computedTotal = planPrice + optionTotal;
-  // T列に保存された合計（手動設定）があればそちらを優先
-  const total =
-    reservation.discountAmount != null && reservation.discountAmount > 0
-      ? reservation.discountAmount
-      : computedTotal;
+  // 領収書は常に現在のプラン・オプション・商品の合計を使用
+  const total = planPrice + optionTotal + orderItemTotal;
 
   const issueDate = new Date().toLocaleDateString('ja-JP', {
     year: 'numeric',
@@ -72,7 +80,7 @@ export default async function ReceiptPage({
           .title { font-size: 28px; font-weight: bold; letter-spacing: 0.3em; margin-bottom: 24px; }
           .meta { display: flex; justify-content: space-between; margin-bottom: 32px; font-size: 13px; }
           .meta-left { font-size: 15px; }
-          .meta-left .customer { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
+          .meta-left .customer { font-size: 20px; font-weight: bold; margin-bottom: 4px; border-bottom: 2px solid #222; min-width: 200px; padding-bottom: 4px; }
           .meta-right { text-align: right; color: #555; }
           .amount-box { border: 2px solid #222; padding: 16px 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; }
           .amount-label { font-size: 14px; }
@@ -119,12 +127,13 @@ export default async function ReceiptPage({
           {/* 宛名・発行情報 */}
           <div className="meta">
             <div className="meta-left">
-              <div className="customer">{customer?.name ?? '—'}　様</div>
+              <div className="customer">　　　　　　　　　　様</div>
               <div style={{ fontSize: 12, color: '#888' }}>予約番号：{reservation.reservationNumber}</div>
             </div>
             <div className="meta-right">
               <div>発行日：{issueDate}</div>
               <div style={{ marginTop: 4 }}>撮影日：{formatDate(reservation.date)}</div>
+              <div style={{ marginTop: 8, fontSize: 11, color: '#888' }}>登録番号：T7180001117109</div>
             </div>
           </div>
 
@@ -164,6 +173,14 @@ export default async function ReceiptPage({
                   <td style={{ textAlign: 'right' }}>{formatCurrency(o.price * o.quantity)}</td>
                 </tr>
               ))}
+              {orderItemsWithInfo.map((i) => (
+                <tr key={i.id}>
+                  <td>{i.productName}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(i.price)}</td>
+                  <td style={{ textAlign: 'right' }}>{i.quantity}</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(i.price * i.quantity)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
@@ -186,6 +203,7 @@ export default async function ReceiptPage({
           {/* フッター */}
           <div className="footer">
             <div>matka photo studio</div>
+            <div style={{ marginTop: 4 }}>適格請求書発行事業者登録番号：T7180001117109</div>
           </div>
         </div>
       </body>

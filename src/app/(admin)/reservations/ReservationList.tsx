@@ -5,10 +5,10 @@ import Link from 'next/link';
 import type { Reservation, ReservationStatus } from '@/types';
 import { formatDate } from '@/lib/utils';
 
-// ① 表示ラベル（DBの値は変えない）
 const STATUS_LABEL: Record<ReservationStatus, string> = {
   '予約済': '仮予約',
   '予約確定': '予約確定',
+  '見学': '見学',
   '完了': '完了',
   'キャンセル': 'キャンセル',
 };
@@ -16,55 +16,78 @@ const STATUS_LABEL: Record<ReservationStatus, string> = {
 const STATUS_COLORS: Record<ReservationStatus, string> = {
   '予約済': 'bg-yellow-100 text-yellow-800',
   '予約確定': 'bg-blue-100 text-blue-800',
+  '見学': 'bg-purple-100 text-purple-700',
   '完了': 'bg-green-100 text-green-800',
   'キャンセル': 'bg-gray-100 text-gray-500',
 };
 
-// ② 秒を削除
+const TAB_ORDER: ReservationStatus[] = ['予約済', '予約確定', '見学', '完了', 'キャンセル'];
+
 function stripSeconds(time: string) {
-  return time ? time.replace(/:\d{2}$/, '') : time;
+  return time ? time.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1') : time;
 }
 
 export default function ReservationList({ reservations }: { reservations: Reservation[] }) {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ReservationStatus | 'all'>('all');
+  const [activeTab, setActiveTab] = useState<ReservationStatus>('予約済');
 
   const filtered = useMemo(() => {
-    return reservations.filter((r) => {
-      const matchesSearch =
-        !search ||
-        r.customerName?.includes(search) ||
-        r.reservationNumber?.includes(search) ||
-        r.date.includes(search);
-      const matchesStatus =
-        statusFilter === 'all' || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [reservations, search, statusFilter]);
+    return reservations
+      .filter((r) => {
+        const matchesSearch =
+          !search ||
+          r.customerName?.includes(search) ||
+          r.reservationNumber?.includes(search) ||
+          r.date.includes(search);
+        return matchesSearch && r.status === activeTab;
+      })
+      .sort((a, b) => {
+        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return db - da;
+      });
+  }, [reservations, search, activeTab]);
+
+  const countByStatus = useMemo(() => {
+    const counts: Partial<Record<ReservationStatus, number>> = {};
+    for (const r of reservations) {
+      counts[r.status] = (counts[r.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [reservations]);
 
   return (
     <div className="bg-white rounded-xl border border-cream-dark overflow-hidden">
-      {/* フィルターバー */}
-      <div className="p-4 border-b border-cream-dark flex flex-wrap gap-3">
+      {/* 検索バー */}
+      <div className="p-4 border-b border-cream-dark">
         <input
           type="text"
           placeholder="顧客名・予約番号・日付で検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ReservationStatus | 'all')}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-        >
-          <option value="all">すべてのステータス</option>
-          <option value="予約済">仮予約</option>
-          <option value="予約確定">予約確定</option>
-          <option value="完了">完了</option>
-          <option value="キャンセル">キャンセル</option>
-        </select>
-        <span className="text-sm text-gray-400 self-center">{filtered.length}件</span>
+      </div>
+
+      {/* ステータスタブ */}
+      <div className="flex border-b border-cream-dark overflow-x-auto">
+        {TAB_ORDER.map((status) => (
+          <button
+            key={status}
+            onClick={() => setActiveTab(status)}
+            className={`flex-1 min-w-max px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors
+              ${activeTab === status
+                ? 'border-b-2 border-brand text-brand bg-cream/40'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+          >
+            {STATUS_LABEL[status]}
+            <span className={`ml-2 inline-block text-xs rounded-full px-2 py-0.5 font-normal
+              ${activeTab === status ? STATUS_COLORS[status] : 'bg-gray-100 text-gray-400'}`}>
+              {countByStatus[status] ?? 0}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* テーブル */}
@@ -100,15 +123,27 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-700">{formatDate(r.date)}</td>
-                  {/* ② 秒を削除 */}
                   <td className="px-4 py-3 text-gray-700">{stripSeconds(r.timeSlot)}</td>
                   <td className="px-4 py-3 text-gray-700">{r.customerName || r.customerId}</td>
                   <td className="px-4 py-3 text-gray-500">{r.scene}</td>
                   <td className="px-4 py-3">
-                    {/* ① 表示ラベル変更 */}
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
-                      {STATUS_LABEL[r.status]}
-                    </span>
+                    <div className="flex flex-row flex-nowrap items-center gap-1.5">
+                      {r.pdfUrl && (
+                        <a
+                          href={r.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="引継ぎPDFを開く"
+                          className="text-white text-xs font-medium bg-green-500 hover:bg-green-600 rounded px-1.5 py-0.5 transition-colors whitespace-nowrap"
+                        >
+                          PDF
+                        </a>
+                      )}
+                      <span className={`inline-block whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
+                        {STATUS_LABEL[r.status]}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
                     {r.createdAt ? new Date(r.createdAt).toLocaleDateString('ja-JP') : ''}

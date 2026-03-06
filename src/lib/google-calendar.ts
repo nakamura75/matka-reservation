@@ -85,7 +85,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
   try {
     const reservations = await getReservations();
     for (const r of reservations) {
-      if (r.status === 'キャンセル') continue;
+      if (r.status === 'キャンセル' || r.status === '見学') continue;
       if (!r.date || !r.timeSlot) continue;
       if (!blockedSlots.has(r.date)) blockedSlots.set(r.date, new Set());
       blockedSlots.get(r.date)!.add(r.timeSlot);
@@ -133,6 +133,7 @@ export async function createCalendarEvent(params: {
   startDateTime: string; // ISO 8601
   endDateTime: string;   // ISO 8601
   description?: string;
+  colorId?: string;      // Googleカレンダーカラーコード（例: '3' = Grape）
 }): Promise<string | null | undefined> {
   const calendar = getCalendarClient();
   const res = await calendar.events.insert({
@@ -142,6 +143,7 @@ export async function createCalendarEvent(params: {
       description: params.description,
       start: { dateTime: params.startDateTime, timeZone: 'Asia/Tokyo' },
       end: { dateTime: params.endDateTime, timeZone: 'Asia/Tokyo' },
+      ...(params.colorId ? { colorId: params.colorId } : {}),
     },
   });
   return res.data.id;

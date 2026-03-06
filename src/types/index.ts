@@ -10,8 +10,10 @@ export interface Customer {
   email?: string;      // メールアドレス
   zipCode?: string;    // 郵便番号
   address?: string;    // 住所
-  lineName?: string;   // LINE名（LINE UserIDも含む）
-  note?: string;       // 備考
+  lineName?: string;      // LINE表示名
+  lineUserId?: string;    // LINE UserID（LIFF）
+  chatLineUserId?: string; // LINE ChatUserID（Messaging API・AB列）
+  note?: string;          // 備考
   createdAt?: string;  // 登録日
 }
 
@@ -26,7 +28,6 @@ export interface Plan {
   duration: number;    // 所要時間（分）
   description?: string;
   isActive: boolean;   // 有効
-  commissionPrice?: number; // 歩合単価
 }
 
 // ============================================================
@@ -40,7 +41,6 @@ export interface Option {
   description?: string;
   isActive: boolean;   // 有効
   externalCode?: string; // 外部コード（Square連携用）
-  commissionPrice?: number; // 歩合単価
 }
 
 // ============================================================
@@ -51,12 +51,24 @@ export interface Staff {
   id: string;          // IDスタッフ
   name: string;        // スタッフ名
   isActive?: string;   // 有効
+  role?: string;       // 担当（フォトグラファー | ヘアメイク）
+}
+
+// ============================================================
+// 担当割り当て
+// ============================================================
+export interface StaffAssignment {
+  photo?: string;      // フォト担当 staffId
+  assistant?: string;  // アシスタント担当 staffId
+  hair?: string;       // ヘア担当 staffId
+  makeup?: string;     // メイク担当 staffId
+  options?: Record<string, string>; // { optionId: staffId }
 }
 
 // ============================================================
 // 予約
 // ============================================================
-export type ReservationStatus = '予約済' | '予約確定' | '完了' | 'キャンセル';
+export type ReservationStatus = '予約済' | '予約確定' | '見学' | '完了' | 'キャンセル';
 export type TimeSlot = '9:00' | '12:00' | '15:00';
 export type ShootingScene = '七五三' | 'マタニティ' | 'バースデー' | 'ベビー' | 'その他';
 
@@ -77,18 +89,24 @@ export interface Reservation {
   familyNote?: string;     // 構成メモ
   status: ReservationStatus; // ステータス
   referencePhoto?: string; // 参考写真
-  note?: string;           // 備考
+  note?: string;           // 備考（スタッフメモ）
+  customerNote?: string;   // お客様備考（フォーム入力）
+  otherSceneNote?: string; // その他シーン詳細（フォーム入力）
   createdAt?: string;      // 登録日
-  lineUserId?: string;     // LINE_UserID
+  lineUserId?: string;     // LINE_UserID（LIFF）
+  chatLineUserId?: string; // LINE_ChatUserID（Messaging API・AB列）
   flag?: boolean;          // フラグ
   phonePreference?: string;// 電話希望
   scene?: ShootingScene;   // 撮影シーン
   reservationNumber?: string; // 予約番号（M-YYYYMMDD-XXXX）
   discountAmount?: number; // 値引額
   discountReason?: string; // 値引理由
+  paymentMethod?: string;  // 支払方法（現金/カード/振込・AC列）
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
   calendarEventId?: string; // GoogleカレンダーイベントID（X列）
+  pdfUrl?: string;          // 引継ぎPDF URL（X列・matka_V6データ）
+  staffAssignmentJson?: string; // 担当割り当てJSON（Y列）
   optionTotal?: number;    // オプション合計（VC）
   total?: number;          // 総計（VC）
   options?: ReservationOption[]; // 予約オプション一覧
@@ -106,7 +124,6 @@ export interface ReservationOption {
   quantity: number;        // 数量
   note?: string;           // 備考
   subtotal?: number;       // 小計（VC）
-  commissionAmount?: number; // 歩合対象金額（VC）
 }
 
 // ============================================================
@@ -148,7 +165,6 @@ export interface OrderItem {
   trackingNumber?: string; // 追跡番号
   note?: string;           // 備考
   subtotal?: number;       // 小計（VC）
-  commissionAmount?: number; // 歩合対象金額（VC）
 }
 
 // ============================================================
@@ -165,8 +181,6 @@ export interface SalesRecord {
   amount: number;          // 金額
   staffId?: string;        // 担当者
   staffName?: string;
-  commissionRate?: number; // 歩合率
-  commissionAmount?: number; // 歩合額
 }
 
 // ============================================================
@@ -180,7 +194,6 @@ export interface Product {
   image?: string;        // 商品画像
   description?: string;  // 説明
   isActive: boolean;     // 有効
-  commissionPrice?: number; // 歩合単価
 }
 
 // ============================================================
@@ -188,6 +201,7 @@ export interface Product {
 // ============================================================
 export interface ReservationFormData {
   scene: ShootingScene;
+  otherSceneNote?: string;
   planId: string;
   date: string;
   timeSlot: TimeSlot;
@@ -200,10 +214,13 @@ export interface ReservationFormData {
   email?: string;
   // 撮影情報
   peopleCount: string;
+  childrenCount?: number;
+  adultCount?: string;
   childrenDetail: string;
   // オプション
   selectedOptions: { optionId: string; quantity: number }[];
   // 確認
+  phoneCallPreference?: string;
   note?: string;
   cancelPolicyAgreed: boolean;
   // LIFF

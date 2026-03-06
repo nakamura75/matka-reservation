@@ -23,6 +23,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   const [error, setError] = useState('');
 
   // フォーム状態
+  const [isVisit, setIsVisit] = useState(false);
   const [scene, setScene] = useState('');
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
@@ -33,6 +34,8 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   // 顧客選択 or 新規入力
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('new');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [furigana, setFurigana] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,6 +45,9 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   const [childrenCount, setChildrenCount] = useState('');
   const [adultCount, setAdultCount] = useState('');
   const [familyNote, setFamilyNote] = useState('');
+  const [childrenDetails, setChildrenDetails] = useState<{
+    name: string; gender: string; birthday: string; clothingSize: string;
+  }[]>([]);
 
   // シーン変更時にプランを自動設定
   function handleSceneChange(s: string) {
@@ -73,6 +79,24 @@ export default function NewReservationForm({ plans, options, customers }: Props)
     }
   }
 
+  function handleChildrenCountChange(val: string) {
+    setChildrenCount(val);
+    const n = parseInt(val) || 0;
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      while (next.length < n) next.push({ name: '', gender: '', birthday: '', clothingSize: '' });
+      return next.slice(0, n);
+    });
+  }
+
+  function updateChildDetail(index: number, field: string, value: string) {
+    setChildrenDetails((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  }
+
   // オプション変更
   function toggleOption(optionId: string) {
     setSelectedOptions((prev) => {
@@ -102,8 +126,12 @@ export default function NewReservationForm({ plans, options, customers }: Props)
     e.preventDefault();
     setError('');
 
-    if (!scene || !date || !timeSlot || !planId) {
+    if (!isVisit && (!scene || !date || !timeSlot || !planId)) {
       setError('撮影シーン、日付、時間帯、プランは必須です');
+      return;
+    }
+    if (isVisit && (!date || !timeSlot)) {
+      setError('日付、時間帯は必須です');
       return;
     }
 
@@ -135,11 +163,15 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         phone: customer?.phone ?? phone,
         email: customer?.email ?? email,
         peopleCount: adultCount,
-        childrenDetail: familyNote,
+        childrenDetail: childrenDetails.length > 0
+          ? childrenDetails.map((c, i) =>
+              `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} / ${c.clothingSize}`
+            ).join('\n') + (familyNote ? `\n${familyNote}` : '')
+          : familyNote,
         selectedOptions,
         note,
         cancelPolicyAgreed: true,
-        // 手動入力の場合は既存顧客IDも送る
+        isVisit,
         existingCustomerId: customerMode === 'existing' ? selectedCustomerId : undefined,
       };
 
@@ -170,18 +202,42 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         </div>
       )}
 
+      {/* 予約種別トグル */}
+      <div className="flex items-center gap-3">
+        <div className="flex text-sm rounded-lg border border-gray-200 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsVisit(false)}
+            className={`px-4 py-2 transition-colors ${!isVisit ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            撮影予約
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsVisit(true)}
+            className={`px-4 py-2 transition-colors ${isVisit ? 'bg-purple-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            見学
+          </button>
+        </div>
+        {isVisit && (
+          <span className="text-sm text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
+            カレンダーに紫色で表示・枠ブロックなし
+          </span>
+        )}
+      </div>
+
       {/* 撮影情報 */}
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h2 className="font-semibold text-gray-700">撮影情報</h2>
+        <h2 className="font-semibold text-gray-700">{isVisit ? '見学情報' : '撮影情報'}</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        {isVisit ? (
           <div>
-            <label className="block text-sm text-gray-500 mb-1">撮影シーン *</label>
+            <label className="block text-sm text-gray-500 mb-1">撮影シーン（任意）</label>
             <select
               value={scene}
               onChange={(e) => handleSceneChange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
-              required
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             >
               <option value="">選択...</option>
               {SHOOTING_SCENES.map((s) => (
@@ -189,22 +245,37 @@ export default function NewReservationForm({ plans, options, customers }: Props)
               ))}
             </select>
           </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">撮影シーン *</label>
+              <select
+                value={scene}
+                onChange={(e) => handleSceneChange(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">選択...</option>
+                {SHOOTING_SCENES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm text-gray-500 mb-1">プラン *</label>
-            <select
-              value={planId}
-              onChange={(e) => setPlanId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
-              required
-            >
-              <option value="">選択...</option>
-              {plans.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}（{formatCurrency(p.price)}）</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">プラン *</label>
+              <select
+                value={planId}
+                onChange={(e) => setPlanId(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">選択...</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}（{formatCurrency(p.price)}）</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -213,7 +284,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
               type="date"
               value={date}
               onChange={(e) => handleDateChange(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
               required
             />
             {date && (
@@ -225,17 +296,28 @@ export default function NewReservationForm({ plans, options, customers }: Props)
 
           <div>
             <label className="block text-sm text-gray-500 mb-1">時間帯 *</label>
-            <select
-              value={timeSlot}
-              onChange={(e) => setTimeSlot(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
-              required
-            >
-              <option value="">選択...</option>
-              {timeSlots.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            {isVisit ? (
+              <input
+                type="text"
+                value={timeSlot}
+                onChange={(e) => setTimeSlot(e.target.value)}
+                placeholder="例：10:00"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                required
+              />
+            ) : (
+              <select
+                value={timeSlot}
+                onChange={(e) => setTimeSlot(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                required
+              >
+                <option value="">選択...</option>
+                {timeSlots.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
@@ -245,36 +327,95 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <input
               type="number"
               value={childrenCount}
-              onChange={(e) => setChildrenCount(e.target.value)}
+              onChange={(e) => handleChildrenCountChange(e.target.value)}
               min={0}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
           <div>
             <label className="block text-sm text-gray-500 mb-1">大人人数</label>
             <input
-              type="text"
+              type="number"
               value={adultCount}
               onChange={(e) => setAdultCount(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
+              min={0}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
         </div>
 
+        {childrenDetails.map((child, i) => (
+          <div key={i} className="border border-brand rounded-xl p-4 space-y-3 bg-brand-light/40">
+            <p className="text-sm font-semibold text-brand">お子様 {i + 1}人目</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">お名前</label>
+                <input
+                  type="text"
+                  value={child.name}
+                  onChange={(e) => updateChildDetail(i, 'name', e.target.value)}
+                  placeholder="例：さくら"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">生年月日</label>
+                <input
+                  type="date"
+                  value={child.birthday}
+                  onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">性別</label>
+                <div className="flex gap-2">
+                  {['男の子', '女の子'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => updateChildDetail(i, 'gender', g)}
+                      className={`flex-1 py-1.5 rounded-lg border text-sm transition-colors
+                        ${child.gender === g
+                          ? 'border-brand bg-brand-light text-brand-dark font-medium'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">洋服サイズ</label>
+                <input
+                  type="text"
+                  value={child.clothingSize}
+                  onChange={(e) => updateChildDetail(i, 'clothingSize', e.target.value)}
+                  placeholder="例：100cm"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
         <div>
-          <label className="block text-sm text-gray-500 mb-1">家族構成メモ</label>
+          <label className="block text-sm text-gray-500 mb-1">構成メモ</label>
           <textarea
             value={familyNote}
             onChange={(e) => setFamilyNote(e.target.value)}
             rows={2}
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
             placeholder="例: 長男5歳・長女7歳"
           />
         </div>
       </section>
 
-      {/* オプション */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+      {/* オプション（見学時は非表示） */}
+      {!isVisit && <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
         <h2 className="font-semibold text-gray-700">オプション</h2>
         <div className="space-y-2">
           {options.map((opt) => {
@@ -286,7 +427,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
                   id={`opt-${opt.id}`}
                   checked={!!selected}
                   onChange={() => toggleOption(opt.id)}
-                  className="w-4 h-4 accent-pink-500"
+                  className="w-4 h-4 accent-brand"
                 />
                 <label htmlFor={`opt-${opt.id}`} className="flex-1 text-sm text-gray-700 cursor-pointer">
                   {opt.name}
@@ -305,7 +446,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             );
           })}
         </div>
-      </section>
+      </section>}
 
       {/* 顧客情報 */}
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
@@ -315,14 +456,14 @@ export default function NewReservationForm({ plans, options, customers }: Props)
             <button
               type="button"
               onClick={() => setCustomerMode('new')}
-              className={`px-3 py-1.5 transition-colors ${customerMode === 'new' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 transition-colors ${customerMode === 'new' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               新規
             </button>
             <button
               type="button"
               onClick={() => setCustomerMode('existing')}
-              className={`px-3 py-1.5 transition-colors ${customerMode === 'existing' ? 'bg-pink-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`px-3 py-1.5 transition-colors ${customerMode === 'existing' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               既存顧客
             </button>
@@ -330,52 +471,86 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         </div>
 
         {customerMode === 'existing' ? (
-          <div>
+          <div className="relative">
             <label className="block text-sm text-gray-500 mb-1">顧客を検索・選択</label>
-            <select
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300"
-            >
-              <option value="">選択...</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}（{c.phone}）
-                </option>
-              ))}
-            </select>
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomerId('');
+                setShowCustomerDropdown(true);
+              }}
+              onFocus={() => setShowCustomerDropdown(true)}
+              onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 150)}
+              placeholder="名前・電話番号で検索..."
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+            />
+            {showCustomerDropdown && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-56 overflow-y-auto shadow-lg">
+                {customers
+                  .filter((c) =>
+                    customerSearch === '' ||
+                    c.name.includes(customerSearch) ||
+                    (c.furigana ?? '').includes(customerSearch) ||
+                    (c.phone ?? '').includes(customerSearch)
+                  )
+                  .map((c) => (
+                    <li
+                      key={c.id}
+                      onMouseDown={() => {
+                        setSelectedCustomerId(c.id);
+                        setCustomerSearch(`${c.name}（${c.phone}）`);
+                        setShowCustomerDropdown(false);
+                      }}
+                      className={`px-3 py-2 text-sm cursor-pointer hover:bg-brand-light ${selectedCustomerId === c.id ? 'bg-brand-light font-medium' : ''}`}
+                    >
+                      {c.name}
+                      <span className="text-gray-400 ml-2">{c.phone}</span>
+                    </li>
+                  ))}
+                {customers.filter((c) =>
+                  customerSearch === '' ||
+                  c.name.includes(customerSearch) ||
+                  (c.furigana ?? '').includes(customerSearch) ||
+                  (c.phone ?? '').includes(customerSearch)
+                ).length === 0 && (
+                  <li className="px-3 py-2 text-sm text-gray-400">該当する顧客が見つかりません</li>
+                )}
+              </ul>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-500 mb-1">氏名 *</label>
               <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">フリガナ</label>
               <input type="text" value={furigana} onChange={(e) => setFurigana(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">電話番号 *</label>
               <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">メールアドレス</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">郵便番号</label>
               <input type="text" value={zipCode} onChange={(e) => setZipCode(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">住所</label>
               <input type="text" value={address} onChange={(e) => setAddress(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
             </div>
           </div>
         )}
@@ -388,23 +563,28 @@ export default function NewReservationForm({ plans, options, customers }: Props)
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-300 resize-none"
+          className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
           placeholder="スタッフメモ..."
         />
       </section>
 
       {/* 合計・送信 */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-between">
-        <div className="text-sm">
-          <span className="text-gray-400">合計（税込）</span>
-          <span className="text-xl font-bold text-gray-900 ml-3">{formatCurrency(total)}</span>
-        </div>
+        {!isVisit ? (
+          <div className="text-sm">
+            <span className="text-gray-400">合計（税込）</span>
+            <span className="text-xl font-bold text-gray-900 ml-3">{formatCurrency(total)}</span>
+          </div>
+        ) : (
+          <span className="text-sm text-purple-600 font-medium">見学として登録</span>
+        )}
         <button
           type="submit"
           disabled={loading}
-          className="px-8 py-2.5 bg-pink-500 text-white font-medium rounded-lg hover:bg-pink-600 disabled:opacity-50 transition-colors"
+          className={`px-8 py-2.5 font-medium rounded-lg disabled:opacity-50 transition-colors text-white
+            ${isVisit ? 'bg-purple-500 hover:bg-purple-600' : 'bg-brand hover:bg-brand-dark'}`}
         >
-          {loading ? '登録中...' : '予約を登録する'}
+          {loading ? '登録中...' : isVisit ? '見学を登録する' : '予約を登録する'}
         </button>
       </div>
     </form>

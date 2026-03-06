@@ -25,7 +25,7 @@ export default async function ReservationsPage() {
         <h1 className="text-2xl font-bold text-gray-900">予約管理</h1>
         <a
           href="/reservations/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-pink-500 text-white text-sm font-medium rounded-lg hover:bg-pink-600 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark transition-colors"
         >
           + 新規予約
         </a>
