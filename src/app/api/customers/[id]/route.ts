@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { getCustomers, updateCustomer, deleteCustomer, getReservations, getOrders } from '@/lib/google-sheets';
+import { createClient } from '@/lib/supabase/server';
+import { getCustomers, updateCustomer, deleteCustomer, getReservations, getOrders } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,8 +9,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const [customers, reservations, orders] = await Promise.all([
@@ -39,8 +40,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const body = await req.json();
@@ -62,8 +64,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const [customers, reservations] = await Promise.all([
@@ -72,7 +75,6 @@ export async function DELETE(
     ]);
     const customer = customers.find((c) => c.id === params.id);
     if (!customer) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    if (!customer._rowNumber) return NextResponse.json({ error: 'rowNumber missing' }, { status: 500 });
 
     const linked = reservations.filter((r) => r.customerId === params.id);
     if (linked.length > 0) {
@@ -82,7 +84,7 @@ export async function DELETE(
       );
     }
 
-    await deleteCustomer(customer._rowNumber);
+    await deleteCustomer(customer.id);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/customers/[id] error:', err);

@@ -1,14 +1,14 @@
-import { getOrders, getCustomers, getOrderItems, getProducts } from '@/lib/google-sheets';
+import { getOrders, getCustomers, getOrderItems, getProducts } from '@/lib/db';
 import OrdersView from './OrdersView';
 
 export const dynamic = 'force-dynamic';
 
 export default async function OrdersPage() {
   const [orders, customers, items, products] = await Promise.all([
-    getOrders().catch(() => []),
-    getCustomers().catch(() => []),
-    getOrderItems().catch(() => []),
-    getProducts().catch(() => []),
+    getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   const customerMap = Object.fromEntries(customers.map((c) => [c.id, c.name]));

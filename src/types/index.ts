@@ -2,7 +2,6 @@
 // 顧客
 // ============================================================
 export interface Customer {
-  _rowNumber?: number;
   id: string;          // ID顧客
   name: string;        // 顧客名
   furigana?: string;   // フリガナ
@@ -21,7 +20,6 @@ export interface Customer {
 // プラン
 // ============================================================
 export interface Plan {
-  _rowNumber?: number;
   id: string;          // IDプラン
   name: string;        // プラン名
   price: number;       // 単価
@@ -34,7 +32,6 @@ export interface Plan {
 // オプション
 // ============================================================
 export interface Option {
-  _rowNumber?: number;
   id: string;          // IDオプション
   name: string;        // オプション名
   price: number;       // 単価
@@ -47,7 +44,6 @@ export interface Option {
 // スタッフ
 // ============================================================
 export interface Staff {
-  _rowNumber?: number;
   id: string;          // IDスタッフ
   name: string;        // スタッフ名
   isActive?: string;   // 有効
@@ -73,7 +69,6 @@ export type TimeSlot = '9:00' | '12:00' | '15:00';
 export type ShootingScene = '七五三' | 'マタニティ' | 'バースデー' | 'ベビー' | 'その他';
 
 export interface Reservation {
-  _rowNumber?: number;
   id: string;              // ID予約
   customerId: string;      // ID顧客
   customerName?: string;   // 顧客名（Ref展開）
@@ -116,7 +111,6 @@ export interface Reservation {
 // 予約オプション
 // ============================================================
 export interface ReservationOption {
-  _rowNumber?: number;
   id: string;              // ID予約オプション
   reservationId: string;   // ID予約
   optionId: string;        // IDオプション
@@ -130,7 +124,6 @@ export interface ReservationOption {
 // 注文
 // ============================================================
 export interface Order {
-  _rowNumber?: number;
   id: string;              // ID注文
   customerId: string;      // ID顧客
   customerName?: string;
@@ -150,7 +143,6 @@ export interface Order {
 export type OrderItemStatus = '受注' | '発注済' | '制作完了' | '入荷' | '発送済';
 
 export interface OrderItem {
-  _rowNumber?: number;
   id: string;              // ID注文詳細
   orderId: string;         // ID注文
   productId: string;       // ID商品
@@ -171,7 +163,6 @@ export interface OrderItem {
 // 売上明細
 // ============================================================
 export interface SalesRecord {
-  _rowNumber?: number;
   id: string;              // ID売上
   paymentId?: string;      // 決済ID
   paymentDateTime?: string; // 決済日時
@@ -187,7 +178,6 @@ export interface SalesRecord {
 // 商品
 // ============================================================
 export interface Product {
-  _rowNumber?: number;
   id: string;            // ID商品
   name: string;          // 商品名
   price: number;         // 単価
@@ -235,6 +225,26 @@ export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+// ============================================================
+// 祝日
+// ============================================================
+export interface Holiday {
+  id: string;
+  date: string;      // YYYY-MM-DD
+  name: string;
+  type: string;      // 'holiday' | 'temporary' | 'closed'
+}
+
+// ============================================================
+// ブロック枠（休業日）
+// ============================================================
+export interface BlockedSlot {
+  id: string;
+  date: string;      // YYYY-MM-DD
+  timeSlot?: string | null;  // null = 終日ブロック
+  reason?: string | null;
 }
 
 // ============================================================

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import {
   getReservationById,
   getReservationOptions,
   createReservationOption,
   deleteReservationOption,
-} from '@/lib/google-sheets';
+} from '@/lib/db';
 import { generateId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -15,8 +15,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { optionId: string; quantity: number };
   const reservation = await getReservationById(params.id);
@@ -38,14 +39,15 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as { reservationOptionId: string };
   const allOptions = await getReservationOptions(params.id);
   const target = allOptions.find((o) => o.id === body.reservationOptionId);
-  if (!target?._rowNumber) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  await deleteReservationOption(target._rowNumber);
+  await deleteReservationOption(target.id);
   return NextResponse.json({ success: true });
 }

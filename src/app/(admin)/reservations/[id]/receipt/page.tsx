@@ -7,7 +7,7 @@ import {
   getOrders,
   getOrderItems,
   getProducts,
-} from '@/lib/google-sheets';
+} from '@/lib/db';
 import { formatDate } from '@/lib/utils';
 import PrintButton from './PrintButton';
 
@@ -29,9 +29,9 @@ export default async function ReceiptPage({
     getReservationById(params.id),
     getPlans(),
     getOptions(),
-    getOrders().catch(() => []),
-    getOrderItems().catch(() => []),
-    getProducts().catch(() => []),
+    getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   if (!reservation) notFound();

@@ -25,6 +25,9 @@ const TIME_ORDER = ['9:00', '12:00', '15:00'];
 
 interface Props {
   reservations: Reservation[];
+  blockedDates?: string[];        // 終日ブロック日 (YYYY-MM-DD)
+  blockedTimeSlots?: Record<string, string[]>; // 日付 -> 時間帯ブロック
+  holidayDates?: string[];        // 祝日（予約可能、料金異なる）
 }
 
 function getWeekStart(date: Date): Date {
@@ -44,7 +47,9 @@ function toDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export default function ReservationCalendar({ reservations }: Props) {
+export default function ReservationCalendar({ reservations, blockedDates = [], blockedTimeSlots = {}, holidayDates = [] }: Props) {
+  const blockedDateSet = useMemo(() => new Set(blockedDates), [blockedDates]);
+  const holidayDateSet = useMemo(() => new Set(holidayDates), [holidayDates]);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
@@ -159,13 +164,21 @@ export default function ReservationCalendar({ reservations }: Props) {
       </div>
 
       {/* 凡例 */}
-      <div className="flex gap-4 px-6 py-2 border-b border-gray-50 text-xs text-gray-500">
+      <div className="flex flex-wrap gap-4 px-6 py-2 border-b border-gray-50 text-xs text-gray-500">
         {Object.entries(STATUS_DOT).map(([status, dot]) => (
           <span key={status} className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
             {STATUS_LABEL[status as Reservation['status']]}
           </span>
         ))}
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded bg-gray-200" />
+          休業日
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="text-[10px] text-green-600 font-medium">祝</span>
+          祝日
+        </span>
       </div>
 
       {/* 曜日ヘッダー */}
@@ -198,6 +211,9 @@ export default function ReservationCalendar({ reservations }: Props) {
             const weekday = (startWeekday + i) % 7;
             const isSunday = weekday === 0;
             const isSaturday = weekday === 6;
+            const isBlocked = blockedDateSet.has(dateStr);
+            const isHoliday = holidayDateSet.has(dateStr);
+            const partialBlocked = blockedTimeSlots[dateStr];
 
             const sorted = [...dayReservations].sort(
               (a, b) => TIME_ORDER.indexOf(a.timeSlot) - TIME_ORDER.indexOf(b.timeSlot)
@@ -206,37 +222,55 @@ export default function ReservationCalendar({ reservations }: Props) {
             return (
               <div
                 key={day}
-                className={`border-b border-r border-gray-100 min-h-24 p-1.5 ${isToday ? 'bg-brand-light' : ''}`}
+                className={`border-b border-r border-gray-100 min-h-24 p-1.5
+                  ${isBlocked ? 'bg-gray-100' : isToday ? 'bg-brand-light' : ''}`}
               >
-                <div
-                  className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full
-                    ${isToday ? 'bg-brand text-white' : isSunday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-700'}`}
-                >
-                  {day}
-                </div>
-
-                <div className="space-y-0.5">
-                  {sorted.slice(0, 3).map((r) => (
-                    <Link
-                      key={r.id}
-                      href={`/reservations/${r.id}`}
-                      className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded truncate hover:opacity-80 transition-opacity
-                        ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
-                          r.status === '完了' ? 'bg-green-50 text-green-700' :
-                          r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                          r.status === '見学' ? 'bg-purple-50 text-purple-700' :
-                          'bg-yellow-50 text-yellow-700'}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
-                      <span className="truncate">
-                        {r.timeSlot} {r.customerName ?? ''}
-                      </span>
-                    </Link>
-                  ))}
-                  {sorted.length > 3 && (
-                    <p className="text-xs text-gray-400 pl-1">+{sorted.length - 3}件</p>
+                <div className="flex items-center gap-1">
+                  <div
+                    className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full
+                      ${isToday ? 'bg-brand text-white' : isSunday || isHoliday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-700'}`}
+                  >
+                    {day}
+                  </div>
+                  {isBlocked && (
+                    <span className="text-[10px] text-red-500 font-medium">休</span>
+                  )}
+                  {isHoliday && !isBlocked && (
+                    <span className="text-[10px] text-green-600 font-medium">祝</span>
                   )}
                 </div>
+
+                {isBlocked ? (
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">予約不可</p>
+                ) : (
+                  <div className="space-y-0.5 mt-0.5">
+                    {partialBlocked && partialBlocked.length > 0 && (
+                      <p className="text-[10px] text-red-400 truncate">
+                        {partialBlocked.join(', ')} 不可
+                      </p>
+                    )}
+                    {sorted.slice(0, 3).map((r) => (
+                      <Link
+                        key={r.id}
+                        href={`/reservations/${r.id}`}
+                        className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded truncate hover:opacity-80 transition-opacity
+                          ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
+                            r.status === '完了' ? 'bg-green-50 text-green-700' :
+                            r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
+                            r.status === '見学' ? 'bg-purple-50 text-purple-700' :
+                            'bg-yellow-50 text-yellow-700'}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
+                        <span className="truncate">
+                          {r.timeSlot} {r.customerName ?? ''}
+                        </span>
+                      </Link>
+                    ))}
+                    {sorted.length > 3 && (
+                      <p className="text-xs text-gray-400 pl-1">+{sorted.length - 3}件</p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -250,6 +284,9 @@ export default function ReservationCalendar({ reservations }: Props) {
             const isToday = toDateStr(today) === dateStr;
             const isSunday = i === 0;
             const isSaturday = i === 6;
+            const isBlocked = blockedDateSet.has(dateStr);
+            const isHoliday = holidayDateSet.has(dateStr);
+            const partialBlocked = blockedTimeSlots[dateStr];
 
             const sorted = [...dayReservations].sort(
               (a, b) => TIME_ORDER.indexOf(a.timeSlot) - TIME_ORDER.indexOf(b.timeSlot)
@@ -258,37 +295,54 @@ export default function ReservationCalendar({ reservations }: Props) {
             return (
               <div
                 key={dateStr}
-                className={`min-h-64 p-2 ${isToday ? 'bg-brand-light' : ''}`}
+                className={`min-h-64 p-2 ${isBlocked ? 'bg-gray-100' : isToday ? 'bg-brand-light' : ''}`}
               >
-                <div
-                  className={`text-xs font-medium mb-2 w-7 h-7 flex items-center justify-center rounded-full
-                    ${isToday ? 'bg-brand text-white' : isSunday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-700'}`}
-                >
-                  {day.getDate()}
-                </div>
-
-                <div className="space-y-1">
-                  {sorted.map((r) => (
-                    <Link
-                      key={r.id}
-                      href={`/reservations/${r.id}`}
-                      className={`flex items-center gap-1 text-xs px-1.5 py-1 rounded hover:opacity-80 transition-opacity
-                        ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
-                          r.status === '完了' ? 'bg-green-50 text-green-700' :
-                          r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                          r.status === '見学' ? 'bg-purple-50 text-purple-700' :
-                          'bg-yellow-50 text-yellow-700'}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
-                      <span className="truncate">
-                        {r.timeSlot} {r.customerName ?? ''}
-                      </span>
-                    </Link>
-                  ))}
-                  {sorted.length === 0 && (
-                    <p className="text-xs text-gray-300 text-center mt-4">—</p>
+                <div className="flex items-center gap-1 mb-2">
+                  <div
+                    className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full
+                      ${isToday ? 'bg-brand text-white' : isSunday || isHoliday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-700'}`}
+                  >
+                    {day.getDate()}
+                  </div>
+                  {isBlocked && (
+                    <span className="text-[10px] text-red-500 font-medium">休</span>
+                  )}
+                  {isHoliday && !isBlocked && (
+                    <span className="text-[10px] text-green-600 font-medium">祝</span>
                   )}
                 </div>
+
+                {isBlocked ? (
+                  <p className="text-xs text-gray-400 text-center mt-8">予約不可</p>
+                ) : (
+                  <div className="space-y-1">
+                    {partialBlocked && partialBlocked.length > 0 && (
+                      <p className="text-[10px] text-red-400">
+                        {partialBlocked.join(', ')} 不可
+                      </p>
+                    )}
+                    {sorted.map((r) => (
+                      <Link
+                        key={r.id}
+                        href={`/reservations/${r.id}`}
+                        className={`flex items-center gap-1 text-xs px-1.5 py-1 rounded hover:opacity-80 transition-opacity
+                          ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
+                            r.status === '完了' ? 'bg-green-50 text-green-700' :
+                            r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
+                            r.status === '見学' ? 'bg-purple-50 text-purple-700' :
+                            'bg-yellow-50 text-yellow-700'}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
+                        <span className="truncate">
+                          {r.timeSlot} {r.customerName ?? ''}
+                        </span>
+                      </Link>
+                    ))}
+                    {sorted.length === 0 && !partialBlocked?.length && (
+                      <p className="text-xs text-gray-300 text-center mt-4">—</p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}

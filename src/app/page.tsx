@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function HomePage() {
-  const session = await getSession();
-  if (!session) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     redirect('/login');
   }
   redirect('/reservations');

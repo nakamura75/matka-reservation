@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import AppShell from '@/components/layout/AppShell';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
-  if (!session) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
     redirect('/login');
   }
 

@@ -13,7 +13,7 @@ import {
   getReservationOptions,
   getOptions,
   getPlans,
-} from '@/lib/google-sheets';
+} from '@/lib/db';
 
 /**
  * POST /api/line/webhook
@@ -74,14 +74,11 @@ async function handleTextMessage(event: LineEvent) {
     return;
   }
 
-  // LINE_UserID を予約に紐づける（O列：LIFFのID上書き）
-  // AB列：Messaging API の実チャットUserIDとして保存
-  if (reservation._rowNumber) {
-    await Promise.all([
-      linkLineUserId(reservation._rowNumber, userId),
-      saveChatLineUserId(reservation._rowNumber, userId),
-    ]);
-  }
+  // LINE_UserID を予約に紐づける
+  await Promise.all([
+    linkLineUserId(reservation.id, userId),
+    saveChatLineUserId(reservation.id, userId),
+  ]);
 
   // 仮予約完了通知を送信
   const [plans, options, reservationOptions, customer] = await Promise.all([

@@ -1,28 +1,25 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 import {
   getReservations,
   createReservation,
   createReservationOption,
   createCustomer,
+  checkSlotConflict,
   getPlans,
   getOptions,
-  getReservationById,
-  updateCalendarEventId,
-} from '@/lib/google-sheets';
-import { createCalendarEvent, invalidateSlotsCache } from '@/lib/google-calendar';
+  getCustomers,
+} from '@/lib/db';
 import { sendLinePush, buildTentativeMessage } from '@/lib/line';
-import { generateId, generateReservationNumber, toJSTDatetime } from '@/lib/utils';
-import { CALENDAR_COLOR_ID_VISIT } from '@/lib/constants';
+import { generateId, generateReservationNumber } from '@/lib/utils';
 import type { ReservationFormData, Reservation } from '@/types';
 
 /** GET /api/reservations - 予約一覧 */
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const reservations = await getReservations();
     return NextResponse.json({ success: true, data: reservations });
@@ -46,7 +43,7 @@ export async function POST(req: import('next/server').NextRequest) {
     }
 
     // 顧客の重複チェック（電話番号で検索）
-    const allCustomers = await import('@/lib/google-sheets').then((m) => m.getCustomers());
+    const allCustomers = await getCustomers();
     let customer = allCustomers.find((c) => c.phone === body.phone);
 
     const now = new Date().toLocaleDateString('ja-JP');
@@ -68,6 +65,17 @@ export async function POST(req: import('next/server').NextRequest) {
         createdAt: now,
       };
       await createCustomer(customer);
+    }
+
+    // 重複チェック（見学以外）
+    if (!isVisit) {
+      const conflict = await checkSlotConflict(body.date, body.timeSlot);
+      if (conflict) {
+        return NextResponse.json(
+          { error: 'この日時は既に予約が入っています' },
+          { status: 409 }
+        );
+      }
     }
 
     // 予約作成
@@ -94,7 +102,6 @@ export async function POST(req: import('next/server').NextRequest) {
       reservationNumber,
     };
     await createReservation(reservation);
-    invalidateSlotsCache(); // 空き枠キャッシュを無効化
 
     // 予約オプション作成
     for (const opt of body.selectedOptions) {
@@ -106,41 +113,9 @@ export async function POST(req: import('next/server').NextRequest) {
       });
     }
 
-    // Google Calendar イベント作成 → イベントIDをSheetsに保存
-    const startISO = toJSTDatetime(body.date, body.timeSlot);
-    const endDate = new Date(startISO);
-    // 見学は30分、撮影はプランの所要時間
-    endDate.setMinutes(endDate.getMinutes() + (isVisit ? 30 : (plan?.duration ?? 60)));
-    const endJST = new Date(endDate.getTime() + 9 * 60 * 60 * 1000);
-    const endISO = endJST.toISOString().slice(0, 19) + '+09:00';
-
-    const calendarTitle = isVisit
-      ? `【見学】${body.customerName} 様`
-      : `【仮予約】${body.customerName} 様 (${body.scene})`;
-    const calendarDesc = isVisit
-      ? `予約番号: ${reservationNumber}\n電話: ${body.phone}`
-      : `予約番号: ${reservationNumber}\nプラン: ${plan?.name ?? ''}\n電話: ${body.phone}`;
-
-    const calendarEventId = await createCalendarEvent({
-      title: calendarTitle,
-      startDateTime: startISO,
-      endDateTime: endISO,
-      description: calendarDesc,
-      ...(isVisit ? { colorId: CALENDAR_COLOR_ID_VISIT } : {}),
-    }).catch((e) => { console.error('Calendar event creation failed:', e); return null; });
-
-    if (calendarEventId) {
-      const saved = await getReservationById(reservationId).catch(() => null);
-      if (saved?._rowNumber) {
-        await updateCalendarEventId(saved._rowNumber, calendarEventId).catch((e) =>
-          console.error('Calendar event ID save failed:', e)
-        );
-      }
-    }
-
     // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（見学はスキップ）
     if (!isVisit && body.lineUserId) {
-      const allOptions = await getOptions().catch(() => []);
+      const allOptions = await getOptions().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; });
       const optionsWithInfo = body.selectedOptions.map((sel) => {
         const opt = allOptions.find((o) => o.id === sel.optionId);
         return opt ? { name: opt.name, price: opt.price, quantity: sel.quantity } : null;

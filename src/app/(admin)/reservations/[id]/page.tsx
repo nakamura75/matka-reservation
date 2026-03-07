@@ -8,7 +8,7 @@ import {
   getOrders,
   getOrderItems,
   getProducts,
-} from '@/lib/google-sheets';
+} from '@/lib/db';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
 
@@ -24,9 +24,9 @@ export default async function ReservationDetailPage({
     getPlans(),
     getOptions(), // マスターオプション一覧（予約オプション選択肢＆enrichに使用）
     getStaff(),
-    getOrders().catch(() => []),
-    getOrderItems().catch(() => []),
-    getProducts().catch(() => []),
+    getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   if (!reservation) notFound();

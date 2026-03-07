@@ -1,12 +1,12 @@
-import { getCustomers, getReservations } from '@/lib/google-sheets';
+import { getCustomers, getReservations } from '@/lib/db';
 import CustomerList from './CustomerList';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CustomersPage() {
   const [customers, reservations] = await Promise.all([
-    getCustomers().catch(() => []),
-    getReservations().catch(() => []),
+    getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   // 電話番号 → 顧客IDリスト のマップ（同一人物判定用）

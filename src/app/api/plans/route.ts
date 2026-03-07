@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPlans } from '@/lib/google-sheets';
+import { getPlans } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 

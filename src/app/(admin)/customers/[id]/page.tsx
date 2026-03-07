@@ -1,17 +1,17 @@
 import { notFound } from 'next/navigation';
-import { getCustomers, getReservations, getOrders, getPlans, getOrderItems, getProducts } from '@/lib/google-sheets';
+import { getCustomers, getReservations, getOrders, getPlans, getOrderItems, getProducts } from '@/lib/db';
 import CustomerDetail from './CustomerDetail';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
   const [customers, reservations, orders, plans, orderItems, products] = await Promise.all([
-    getCustomers().catch(() => []),
-    getReservations().catch(() => []),
-    getOrders().catch(() => []),
-    getPlans().catch(() => []),
-    getOrderItems().catch(() => []),
-    getProducts().catch(() => []),
+    getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getPlans().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   const productMap = Object.fromEntries(products.map((p) => [p.id, p.name]));

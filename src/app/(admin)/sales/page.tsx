@@ -1,18 +1,18 @@
-import { getReservations, getStaff, getPlans, getOptions, getReservationOptions, getOrders, getOrderItems, getProducts } from '@/lib/google-sheets';
+import { getReservations, getStaff, getPlans, getOptions, getReservationOptions, getOrders, getOrderItems, getProducts } from '@/lib/db';
 import SalesSummary from './SalesSummary';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SalesPage() {
   const [reservations, staff, plans, options, reservationOptions, orders, orderItems, products] = await Promise.all([
-    getReservations().catch(() => []),
-    getStaff().catch(() => []),
-    getPlans().catch(() => []),
-    getOptions().catch(() => []),
-    getReservationOptions().catch(() => []),
-    getOrders().catch(() => []),
-    getOrderItems().catch(() => []),
-    getProducts().catch(() => []),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getStaff().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getPlans().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOptions().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getReservationOptions().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   // プランIDとオプションIDの価格マップ
