@@ -226,10 +226,21 @@ export async function getStaff(): Promise<Staff[]> {
 // 予約
 // ============================================================
 
-export async function getReservations(): Promise<Reservation[]> {
+export async function getReservations(options?: {
+  fromDate?: string; // YYYY-MM-DD 以降のみ
+  toDate?: string;   // YYYY-MM-DD 以前のみ
+}): Promise<Reservation[]> {
   const rows = await getSheetData(SHEET_NAMES.RESERVATIONS);
   if (rows.length < 2) return [];
-  return rows.slice(1).map((r, i) => rowToReservation(r, i + 2));
+  const all = rows.slice(1).map((r, i) => rowToReservation(r, i + 2));
+  if (!options?.fromDate && !options?.toDate) return all;
+  return all.filter((r) => {
+    const d = r.date?.slice(0, 10);
+    if (!d) return false;
+    if (options.fromDate && d < options.fromDate) return false;
+    if (options.toDate && d > options.toDate) return false;
+    return true;
+  });
 }
 
 export async function getReservationById(id: string): Promise<Reservation | null> {

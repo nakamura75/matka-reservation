@@ -81,9 +81,12 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
     }
   }
 
-  // --- スプレッドシートの既存予約からブロック ---
+  // --- スプレッドシートの既存予約からブロック（予約ウィンドウ内のみ取得） ---
   try {
-    const reservations = await getReservations();
+    const reservations = await getReservations({
+      fromDate: toJSTDateStr(today),
+      toDate: toJSTDateStr(end),
+    });
     for (const r of reservations) {
       if (r.status === 'キャンセル') continue;
       if (!r.date || !r.timeSlot) continue;

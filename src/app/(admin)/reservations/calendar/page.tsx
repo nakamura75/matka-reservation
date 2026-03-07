@@ -3,9 +3,18 @@ import ReservationCalendar from './ReservationCalendar';
 
 export const dynamic = 'force-dynamic';
 
+function toDateStr(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 export default async function CalendarPage() {
+  // カレンダーは3ヶ月前〜9ヶ月後の範囲のみ取得（全件ロードを避ける）
+  const now = new Date();
+  const fromDate = new Date(now); fromDate.setMonth(fromDate.getMonth() - 3);
+  const toDate = new Date(now); toDate.setMonth(toDate.getMonth() + 9);
+
   const [reservations, customers] = await Promise.all([
-    getReservations().catch(() => []),
+    getReservations({ fromDate: toDateStr(fromDate), toDate: toDateStr(toDate) }).catch(() => []),
     getCustomers().catch(() => []),
   ]);
 
