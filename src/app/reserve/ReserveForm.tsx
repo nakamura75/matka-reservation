@@ -69,6 +69,7 @@ export default function ReserveForm() {
   const [isInLine, setIsInLine] = useState(false);
   const [lineUserId, setLineUserId] = useState('');
   const [lineName, setLineName] = useState('');
+  const [showLiffQR, setShowLiffQR] = useState(false);
 
   // マスタデータ
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -895,7 +896,6 @@ export default function ReserveForm() {
     }
   }
 
-  const [showLiffQR, setShowLiffQR] = useState(false);
   const liffUrl = `https://liff.line.me/${LIFF_ID}`;
 
   const stepRenderers = [renderStep0, renderStep1, renderStep2, renderStep3, renderStep4];
