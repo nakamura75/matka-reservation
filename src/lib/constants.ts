@@ -1,5 +1,3 @@
-export const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? '';
-export const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID ?? '';
 export const LINE_OA_ID = '@082mluna';
 export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2009330357-AnI0gz2I';
 
@@ -24,25 +22,8 @@ export const SCENE_PLAN_MAP: Record<string, 'Discovery' | 'Maternity'> = {
   'マタニティ': 'Maternity',
 };
 
-// スプレッドシート シート名
-export const SHEET_NAMES = {
-  CUSTOMERS: '顧客',
-  PLANS: 'プラン',
-  OPTIONS: 'オプション',
-  PRODUCTS: '商品',
-  STAFF: 'スタッフ',
-  RESERVATIONS: '予約',
-  RESERVATION_OPTIONS: '予約オプション',
-  ORDERS: '注文',
-  ORDER_ITEMS: '注文詳細',
-  SALES: '売上明細',
-} as const;
-
 // 予約ステータス
 export const RESERVATION_STATUSES = ['予約済', '予約確定', '見学', '完了', 'キャンセル'] as const;
-
-// Googleカレンダーイベントォラー（見学は Grape = 3）
-export const CALENDAR_COLOR_ID_VISIT = '3';
 
 // 注文詳細ステータス
 export const ORDER_ITEM_STATUSES = ['受注', '発注済', '制作完了', '入荷', '発送済'] as const;

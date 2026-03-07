@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getReservations, getPlans } from '@/lib/google-sheets';
+import { getReservations, getPlans } from '@/lib/db';
 import { sendLinePush, buildReminderMessage } from '@/lib/line';
 
 export const dynamic = 'force-dynamic';

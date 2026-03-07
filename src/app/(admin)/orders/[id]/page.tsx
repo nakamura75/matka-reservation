@@ -5,18 +5,18 @@ import {
   getOrderItems,
   getProducts,
   getReservations,
-} from '@/lib/google-sheets';
+} from '@/lib/db';
 import OrderDetail from './OrderDetail';
 
 export const dynamic = 'force-dynamic';
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const [orders, customers, items, products, reservations] = await Promise.all([
-    getOrders().catch(() => []),
-    getCustomers().catch(() => []),
-    getOrderItems(params.id).catch(() => []),
-    getProducts().catch(() => []),
-    getReservations().catch(() => []),
+    getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItems(params.id).catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   const order = orders.find((o) => o.id === params.id);

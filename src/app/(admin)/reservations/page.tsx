@@ -1,13 +1,13 @@
-import { getReservations, getCustomers, getPlans } from '@/lib/google-sheets';
+import { getReservations, getCustomers, getPlans } from '@/lib/db';
 import ReservationList from './ReservationList';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReservationsPage() {
   const [reservations, customers, plans] = await Promise.all([
-    getReservations().catch(() => []),
-    getCustomers().catch(() => []),
-    getPlans().catch(() => []),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getPlans().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   const customerMap = Object.fromEntries(customers.map((c) => [c.id, c.name]));

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option } from '@/types';
 import { formatDate, formatCurrency, isWeekend } from '@/lib/utils';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID } from '@/lib/constants';
@@ -78,6 +78,24 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [lineIdInput, setLineIdInput] = useState('');
   const [lineIdSaving, setLineIdSaving] = useState(false);
+
+  // 削除
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        router.push('/reservations');
+      }
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }
 
   // 商品注文
   const [linkedOrders, setLinkedOrders] = useState(initialLinkedOrders);
@@ -384,11 +402,49 @@ export default function ReservationDetail({ reservation, customer, plan, options
             {reservation.reservationNumber}
           </span>
         </h1>
+        {/* 削除ボタン */}
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
+        >
+          <TrashIcon className="w-3.5 h-3.5" />
+          削除
+        </button>
         {/* ① 表示ラベル変更 */}
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${STATUS_COLORS[status]}`}>
           {STATUS_LABEL[status]}
         </span>
       </div>
+
+      {/* 削除確認モーダル */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">予約を削除しますか？</h3>
+            <p className="text-sm text-gray-500 mb-1">
+              {reservation.reservationNumber}
+            </p>
+            <p className="text-sm text-red-500 mb-4">
+              この操作は取り消せません。関連するオプション情報も削除されます。
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleting ? '削除中...' : '削除する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左カラム */}

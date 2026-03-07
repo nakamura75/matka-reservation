@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { getCustomers, createCustomer } from '@/lib/google-sheets';
+import { createClient } from '@/lib/supabase/server';
+import { getCustomers, createCustomer } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 /** GET /api/customers */
 export async function GET() {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const customers = await getCustomers();
@@ -21,8 +22,9 @@ export async function GET() {
 
 /** POST /api/customers */
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const body = await req.json();

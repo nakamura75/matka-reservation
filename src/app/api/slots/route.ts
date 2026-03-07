@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-import { getAvailableSlots } from '@/lib/google-calendar';
+import { getAvailableSlots } from '@/lib/slots';
 import type { ShootingScene } from '@/types';
 
 export async function GET(req: NextRequest) {

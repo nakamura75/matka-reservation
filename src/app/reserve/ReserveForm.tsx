@@ -239,6 +239,8 @@ export default function ReserveForm() {
   }, 0);
   const total = (selectedPlan?.price ?? 0) + optionTotal;
 
+  const [liffSendStatus, setLiffSendStatus] = useState<'idle' | 'sent' | 'failed'>('idle');
+
   async function handleSubmit() {
     if (!agreed) { setError('キャンセルポリシーへの同意が必要です'); return; }
     setSubmitting(true);
@@ -277,8 +279,23 @@ export default function ReserveForm() {
       });
       const data = await res.json();
       if (data.success) {
-        setReservationNumber(data.data.reservationNumber);
+        const resNumber = data.data.reservationNumber as string;
+        setReservationNumber(resNumber);
         setSubmitted(true);
+
+        // LIFF内の場合、自動で予約番号メッセージを送信
+        if (isInLine) {
+          try {
+            const liff = await import('@line/liff');
+            await liff.default.sendMessages([
+              { type: 'text', text: `matka予約: ${resNumber}` },
+            ]);
+            setLiffSendStatus('sent');
+          } catch (e) {
+            console.error('LIFF sendMessages failed:', e);
+            setLiffSendStatus('failed');
+          }
+        }
       } else {
         setError(data.error ?? '送信に失敗しました');
       }
@@ -334,9 +351,25 @@ export default function ReserveForm() {
               </a>
             </div>
           )}
-          {isInLine && (
+          {isInLine && liffSendStatus === 'sent' && (
             <p className="text-sm text-green-600 bg-green-50 rounded-xl p-3">
-              ✅ LINEで予約確認メッセージをお送りしました
+              ✅ LINEで予約番号を自動送信しました。確認メッセージをお送りします。
+            </p>
+          )}
+          {isInLine && liffSendStatus === 'failed' && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 text-left">
+              <p className="text-sm font-semibold text-amber-800 mb-2">⚠️ 自動送信に失敗しました</p>
+              <p className="text-xs text-amber-700 mb-3">
+                以下のメッセージをLINEトーク内にコピー＆ペーストして送信してください。
+              </p>
+              <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-amber-300">
+                matka予約: {reservationNumber}
+              </div>
+            </div>
+          )}
+          {isInLine && liffSendStatus === 'idle' && (
+            <p className="text-sm text-gray-400 bg-gray-50 rounded-xl p-3">
+              LINEで予約番号を送信中...
             </p>
           )}
         </div>

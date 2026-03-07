@@ -1,12 +1,39 @@
 'use client';
 
-import { Suspense } from 'react';
-import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
+  const errorParam = searchParams.get('error');
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(errorParam ? 'ログインに失敗しました。' : '');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setError('メールアドレスまたはパスワードが正しくありません。');
+      setLoading(false);
+      return;
+    }
+
+    router.push('/reservations');
+    router.refresh();
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10 w-full max-w-sm text-center">
@@ -17,23 +44,42 @@ function LoginForm() {
 
       {error && (
         <p className="text-sm text-red-500 mb-4 bg-red-50 rounded-lg px-4 py-2">
-          ログインに失敗しました。許可されたアカウントでお試しください。
+          {error}
         </p>
       )}
 
-      <button
-        onClick={() => signIn('google', { callbackUrl: '/reservations' })}
-        className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-      >
-        <svg className="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="4" width="20" height="16" rx="2" />
-          <polyline points="2,4 12,13 22,4" />
-        </svg>
-        メールでログイン
-      </button>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="email"
+          placeholder="メールアドレス"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+        />
+        <input
+          type="password"
+          placeholder="パスワード"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+        />
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          <svg className="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <polyline points="2,4 12,13 22,4" />
+          </svg>
+          {loading ? 'ログイン中...' : 'ログイン'}
+        </button>
+      </form>
 
       <p className="text-xs text-gray-400 mt-6">
-        スタッフ専用システムです。<br />許可されたメールアドレスのみログイン可能です。
+        スタッフ専用システムです。<br />許可されたアカウントのみログイン可能です。
       </p>
     </div>
   );

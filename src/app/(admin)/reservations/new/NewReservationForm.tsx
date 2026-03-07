@@ -10,6 +10,8 @@ interface Props {
   plans: Plan[];
   options: Option[];
   customers: Customer[];
+  blockedDates?: string[];
+  blockedTimeSlots?: Record<string, string[]>;
 }
 
 interface SelectedOption {
@@ -17,7 +19,8 @@ interface SelectedOption {
   quantity: number;
 }
 
-export default function NewReservationForm({ plans, options, customers }: Props) {
+export default function NewReservationForm({ plans, options, customers, blockedDates = [], blockedTimeSlots = {} }: Props) {
+  const blockedDateSet = new Set(blockedDates);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +69,7 @@ export default function NewReservationForm({ plans, options, customers }: Props)
   // 日付変更時にプランを再評価
   function handleDateChange(d: string) {
     setDate(d);
+    setTimeSlot(''); // 日付変更時に時間帯をリセット
     if (scene) {
       const planType = SCENE_PLAN_MAP[scene];
       if (planType) {
@@ -78,6 +82,9 @@ export default function NewReservationForm({ plans, options, customers }: Props)
       }
     }
   }
+
+  const isDateBlocked = date ? blockedDateSet.has(date) : false;
+  const dateBlockedSlots = date ? (blockedTimeSlots[date] ?? []) : [];
 
   function handleChildrenCountChange(val: string) {
     setChildrenCount(val);
@@ -287,7 +294,12 @@ export default function NewReservationForm({ plans, options, customers }: Props)
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
               required
             />
-            {date && (
+            {date && isDateBlocked && (
+              <p className="text-xs mt-1 text-red-500 font-medium">
+                この日は休業日です（予約不可）
+              </p>
+            )}
+            {date && !isDateBlocked && (
               <p className="text-xs mt-1 text-gray-400">
                 {isWeekend(date) ? '🏖 休日料金' : '📅 平日料金'}
               </p>
@@ -297,25 +309,40 @@ export default function NewReservationForm({ plans, options, customers }: Props)
           <div>
             <label className="block text-sm text-gray-500 mb-1">時間帯 *</label>
             {isVisit ? (
-              <input
-                type="text"
+              <select
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
-                placeholder="例：10:00"
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                 required
-              />
+                disabled={isDateBlocked}
+              >
+                <option value="">選択...</option>
+                {['9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map((t) => {
+                  const slotBlocked = dateBlockedSlots.includes(t);
+                  return (
+                    <option key={t} value={t} disabled={slotBlocked}>
+                      {t}{slotBlocked ? '（休業中）' : ''}
+                    </option>
+                  );
+                })}
+              </select>
             ) : (
               <select
                 value={timeSlot}
                 onChange={(e) => setTimeSlot(e.target.value)}
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                 required
+                disabled={isDateBlocked}
               >
                 <option value="">選択...</option>
-                {timeSlots.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
+                {timeSlots.map((t) => {
+                  const slotBlocked = dateBlockedSlots.includes(t);
+                  return (
+                    <option key={t} value={t} disabled={slotBlocked}>
+                      {t}{slotBlocked ? '（予約不可）' : ''}
+                    </option>
+                  );
+                })}
               </select>
             )}
           </div>
@@ -580,11 +607,11 @@ export default function NewReservationForm({ plans, options, customers }: Props)
         )}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || isDateBlocked}
           className={`px-8 py-2.5 font-medium rounded-lg disabled:opacity-50 transition-colors text-white
             ${isVisit ? 'bg-purple-500 hover:bg-purple-600' : 'bg-brand hover:bg-brand-dark'}`}
         >
-          {loading ? '登録中...' : isVisit ? '見学を登録する' : '予約を登録する'}
+          {isDateBlocked ? '休業日のため登録不可' : loading ? '登録中...' : isVisit ? '見学を登録する' : '予約を登録する'}
         </button>
       </div>
     </form>
