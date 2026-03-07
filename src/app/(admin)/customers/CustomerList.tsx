@@ -12,10 +12,13 @@ type CustomerWithCount = Customer & {
   duplicateCustomerIds: string[];
 };
 
+const PAGE_SIZE = 50;
+
 export default function CustomerList({ customers }: { customers: CustomerWithCount[] }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [mergingId, setMergingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     if (!search) return customers;
@@ -28,6 +31,11 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
         (c.email ?? '').toLowerCase().includes(q)
     );
   }, [customers, search]);
+
+  // 検索時はページを1に戻す
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   async function handleMerge(primaryId: string, duplicateIds: string[]) {
     setMergingId(primaryId);
@@ -63,7 +71,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
           type="text"
           placeholder="氏名・フリガナ・電話番号・メールで検索..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         <span className="text-sm text-gray-400 self-center">{filtered.length}件</span>
@@ -83,14 +91,14 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
                   顧客が見つかりません
                 </td>
               </tr>
             ) : (
-              filtered.map((c) => (
+              paginated.map((c) => (
                 <tr key={c.id} className={`hover:bg-gray-50 transition-colors ${c.duplicateCustomerIds.length > 0 ? 'bg-orange-50/40' : ''}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center flex-wrap gap-1.5">
@@ -127,7 +135,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3">
                     {c.chatLineUserId ? (
                       <a
-                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${c.chatLineUserId}`}
+                        href={`https://chat.line.biz/U7e85c492f66f6ef58614c9f48de7d85f/chat/${c.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -153,6 +161,40 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
           </tbody>
         </table>
       </div>
+
+      {/* ページネーション */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+          <span className="text-xs text-gray-400">
+            {filtered.length}件中 {(currentPage - 1) * PAGE_SIZE + 1}〜{Math.min(currentPage * PAGE_SIZE, filtered.length)}件
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="px-2.5 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              前へ
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-7 h-7 text-xs rounded ${p === currentPage ? 'bg-brand text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-2.5 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              次へ
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

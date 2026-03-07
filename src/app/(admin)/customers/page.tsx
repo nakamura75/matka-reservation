@@ -63,10 +63,12 @@ export default async function CustomersPage() {
       : [];
     return { ...c, reservationCount, isRepeater, lineUserId, chatLineUserId, duplicateCustomerIds };
   }).sort((a, b) => {
-    if (!a.createdAt && !b.createdAt) return 0;
-    if (!a.createdAt) return 1;
-    if (!b.createdAt) return -1;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    const fa = a.furigana ?? '';
+    const fb = b.furigana ?? '';
+    if (!fa && !fb) return 0;
+    if (!fa) return 1;
+    if (!fb) return -1;
+    return fa.localeCompare(fb, 'ja');
   });
 
   return (
