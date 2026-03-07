@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     await createPlan(plan);
     return NextResponse.json({ success: true, data: plan });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
 
@@ -41,6 +41,6 @@ export async function PATCH(req: NextRequest) {
     await updatePlan(body);
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }

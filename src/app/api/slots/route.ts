@@ -13,6 +13,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: slots });
   } catch (err) {
     console.error('[/api/slots] error:', err);
-    return NextResponse.json({ success: false, data: [], error: String(err) }, { status: 500 });
+    return NextResponse.json({ success: false, data: [], error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }

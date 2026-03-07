@@ -2,12 +2,16 @@ import { getServerSession } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import type { NextAuthOptions } from 'next-auth';
 
+if (!process.env.NEXTAUTH_SECRET) throw new Error('NEXTAUTH_SECRET が設定されていません');
+if (!process.env.GOOGLE_CLIENT_ID) throw new Error('GOOGLE_CLIENT_ID が設定されていません');
+if (!process.env.GOOGLE_CLIENT_SECRET) throw new Error('GOOGLE_CLIENT_SECRET が設定されていません');
+
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET ?? 'dev-fallback-secret-change-in-production',
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? 'not-configured',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'not-configured',
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
   pages: {

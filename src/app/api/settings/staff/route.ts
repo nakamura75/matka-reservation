@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     await createStaff(member);
     return NextResponse.json({ success: true, data: member });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
 
@@ -33,6 +33,6 @@ export async function PATCH(req: NextRequest) {
     await updateStaff(body);
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }

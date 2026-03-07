@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     await createProduct(product);
     return NextResponse.json({ success: true, data: product });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
 
@@ -40,6 +40,6 @@ export async function PATCH(req: NextRequest) {
     await updateProduct(body);
     return NextResponse.json({ success: true });
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }

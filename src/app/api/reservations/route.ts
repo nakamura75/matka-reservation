@@ -35,11 +35,44 @@ export async function POST(req: import('next/server').NextRequest) {
   try {
     const body: ReservationFormData = await req.json();
 
+    // --- 入力バリデーション ---
+    if (!body.date || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+      return NextResponse.json({ error: '日付が不正です' }, { status: 400 });
+    }
+    if (!body.timeSlot) {
+      return NextResponse.json({ error: '時間帯が指定されていません' }, { status: 400 });
+    }
+    if (!body.planId || !body.customerName || !body.phone) {
+      return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
+    }
+    // 日付が過去でないか確認
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const requestedDate = new Date(body.date);
+    if (requestedDate < today) {
+      return NextResponse.json({ error: '過去の日付には予約できません' }, { status: 400 });
+    }
+    // 60日以内か確認
+    const maxDate = new Date(today);
+    maxDate.setDate(maxDate.getDate() + 60);
+    if (requestedDate > maxDate) {
+      return NextResponse.json({ error: '予約は60日先までです' }, { status: 400 });
+    }
+
     // プラン情報取得
     const plans = await getPlans();
     const plan = plans.find((p) => p.id === body.planId);
     if (!plan) {
       return NextResponse.json({ error: 'プランが見つかりません' }, { status: 400 });
+    }
+
+    // --- 二重予約防止: 予約作成直前にスロットの空きを再確認 ---
+    const { getAvailableSlots } = await import('@/lib/google-calendar');
+    const availableSlots = await getAvailableSlots(body.scene);
+    const targetDay = availableSlots.find((s) => s.date === body.date);
+    const isAvailable = targetDay?.slots.find((s) => s.time === body.timeSlot)?.available;
+    if (!isAvailable) {
+      return NextResponse.json({ error: 'この日時はすでに予約が入っています。別の日時をお選びください。' }, { status: 409 });
     }
 
     // 顧客の重複チェック（電話番号で検索）
