@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const member = { id: generateId(), name: body.name, isActive: 'TRUE' };
     await createStaff(member);
     return NextResponse.json({ success: true, data: member });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     await updateStaff(body);
     return NextResponse.json({ success: true });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
   }
 }
