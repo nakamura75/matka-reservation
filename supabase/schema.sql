@@ -78,7 +78,7 @@ CREATE TABLE staff (
 -- ============================================================
 CREATE TABLE reservations (
   id TEXT PRIMARY KEY,
-  customer_id TEXT REFERENCES customers(id),
+  customer_id TEXT REFERENCES customers(id) ON DELETE CASCADE,
   plan_id TEXT REFERENCES plans(id),
   payment_status BOOLEAN NOT NULL DEFAULT false,
   payment_date TEXT,
@@ -125,7 +125,7 @@ CREATE UNIQUE INDEX idx_reservations_no_duplicate
 -- ============================================================
 CREATE TABLE reservation_options (
   id TEXT PRIMARY KEY,
-  reservation_id TEXT REFERENCES reservations(id),
+  reservation_id TEXT REFERENCES reservations(id) ON DELETE CASCADE,
   option_id TEXT REFERENCES options(id),
   quantity INTEGER NOT NULL DEFAULT 1,
   note TEXT
@@ -138,7 +138,7 @@ CREATE INDEX idx_reservation_options_reservation_id ON reservation_options(reser
 -- ============================================================
 CREATE TABLE orders (
   id TEXT PRIMARY KEY,
-  customer_id TEXT REFERENCES customers(id),
+  customer_id TEXT REFERENCES customers(id) ON DELETE CASCADE,
   reservation_id TEXT,
   order_date TEXT NOT NULL,
   is_paid BOOLEAN NOT NULL DEFAULT false,
@@ -154,7 +154,7 @@ CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 -- ============================================================
 CREATE TABLE order_items (
   id TEXT PRIMARY KEY,
-  order_id TEXT REFERENCES orders(id),
+  order_id TEXT REFERENCES orders(id) ON DELETE CASCADE,
   product_id TEXT REFERENCES products(id),
   customer_id TEXT,
   quantity INTEGER NOT NULL DEFAULT 1,

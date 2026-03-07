@@ -49,7 +49,10 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
   });
 
   async function handleDelete() {
-    if (!confirm(`「${customer.name}」を削除しますか？この操作は取り消せません。`)) return;
+    const msg = reservations.length > 0
+      ? `「${customer.name}」を削除しますか？\n\n⚠️ この顧客に紐づく予約${reservations.length}件・注文データもすべて削除されます。\n\nこの操作は取り消せません。`
+      : `「${customer.name}」を削除しますか？この操作は取り消せません。`;
+    if (!confirm(msg)) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/customers/${customer.id}`, { method: 'DELETE' });
@@ -96,8 +99,8 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
         </h1>
         <button
           onClick={handleDelete}
-          disabled={deleting || reservations.length > 0}
-          title={reservations.length > 0 ? '予約がある顧客は削除できません' : '顧客を削除'}
+          disabled={deleting}
+          title="顧客を削除"
           className="flex items-center gap-1 text-sm text-red-400 hover:text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <XMarkIcon className="w-4 h-4" />

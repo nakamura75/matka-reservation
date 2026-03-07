@@ -69,20 +69,9 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const [customers, reservations] = await Promise.all([
-      getCustomers(),
-      getReservations(),
-    ]);
+    const customers = await getCustomers();
     const customer = customers.find((c) => c.id === params.id);
     if (!customer) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    const linked = reservations.filter((r) => r.customerId === params.id);
-    if (linked.length > 0) {
-      return NextResponse.json(
-        { error: `この顧客には${linked.length}件の予約があるため削除できません` },
-        { status: 409 }
-      );
-    }
 
     await deleteCustomer(customer.id);
     return NextResponse.json({ success: true });
