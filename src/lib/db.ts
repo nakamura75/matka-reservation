@@ -316,11 +316,14 @@ export async function updateStaff(data: Staff): Promise<void> {
 // 予約
 // ============================================================
 
-export async function getReservations(): Promise<Reservation[]> {
-  const { data, error } = await supabase()
+export async function getReservations(opts?: { fromDate?: string; toDate?: string }): Promise<Reservation[]> {
+  let query = supabase()
     .from('reservations')
     .select('*')
     .order('created_at', { ascending: true });
+  if (opts?.fromDate) query = query.gte('date', opts.fromDate);
+  if (opts?.toDate) query = query.lte('date', opts.toDate);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map(dbToReservation);
 }

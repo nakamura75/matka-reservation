@@ -69,12 +69,11 @@ export async function POST(req: import('next/server').NextRequest) {
     }
 
     // --- 二重予約防止: 予約作成直前にスロットの空きを再確認 ---
-    const { getAvailableSlots } = await import('@/lib/google-calendar');
-    const availableSlots = await getAvailableSlots(body.scene);
-    const targetDay = availableSlots.find((s) => s.date === body.date);
-    const isAvailable = targetDay?.slots.find((s) => s.time === body.timeSlot)?.available;
-    if (!isAvailable) {
-      return NextResponse.json({ error: 'この日時はすでに予約が入っています。別の日時をお選びください。' }, { status: 409 });
+    if (!isVisit) {
+      const conflict = await checkSlotConflict(body.date, body.timeSlot);
+      if (conflict) {
+        return NextResponse.json({ error: 'この日時はすでに予約が入っています。別の日時をお選びください。' }, { status: 409 });
+      }
     }
 
     // 顧客の重複チェック（電話番号で検索）
