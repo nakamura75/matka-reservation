@@ -7,8 +7,8 @@ import {
 } from '@/lib/google-sheets';
 import { sendLinePush, buildConfirmMessage } from '@/lib/line';
 import { getPlans } from '@/lib/google-sheets';
-import { deleteCalendarEvent, createCalendarEvent } from '@/lib/google-calendar';
-import { toJSTDatetime } from '@/lib/utils';
+import { deleteCalendarEvent, createCalendarEvent, invalidateSlotsCache } from '@/lib/google-calendar';
+import { toJSTDatetime, addMinutes } from '@/lib/utils';
 import { SHEET_NAMES } from '@/lib/constants';
 import type { ReservationStatus } from '@/types';
 
@@ -69,6 +69,8 @@ export async function PATCH(
   if (body.status) {
     await updateReservationStatus(reservation._rowNumber, body.status);
 
+    invalidateSlotsCache(); // ステータス変更時にキャッシュを無効化
+
     // キャンセル → カレンダーイベント削除（枠をリリース）
     if (body.status === 'キャンセル' && reservation.calendarEventId) {
       await deleteCalendarEvent(reservation.calendarEventId).catch((e) =>
@@ -125,14 +127,20 @@ export async function PATCH(
     if (body.date !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!F${row}`, value: body.date }); // F: 予約日
     if (body.timeSlot !== undefined) updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!G${row}`, value: body.timeSlot }); // G: 予約時間帯
 
-    // 日時変更時はGoogleカレンダーイベントを作り直す
+    // 日時変更時はGoogleカレンダーイベントを作り直す・キャッシュ無効化
     const dateChanged = body.date !== undefined && body.date !== reservation.date;
     const timeSlotChanged = body.timeSlot !== undefined && body.timeSlot !== reservation.timeSlot;
     if (dateChanged || timeSlotChanged) {
-      const oldEventId = reservation.calendarEventId && !reservation.calendarEventId.startsWith('http')
-        ? reservation.calendarEventId : null;
-      if (oldEventId) {
-        await deleteCalendarEvent(oldEventId).catch((e) => console.error('Calendar event deletion failed:', e));
+      invalidateSlotsCache(); // 日時変更時にキャッシュを無効化
+      const calEventId = reservation.calendarEventId;
+      if (calEventId) {
+        if (!calEventId.startsWith('http')) {
+          await deleteCalendarEvent(calEventId).catch((e) => console.error('Calendar event deletion failed:', e));
+        } else {
+          // URLが格納されている不正なIDはシートからクリアする
+          console.warn('[PATCH] Invalid calendarEventId (URL detected), clearing from sheet:', calEventId);
+          updates.push({ range: `${SHEET_NAMES.RESERVATIONS}!X${row}`, value: '' });
+        }
       }
       const newDate = body.date ?? reservation.date;
       const newTimeSlot = body.timeSlot ?? reservation.timeSlot;
@@ -140,9 +148,7 @@ export async function PATCH(
       const plan = plans.find((p) => p.id === reservation.planId);
       if (plan && newDate && newTimeSlot) {
         const startISO = toJSTDatetime(newDate, newTimeSlot);
-        const endDate = new Date(startISO);
-        endDate.setMinutes(endDate.getMinutes() + plan.duration);
-        const endISO = endDate.toISOString().replace('Z', '+09:00');
+        const endISO = addMinutes(startISO, plan.duration);
         const newEventId = await createCalendarEvent({
           title: `【仮予約】${reservation.customerId} 様 (${body.scene ?? reservation.scene ?? ''})`,
           startDateTime: startISO,

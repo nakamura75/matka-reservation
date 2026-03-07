@@ -31,11 +31,13 @@ export function toJSTDatetime(date: string, time: string): string {
   return `${date}T${padH}:${padM}:00+09:00`;
 }
 
-/** 分を加算して終了日時を返す */
+/** 分を加算して終了日時を返す（JST） */
 export function addMinutes(isoDatetime: string, minutes: number): string {
   const d = new Date(isoDatetime);
   d.setMinutes(d.getMinutes() + minutes);
-  return d.toISOString().replace('Z', '+09:00').replace(/\.\d{3}/, '');
+  // toISOString() はUTCを返すため、9時間加算してJST表記に変換する
+  const jst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().replace('Z', '+09:00').replace(/\.\d{3}/, '');
 }
 
 /** 金額を日本円フォーマット */

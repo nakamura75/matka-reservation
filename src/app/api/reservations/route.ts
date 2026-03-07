@@ -10,7 +10,7 @@ import {
   getReservationById,
   updateCalendarEventId,
 } from '@/lib/google-sheets';
-import { createCalendarEvent } from '@/lib/google-calendar';
+import { createCalendarEvent, invalidateSlotsCache } from '@/lib/google-calendar';
 import { sendLinePush, buildTentativeMessage } from '@/lib/line';
 import { generateId, generateReservationNumber, toJSTDatetime } from '@/lib/utils';
 import { CALENDAR_COLOR_ID_VISIT } from '@/lib/constants';
@@ -94,6 +94,7 @@ export async function POST(req: import('next/server').NextRequest) {
       reservationNumber,
     };
     await createReservation(reservation);
+    invalidateSlotsCache(); // 空き枠キャッシュを無効化
 
     // 予約オプション作成
     for (const opt of body.selectedOptions) {
