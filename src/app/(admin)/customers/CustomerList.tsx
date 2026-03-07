@@ -135,7 +135,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3">
                     {c.chatLineUserId ? (
                       <a
-                        href={`https://chat.line.biz/U7e85c492f66f6ef58614c9f48de7d85f/chat/${c.chatLineUserId}`}
+                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${c.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

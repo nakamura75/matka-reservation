@@ -631,7 +631,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                   <dd className="mt-0.5">
                     {reservation.chatLineUserId ? (
                       <a
-                        href={`https://chat.line.biz/U7e85c492f66f6ef58614c9f48de7d85f/chat/${reservation.chatLineUserId}`}
+                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${reservation.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
