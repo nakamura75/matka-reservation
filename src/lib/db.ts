@@ -151,7 +151,7 @@ export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await supabase()
     .from('customers')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('furigana', { ascending: true, nullsFirst: false });
   if (error) throw error;
   return (data ?? []).map(dbToCustomer);
 }
