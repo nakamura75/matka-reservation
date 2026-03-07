@@ -25,9 +25,9 @@ function getJSTDayOfWeek(dt: Date): number {
 
 /** 今日から60日分の空き枠を取得 */
 export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
-  if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
-    console.error('[getAvailableSlots] GOOGLE_SERVICE_ACCOUNT_KEY is not set');
-    return [];
+  const hasGoogleCredentials = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!hasGoogleCredentials) {
+    console.warn('[getAvailableSlots] GOOGLE_SERVICE_ACCOUNT_KEY is not set. Generating slots without calendar/reservation blocking.');
   }
 
   const today = new Date();
@@ -39,7 +39,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
   const holidayDates = new Set<string>();
 
   // --- Google Calendar からブロック情報取得（IDが設定されている場合のみ）---
-  if (process.env.GOOGLE_CALENDAR_ID) {
+  if (hasGoogleCredentials && process.env.GOOGLE_CALENDAR_ID) {
     try {
       const calendar = getCalendarClient();
       const [studioEvents, holidays] = await Promise.all([
@@ -82,19 +82,21 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
   }
 
   // --- スプレッドシートの既存予約からブロック（予約ウィンドウ内のみ取得） ---
-  try {
-    const reservations = await getReservations({
-      fromDate: toJSTDateStr(today),
-      toDate: toJSTDateStr(end),
-    });
-    for (const r of reservations) {
-      if (r.status === 'キャンセル') continue;
-      if (!r.date || !r.timeSlot) continue;
-      if (!blockedSlots.has(r.date)) blockedSlots.set(r.date, new Set());
-      blockedSlots.get(r.date)!.add(r.timeSlot);
+  if (hasGoogleCredentials) {
+    try {
+      const reservations = await getReservations({
+        fromDate: toJSTDateStr(today),
+        toDate: toJSTDateStr(end),
+      });
+      for (const r of reservations) {
+        if (r.status === 'キャンセル') continue;
+        if (!r.date || !r.timeSlot) continue;
+        if (!blockedSlots.has(r.date)) blockedSlots.set(r.date, new Set());
+        blockedSlots.get(r.date)!.add(r.timeSlot);
+      }
+    } catch (e) {
+      console.error('[getAvailableSlots] Sheets reservation error:', e);
     }
-  } catch (e) {
-    console.error('[getAvailableSlots] Sheets reservation error:', e);
   }
 
   // シーンに応じた利用可能時間枠（七五三・マタニティは9時不可）

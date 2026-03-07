@@ -458,7 +458,7 @@ export default function ReserveForm() {
                     });
                   })()}
                 </div>
-                {slots.length === 0 && (
+                {slots.filter(s => s.date.startsWith(`${calendarYM.year}-${String(calendarYM.month + 1).padStart(2, '0')}`)).length === 0 && (
                   <p className="text-center text-xs text-gray-400 mt-3">この月に空き枠がありません</p>
                 )}
               </div>
