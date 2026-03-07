@@ -9,6 +9,7 @@ import {
   Cog6ToothIcon,
   XMarkIcon,
   TableCellsIcon,
+  CurrencyYenIcon,
 } from '@heroicons/react/24/outline';
 
 const navItems = [
@@ -16,6 +17,7 @@ const navItems = [
   { href: '/reservations/calendar', label: 'カレンダー', icon: CalendarDaysIcon },
   { href: '/customers', label: '顧客管理', icon: UsersIcon },
   { href: '/orders', label: '注文管理', icon: ShoppingBagIcon },
+  { href: '/sales', label: '売上集計', icon: CurrencyYenIcon },
   { href: '/settings', label: '設定', icon: Cog6ToothIcon },
 ];
 

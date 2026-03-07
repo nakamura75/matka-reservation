@@ -7,7 +7,9 @@ import {
 } from '@/lib/line';
 import {
   getReservationByNumber,
+  getCustomerById,
   linkLineUserId,
+  saveChatLineUserId,
   getReservationOptions,
   getOptions,
   getPlans,
@@ -72,16 +74,21 @@ async function handleTextMessage(event: LineEvent) {
     return;
   }
 
-  // LINE_UserID を予約に紐づける
+  // LINE_UserID を予約に紐づける（O列：LIFFのID上書き）
+  // AB列：Messaging API の実チャットUserIDとして保存
   if (reservation._rowNumber) {
-    await linkLineUserId(reservation._rowNumber, userId);
+    await Promise.all([
+      linkLineUserId(reservation._rowNumber, userId),
+      saveChatLineUserId(reservation._rowNumber, userId),
+    ]);
   }
 
   // 仮予約完了通知を送信
-  const [plans, options, reservationOptions] = await Promise.all([
+  const [plans, options, reservationOptions, customer] = await Promise.all([
     getPlans(),
     getOptions(),
     getReservationOptions(reservation.id),
+    getCustomerById(reservation.customerId),
   ]);
 
   const plan = plans.find((p) => p.id === reservation.planId);
@@ -97,7 +104,7 @@ async function handleTextMessage(event: LineEvent) {
   });
 
   const message = buildTentativeMessage(
-    { ...reservation, customerName: reservation.customerName },
+    { ...reservation, customerName: customer?.name ?? '' },
     plan.name,
     plan.price,
     optionsWithInfo

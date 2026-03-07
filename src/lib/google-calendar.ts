@@ -2,6 +2,14 @@ import { getCalendarClient, getReservations } from './google-sheets';
 import { CALENDAR_ID, BOOKING_DAYS, ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS } from './constants';
 import type { AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 
+const SLOTS_CACHE_TTL = 5 * 60 * 1000; // 5分
+const availableSlotsCache = new Map<string, { data: AvailableSlot[]; expiry: number }>();
+
+/** 予約作成・更新時にキャッシュを無効化する */
+export function invalidateSlotsCache(): void {
+  availableSlotsCache.clear();
+}
+
 /** 祝日判定（Google Calendar の日本の祝日カレンダーを使用） */
 const HOLIDAYS_CALENDAR_ID = 'ja.japanese#holiday@group.v.calendar.google.com';
 
@@ -25,6 +33,10 @@ function getJSTDayOfWeek(dt: Date): number {
 
 /** 今日から60日分の空き枠を取得 */
 export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
+  const cacheKey = scene ?? '__all__';
+  const cached = availableSlotsCache.get(cacheKey);
+  if (cached && cached.expiry > Date.now()) return cached.data;
+
   const hasGoogleCredentials = !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!hasGoogleCredentials) {
     console.warn('[getAvailableSlots] GOOGLE_SERVICE_ACCOUNT_KEY is not set. Generating slots without calendar/reservation blocking.');
@@ -78,6 +90,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
       }
     } catch (e) {
       console.error('[getAvailableSlots] Calendar error:', e);
+      // カレンダーエラー時もスロット生成を継続（ブロック情報なしで全枠を表示）
     }
   }
 
@@ -89,7 +102,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
         toDate: toJSTDateStr(end),
       });
       for (const r of reservations) {
-        if (r.status === 'キャンセル') continue;
+        if (r.status === 'キャンセル' || r.status === '見学') continue;
         if (!r.date || !r.timeSlot) continue;
         if (!blockedSlots.has(r.date)) blockedSlots.set(r.date, new Set());
         blockedSlots.get(r.date)!.add(r.timeSlot);
@@ -129,6 +142,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
     }
   }
 
+  availableSlotsCache.set(cacheKey, { data: result, expiry: Date.now() + SLOTS_CACHE_TTL });
   return result;
 }
 
@@ -138,6 +152,7 @@ export async function createCalendarEvent(params: {
   startDateTime: string; // ISO 8601
   endDateTime: string;   // ISO 8601
   description?: string;
+  colorId?: string;      // Googleカレンダーカラーコード（例: '3' = Grape）
 }): Promise<string | null | undefined> {
   const calendar = getCalendarClient();
   const res = await calendar.events.insert({
@@ -147,6 +162,7 @@ export async function createCalendarEvent(params: {
       description: params.description,
       start: { dateTime: params.startDateTime, timeZone: 'Asia/Tokyo' },
       end: { dateTime: params.endDateTime, timeZone: 'Asia/Tokyo' },
+      ...(params.colorId ? { colorId: params.colorId } : {}),
     },
   });
   return res.data.id;

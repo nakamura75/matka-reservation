@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
-import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID } from '@/lib/constants';
+import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID, LINE_OA_ID } from '@/lib/constants';
 import { formatCurrency, formatDate, isWeekend } from '@/lib/utils';
 
 // ============================================================
@@ -264,7 +264,7 @@ export default function ReserveForm() {
           adultCount,
           childrenDetail: childrenDetails.length > 0
             ? childrenDetails.map((c, i) =>
-                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} ${c.clothingSize}`
+                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} / ${c.clothingSize}`
               ).join('\n')
             : '',
           selectedOptions,
@@ -309,24 +309,28 @@ export default function ReserveForm() {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
               <p className="text-sm font-semibold text-green-800 mb-2">📲 LINEで予約番号を送信してください</p>
               <p className="text-xs text-green-700 mb-3">
-                予約内容の確認・通知をLINEで受け取るために、友だち追加後に以下のメッセージを送信してください。
+                下のボタンを押すと、予約番号がLINEトーク内に表示されます。<br />
+                予約内容の確認・通知をLINEで受け取るために、そのまま送信してください。
               </p>
               <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
                 matka予約: {reservationNumber}
               </div>
+              <div className="bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 mb-3">
+                <p className="text-xs font-semibold text-amber-800">⚠️ メッセージの内容は変更せずにそのまま送信してください</p>
+              </div>
               {/* QRコード（常に表示） */}
               <div className="flex flex-col items-center bg-white rounded-xl border border-green-200 p-4 mb-3">
-                <QRCodeSVG value="https://line.me/R/ti/p/@671kcyek" size={120} />
+                <QRCodeSVG value={`https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`} size={120} />
                 <p className="text-xs text-gray-500 mt-2">カメラでスキャン または ボタンをタップ</p>
               </div>
               {/* ボタン（常に表示） */}
               <a
-                href="https://line.me/R/ti/p/@671kcyek"
+                href={`https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center py-2.5 bg-[#06C755] text-white text-sm font-medium rounded-lg hover:bg-[#05a847] transition-colors"
               >
-                LINE友だち追加
+                LINEで予約番号を送信する
               </a>
             </div>
           )}
@@ -392,7 +396,7 @@ export default function ReserveForm() {
                 {(() => {
                   const today = new Date();
                   const minY = today.getFullYear(), minM = today.getMonth();
-                  const future = new Date(today); future.setDate(today.getDate() + 60);
+                  const future = new Date(today); future.setDate(today.getDate() + 180);
                   const maxY = future.getFullYear(), maxM = future.getMonth();
                   const { year, month } = calendarYM;
                   const canPrev = year > minY || month > minM;
@@ -617,7 +621,7 @@ export default function ReserveForm() {
                 type="date"
                 value={child.birthday}
                 onChange={(e) => updateChildDetail(i, 'birthday', e.target.value)}
-                className="w-full text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full max-w-full box-border text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
 
