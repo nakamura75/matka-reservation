@@ -104,8 +104,14 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
       for (const r of reservations) {
         if (r.status === 'キャンセル' || r.status === '見学') continue;
         if (!r.date || !r.timeSlot) continue;
-        if (!blockedSlots.has(r.date)) blockedSlots.set(r.date, new Set());
-        blockedSlots.get(r.date)!.add(r.timeSlot);
+        // スプレッドシートの日付フォーマットを YYYY-MM-DD に正規化（例: "2026/3/12" → "2026-03-12"）
+        const rawDate = r.date.slice(0, 10).replace(/\//g, '-');
+        const parts = rawDate.split('-');
+        const normalizedDate = parts.length === 3
+          ? `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`
+          : rawDate;
+        if (!blockedSlots.has(normalizedDate)) blockedSlots.set(normalizedDate, new Set());
+        blockedSlots.get(normalizedDate)!.add(r.timeSlot);
       }
     } catch (e) {
       console.error('[getAvailableSlots] Sheets reservation error:', e);

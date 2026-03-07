@@ -6,6 +6,9 @@ import type { ShootingScene } from '@/types';
 
 export async function GET(req: NextRequest) {
   try {
+    // 【受付停止中】予約受付を一時停止しています
+    return NextResponse.json({ success: true, data: [], maintenance: true });
+
     const { searchParams } = new URL(req.url);
     const scene = searchParams.get('scene') as ShootingScene | null;
 
