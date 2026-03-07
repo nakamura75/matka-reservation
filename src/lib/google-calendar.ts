@@ -32,10 +32,13 @@ function getJSTDayOfWeek(dt: Date): number {
 }
 
 /** 今日から60日分の空き枠を取得 */
-export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
+export async function getAvailableSlots(_scene?: ShootingScene): Promise<AvailableSlot[]> {
   // 予約一時停止中
   return [];
+}
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _getAvailableSlotsImpl(scene?: ShootingScene): Promise<AvailableSlot[]> {
   const cacheKey = scene ?? '__all__';
   const cached = availableSlotsCache.get(cacheKey);
   if (cached && cached.expiry > Date.now()) return cached.data;
