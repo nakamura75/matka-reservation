@@ -2,6 +2,14 @@ import { getCalendarClient, getReservations } from './google-sheets';
 import { CALENDAR_ID, BOOKING_DAYS, ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS } from './constants';
 import type { AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 
+const SLOTS_CACHE_TTL = 5 * 60 * 1000; // 5分
+const availableSlotsCache = new Map<string, { data: AvailableSlot[]; expiry: number }>();
+
+/** 予約作成・更新時にキャッシュを無効化する */
+export function invalidateSlotsCache(): void {
+  availableSlotsCache.clear();
+}
+
 /** 祝日判定（Google Calendar の日本の祝日カレンダーを使用） */
 const HOLIDAYS_CALENDAR_ID = 'ja.japanese#holiday@group.v.calendar.google.com';
 
@@ -25,6 +33,13 @@ function getJSTDayOfWeek(dt: Date): number {
 
 /** 今日から60日分の空き枠を取得 */
 export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
+  // 予約一時停止中
+  return [];
+
+  const cacheKey = scene ?? '__all__';
+  const cached = availableSlotsCache.get(cacheKey);
+  if (cached && cached.expiry > Date.now()) return cached.data;
+
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
     console.error('[getAvailableSlots] GOOGLE_SERVICE_ACCOUNT_KEY is not set');
     return [];
@@ -78,6 +93,8 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
       }
     } catch (e) {
       console.error('[getAvailableSlots] Calendar error:', e);
+      // カレンダー認証エラー時は定休日情報が取得できないため、誤った空き枠を表示しないよう空配列を返す
+      return [];
     }
   }
 
@@ -124,6 +141,7 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
     }
   }
 
+  availableSlotsCache.set(cacheKey, { data: result, expiry: Date.now() + SLOTS_CACHE_TTL });
   return result;
 }
 
