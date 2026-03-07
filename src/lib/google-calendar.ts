@@ -32,6 +32,7 @@ function getJSTDayOfWeek(dt: Date): number {
 }
 
 /** 今日から60日分の空き枠を取得 */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getAvailableSlots(_scene?: ShootingScene): Promise<AvailableSlot[]> {
   // 予約一時停止中
   return [];
