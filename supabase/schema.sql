@@ -238,7 +238,6 @@ CREATE POLICY "admin_all" ON order_items FOR ALL USING (auth.role() = 'authentic
 CREATE POLICY "admin_all" ON sales FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "admin_all" ON holidays FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "admin_all" ON blocked_slots FOR ALL USING (auth.role() = 'authenticated');
-
 -- 匿名（予約フォーム）→ マスターデータの参照
 CREATE POLICY "anon_read_plans" ON plans FOR SELECT USING (true);
 CREATE POLICY "anon_read_options" ON options FOR SELECT USING (true);

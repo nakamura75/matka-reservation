@@ -31,7 +31,12 @@ export async function GET() {
 /** POST /api/reservations - 予約作成（フォーム送信） */
 export async function POST(req: import('next/server').NextRequest) {
   try {
-    const body: ReservationFormData & { isVisit?: boolean; existingCustomerId?: string } = await req.json();
+    const body: ReservationFormData & { isVisit?: boolean; existingCustomerId?: string; _hp?: string } = await req.json();
+
+    // Honeypotチェック: 値が入っていたらBotと判定
+    if (body._hp) {
+      return NextResponse.json({ success: true, data: { reservationId: '', reservationNumber: 'BOT', customerId: '' } });
+    }
 
     const isVisit = body.isVisit === true;
 

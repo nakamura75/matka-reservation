@@ -113,6 +113,9 @@ export default function ReserveForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Honeypot（Bot対策）— 人間には見えない入力欄
+  const [honeypot, setHoneypot] = useState('');
+
   // LIFF 初期化
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -276,6 +279,7 @@ export default function ReserveForm() {
           cancelPolicyAgreed: true,
           lineUserId,
           lineName,
+          _hp: honeypot,
         }),
       });
       const data = await res.json();
@@ -807,6 +811,20 @@ export default function ReserveForm() {
             ))}
           </div>
         )}
+
+        {/* Honeypot — Botのみが入力する非表示フィールド */}
+        <div style={{ position: 'absolute', left: '-9999px', opacity: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+          <label htmlFor="website">Website</label>
+          <input
+            type="text"
+            id="website"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+          />
+        </div>
 
         {/* 備考 */}
         <div>
