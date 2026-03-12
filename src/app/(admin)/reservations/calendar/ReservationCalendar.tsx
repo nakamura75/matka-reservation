@@ -9,6 +9,7 @@ const STATUS_DOT: Record<Reservation['status'], string> = {
   '予約済': 'bg-yellow-400',
   '予約確定': 'bg-blue-400',
   '見学': 'bg-purple-400',
+  '保留': 'bg-orange-400',
   '完了': 'bg-green-400',
   'キャンセル': 'bg-gray-300',
 };
@@ -17,6 +18,7 @@ const STATUS_LABEL: Record<Reservation['status'], string> = {
   '予約済': '仮予約',
   '予約確定': '予約確定',
   '見学': '見学',
+  '保留': '保留',
   '完了': '完了',
   'キャンセル': 'キャンセル',
 };

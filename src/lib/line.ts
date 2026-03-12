@@ -228,19 +228,18 @@ export function buildTentativeMessage(
 function getSceneNotes(scene: Reservation['scene']): string[] {
   if (scene === '七五三') {
     return [
-      '当日はヘアセット後にお着付けとなりますので、お子様は前開きのお洋服をご着用いただきますようお願いいたします。また、肌着は首の空いたタンクトップやキャミソールタイプのものをご着用ください。',
-      '当日は5パターンの撮影が可能です。なお、ご来店時間から15分以上遅れた場合、衣装着数が少なくなる可能性がございます。',
+      '当日はヘアセット後にお着付けとなりますので、お子様は前開きのお洋服をご着用いただきますようお願いいたします。',
+      '肌着は首の空いたタンクトップやキャミソールタイプのものをご着用ください。',
     ];
   }
   if (scene === 'マタニティ') {
     return [
-      '当店での【ヘアメイク】をご希望の場合は、スキンケアのみご自宅でお済ませください。（メイク用品やヘアセット用品のお持ち込みも可能でございます。その場合は担当の美容師に当日お声がけ下さいませ。）',
-      '当日は5パターンの撮影が可能です。なお、ご来店時間から15分以上遅れた場合、衣装着数が少なくなる可能性がございます。',
+      '当店での【ヘアメイク】をご希望の場合は、メイク用品をお持ちください。スキンケアのみご自宅でお済ませください。',
+      '髪にオイルやワックスなどのスタイリング剤はつけずにご来店ください。',
     ];
   }
   return [
     '肌着は首の空いたタンクトップやキャミソールタイプのものをご着用ください。',
-    '当日は5パターンの撮影が可能です。なお、ご来店時間から15分以上遅れた場合、衣装着数が少なくなる可能性がございます。',
   ];
 }
 
@@ -259,38 +258,62 @@ export function buildConfirmMessage(
 
   const bodyContents: Record<string, unknown>[] = [
     labelValue('📆 予約日', formattedDate),
-    labelValue('🕐 撮影開始', reservation.timeSlot),
     labelValue('📸 プラン', planName),
     separator(),
+    // 来店時間を大きく強調
     {
       type: 'box',
       layout: 'vertical',
       contents: [
-        textComponent(`※ 当日は${checkInTime}までにご来店ください。`, { size: 'xs', color: BRAND_COLOR, weight: 'bold' }),
-        textComponent(`※ 終了時間は${checkOutTime}ごろ予定ですが、前後する場合もございます。`, { size: 'xs', color: GRAY_TEXT, margin: 'xs' }),
+        textComponent('🕐 ご来店時間', { size: 'xs', color: GRAY_TEXT, align: 'center' }),
+        { type: 'text', text: checkInTime || '—', weight: 'bold', size: 'xxl', color: BRAND_COLOR, align: 'center', margin: 'xs' },
+        textComponent(`※ 終了予定は${checkOutTime || '—'}頃です（前後する場合がございます）`, { size: 'xxs', color: GRAY_TEXT, margin: 'sm', align: 'center' }),
       ],
       backgroundColor: '#FFF8F5',
       cornerRadius: '8px',
-      paddingAll: '10px',
+      paddingAll: '12px',
       margin: 'md',
     },
     separator(),
     textComponent('⚠️ 撮影に関する注意事項', { weight: 'bold', size: 'xs', color: '#FF6B35', margin: 'md' }),
-    ...sceneNotes.map((note) => textComponent(`※ ${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })),
+    ...sceneNotes.map((note) => textComponent(`・${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })),
+    separator(),
+    textComponent('❓ よくあるご質問', { weight: 'bold', size: 'xs', margin: 'md' }),
+    {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: 'FAQ はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/faq/' }, align: 'center' },
+      ],
+      margin: 'xs',
+    } as Record<string, unknown>,
     separator(),
     textComponent('🅿️ 駐車場について', { weight: 'bold', size: 'xs', margin: 'md' }),
-    textComponent('専用駐車場を2台分ご用意しています。（黄色のカラーコーンが目印です）LINEの【Parking】で詳細をご確認ください。1組様につき1台分のお貸し出しとなります。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('住所: 名古屋市瑞穂区佐渡町5丁目4-1', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('専用駐車場を2台分ご用意しています（黄色のカラーコーンが目印）。1組様につき1台分のお貸し出しです。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('満車の場合はお近くのコインパーキングをご利用ください。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/' }, align: 'center' },
+      ],
+      margin: 'xs',
+    } as Record<string, unknown>,
     separator(),
     textComponent('キャンセル規定', { weight: 'bold', size: 'xs', margin: 'md' }),
-    textComponent('2日前：無料\n前日：50％\n当日・無断：100％', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
-    textComponent('※ 体調不良等の日程変更はキャンセル料不要です。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('・撮影日2日前まで：無料\n・撮影日前日：ご予約料金の50%\n・撮影日当日：ご予約料金の100%\n・無断キャンセル：ご予約料金の100%', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('※ 体調不良等による日程変更はキャンセル料不要です。お気軽にご連絡ください。', { size: 'xxs', color: BRAND_COLOR, margin: 'xs' }),
+    separator(),
+    textComponent('📷 撮影データについて', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('撮影データは3営業日以内にLINEにてお送りいたします。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
     separator(),
     textComponent('当日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
   ];
 
   return {
     type: 'flex',
-    altText: `✅ ご予約が確定しました（${formattedDate} ${reservation.timeSlot}）`,
+    altText: `✅ ご予約が確定しました（${formattedDate} ${checkInTime}）`,
     contents: {
       type: 'bubble',
       header: headerBox('✅ ご予約が確定しました', BRAND_GREEN),
@@ -300,8 +323,51 @@ export function buildConfirmMessage(
         contents: bodyContents,
         paddingAll: '16px',
       },
-      footer: storeFooter(),
+      footer: confirmFooter(),
     },
+  };
+}
+
+/** 確定LINE用フッター（電話・メール・住所） */
+function confirmFooter() {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      { type: 'separator', color: SEPARATOR_COLOR },
+      {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          textComponent('PHOTO STUDIO matka.', { align: 'center', weight: 'bold', size: 'xs', color: BRAND_COLOR }),
+          textComponent('☎ 052-846-2378', { align: 'center', size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+          textComponent('✉ info@matka-photostudio.jp', { align: 'center', size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+          textComponent('📍 名古屋市瑞穂区瑞穂通4丁目48番地 近江ビル1F', { align: 'center', size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+        ],
+        paddingAll: '12px',
+      },
+    ],
+  };
+}
+
+/** リマインドLINE用フッター（電話・住所のみ、メールなし） */
+function reminderFooter() {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      { type: 'separator', color: SEPARATOR_COLOR },
+      {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          textComponent('PHOTO STUDIO matka.', { align: 'center', weight: 'bold', size: 'xs', color: BRAND_COLOR }),
+          textComponent('☎ 052-846-2378', { align: 'center', size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+          textComponent('📍 名古屋市瑞穂区瑞穂通4丁目48番地 近江ビル1F', { align: 'center', size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+        ],
+        paddingAll: '12px',
+      },
+    ],
   };
 }
 
@@ -319,35 +385,63 @@ export function buildReminderMessage(
   const sceneNotes = getSceneNotes(reservation.scene);
 
   const bodyContents: Record<string, unknown>[] = [
-    labelValue('🗓 予約日', formattedDate),
-    labelValue('🕐 撮影開始', reservation.timeSlot),
+    labelValue('📆 予約日', formattedDate),
     labelValue('📸 プラン', planName),
     separator(),
+    // 来店時間を大きく強調
     {
       type: 'box',
       layout: 'vertical',
       contents: [
-        textComponent(`※ 明日は${checkInTime}までにご来店ください。`, { size: 'xs', color: BRAND_COLOR, weight: 'bold' }),
-        textComponent(`※ 終了時間は${checkOutTime}ごろ予定ですが、前後する場合もございます。`, { size: 'xs', color: GRAY_TEXT, margin: 'xs' }),
+        textComponent('🕐 明日のご来店時間', { size: 'xs', color: GRAY_TEXT, align: 'center' }),
+        { type: 'text', text: checkInTime || '—', weight: 'bold', size: 'xxl', color: BRAND_COLOR, align: 'center', margin: 'xs' },
+        textComponent(`※ 終了予定は${checkOutTime || '—'}頃です（前後する場合がございます）`, { size: 'xxs', color: GRAY_TEXT, margin: 'sm', align: 'center' }),
       ],
       backgroundColor: '#FFF8F5',
       cornerRadius: '8px',
-      paddingAll: '10px',
+      paddingAll: '12px',
       margin: 'md',
     },
     separator(),
     textComponent('⚠️ 撮影に関する注意事項', { weight: 'bold', size: 'xs', color: '#FF6B35', margin: 'md' }),
-    ...sceneNotes.map((note) => textComponent(`※ ${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })),
+    ...sceneNotes.map((note) => textComponent(`・${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })),
+    separator(),
+    textComponent('❓ よくあるご質問', { weight: 'bold', size: 'xs', margin: 'md' }),
+    {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: 'FAQ はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/faq/' }, align: 'center' },
+      ],
+      margin: 'xs',
+    } as Record<string, unknown>,
     separator(),
     textComponent('🅿️ 駐車場について', { weight: 'bold', size: 'xs', margin: 'md' }),
-    textComponent('専用駐車場を2台分ご用意しています。（黄色のカラーコーンが目印です）LINEの【Parking】で詳細をご確認ください。1組様につき1台分のお貸し出しとなります。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('住所: 名古屋市瑞穂区佐渡町5丁目4-1', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('専用駐車場を2台分ご用意しています（黄色のカラーコーンが目印）。1組様につき1台分のお貸し出しです。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('満車の場合はお近くのコインパーキングをご利用ください。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/' }, align: 'center' },
+      ],
+      margin: 'xs',
+    } as Record<string, unknown>,
+    separator(),
+    textComponent('キャンセル規定', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('・撮影日2日前まで：無料\n・撮影日前日：ご予約料金の50%\n・撮影日当日：ご予約料金の100%\n・無断キャンセル：ご予約料金の100%', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('※ 体調不良等による日程変更はキャンセル料不要です。お気軽にご連絡ください。', { size: 'xxs', color: BRAND_COLOR, margin: 'xs' }),
+    separator(),
+    textComponent('📷 撮影データについて', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('撮影データは3営業日以内にLINEにてお送りいたします。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
     separator(),
     textComponent('明日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
   ];
 
   return {
     type: 'flex',
-    altText: `📅 明日のご予約のご確認（${formattedDate} ${reservation.timeSlot}）`,
+    altText: `📅 明日のご予約のご確認（${formattedDate} ${checkInTime}）`,
     contents: {
       type: 'bubble',
       header: headerBox('📅 明日のご予約のご確認', '#5B7FFF'),
@@ -357,7 +451,7 @@ export function buildReminderMessage(
         contents: bodyContents,
         paddingAll: '16px',
       },
-      footer: storeFooter(),
+      footer: reminderFooter(),
     },
   };
 }

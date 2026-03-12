@@ -133,9 +133,9 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>
                   <td className="px-4 py-3 text-gray-500">{c.email ?? '—'}</td>
                   <td className="px-4 py-3">
-                    {c.chatLineUserId ? (
+                    {(c.chatLineUserId || c.lineUserId) ? (
                       <a
-                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${c.chatLineUserId}`}
+                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${c.chatLineUserId || c.lineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -147,8 +147,6 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                         </svg>
                         トーク
                       </a>
-                    ) : c.lineUserId ? (
-                      <span className="text-green-600 text-xs">連携済み</span>
                     ) : (
                       <span className="text-gray-300 text-xs">未連携</span>
                     )}

@@ -17,6 +17,7 @@ const STATUS_LABEL: Record<Reservation['status'], string> = {
   '予約済': '仮予約',
   '予約確定': '予約確定',
   '見学': '見学',
+  '保留': '保留',
   '完了': '完了',
   'キャンセル': 'キャンセル',
 };
@@ -25,6 +26,7 @@ const STATUS_COLORS = {
   '予約済': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   '予約確定': 'bg-blue-100 text-blue-800 border-blue-200',
   '見学': 'bg-purple-100 text-purple-700 border-purple-200',
+  '保留': 'bg-orange-100 text-orange-700 border-orange-200',
   '完了': 'bg-green-100 text-green-800 border-green-200',
   'キャンセル': 'bg-gray-100 text-gray-500 border-gray-200',
 } as const;
@@ -33,13 +35,16 @@ const NEXT_STATUS: Record<Reservation['status'], Reservation['status'] | null> =
   '予約済': '予約確定',
   '予約確定': null, // 完了は予約日経過で自動
   '見学': null,
+  '保留': '予約済',
   '完了': null,
   'キャンセル': null,
 };
 
-const NEXT_STATUS_LABEL: Record<string, string> = {
+const NEXT_STATUS_LABEL_MAP: Record<string, string> = {
   '予約確定': '予約確定にする',
+  '予約済': '予約済に戻す',
 };
+
 
 // ④ 税計算ヘルパー（税込前提、消費税10%）
 function taxExcluded(amount: number) {
@@ -169,7 +174,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [infoEditing, setInfoEditing] = useState(false);
   const [infoSaving, setInfoSaving] = useState(false);
   const [editDate, setEditDate] = useState(reservation.date ?? '');
-  const [editTimeSlot, setEditTimeSlot] = useState<Reservation['timeSlot']>(reservation.timeSlot ?? '9:00');
+  const [editTimeSlot, setEditTimeSlot] = useState<Reservation['timeSlot']>(reservation.timeSlot || '9:00');
   const [editScene, setEditScene] = useState(reservation.scene ?? '');
   const [editOtherSceneNote, setEditOtherSceneNote] = useState(reservation.otherSceneNote ?? '');
   const [editChildrenCount, setEditChildrenCount] = useState(String(reservation.childrenCount ?? ''));
@@ -180,7 +185,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
 
   function cancelInfoEdit() {
     setEditDate(reservation.date ?? '');
-    setEditTimeSlot(reservation.timeSlot ?? '9:00');
+    setEditTimeSlot(reservation.timeSlot || '9:00');
     setEditScene(reservation.scene ?? '');
     setEditOtherSceneNote(reservation.otherSceneNote ?? '');
     setEditChildrenCount(String(reservation.childrenCount ?? ''));
@@ -202,7 +207,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
           timeSlot: editTimeSlot,
           scene: editScene || undefined,
           otherSceneNote: editOtherSceneNote,
-          childrenCount: editChildrenCount !== '' ? Number(editChildrenCount) : '',
+          childrenCount: editChildrenCount !== '' ? Number(editChildrenCount) : 0,
           adultCount: editAdultCount,
           familyNote: editFamilyNote,
           customerNote: editCustomerNote,
@@ -314,6 +319,11 @@ export default function ReservationDetail({ reservation, customer, plan, options
         payload.checkInTime = checkInTime;
         payload.checkOutTime = checkOutTime;
       }
+      // 保留→予約済に戻す際、日付・時間帯を送信
+      if (newStatus === '予約済' && status === '保留') {
+        payload.date = editDate;
+        payload.timeSlot = editTimeSlot;
+      }
       const res = await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -324,6 +334,28 @@ export default function ReservationDetail({ reservation, customer, plan, options
         router.refresh();
       } else {
         alert('ステータスの更新に失敗しました');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleScheduleChange() {
+    if (!confirm('日程変更しますか？\n\nステータスが「保留」になり、日付・時間帯がクリアされます。元の予約枠は開放されます。')) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: '保留', date: '', timeSlot: '' }),
+      });
+      if (res.ok) {
+        setStatus('保留');
+        setEditDate('');
+        setEditTimeSlot('9:00');
+        router.refresh();
+      } else {
+        alert('日程変更に失敗しました');
       }
     } finally {
       setLoading(false);
@@ -1281,19 +1313,58 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 </div>
               </div>
             )}
+            {/* 保留時：日付・時間帯を再設定して予約済に戻すUI */}
+            {status === '保留' && (
+              <div className="space-y-2 pb-1">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">新しい撮影日</label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">新しい時間帯</label>
+                  <select
+                    value={editTimeSlot}
+                    onChange={(e) => setEditTimeSlot(e.target.value as Reservation['timeSlot'])}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  >
+                    {(['9:00', '12:00', '15:00'] as const).map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
             {nextStatus && (
               <button
                 onClick={() => changeStatus(nextStatus)}
-                disabled={loading || (nextStatus === '予約確定' && (!checkInTime || !checkOutTime))}
+                disabled={loading || (nextStatus === '予約確定' && (!checkInTime || !checkOutTime)) || (nextStatus === '予約済' && status === '保留' && !editDate)}
                 className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? '処理中...' : NEXT_STATUS_LABEL[nextStatus]}
+                {loading ? '処理中...' : NEXT_STATUS_LABEL_MAP[nextStatus]}
               </button>
             )}
             {nextStatus === '予約確定' && (!checkInTime || !checkOutTime) && (
               <p className="text-xs text-amber-600 text-center">来店時間・終了時間を入力してください</p>
             )}
-            {status !== 'キャンセル' && (
+            {nextStatus === '予約済' && status === '保留' && !editDate && (
+              <p className="text-xs text-amber-600 text-center">新しい日程を入力してください</p>
+            )}
+            {/* 日程変更ボタン: 予約確定・見学のときに表示 */}
+            {(status === '予約確定' || status === '見学') && (
+              <button
+                onClick={handleScheduleChange}
+                disabled={loading}
+                className="w-full py-2.5 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors"
+              >
+                日程変更（保留にする）
+              </button>
+            )}
+            {status !== 'キャンセル' && status !== '保留' && (
               <button
                 onClick={() => {
                   if (confirm('キャンセルにしますか？')) changeStatus('キャンセル');

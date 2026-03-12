@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import {
   getReservationById,
   getReservationOptions,
-  updateReservationStatus,
   updateReservation,
   deleteReservation,
   getPlans,
@@ -59,38 +58,32 @@ export async function PATCH(
     familyNote?: string;
     customerNote?: string;
     phonePreference?: string;
-  };
+  } & Record<string, unknown>;
 
   const reservation = await getReservationById(params.id);
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
+  // ステータスバリデーション
+  const VALID_STATUSES = new Set(['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル']);
+  if (body.status && !VALID_STATUSES.has(body.status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
+
+  // 全フィールドを単一のupdatesオブジェクトに集約
+  const updates: Record<string, unknown> = {};
+
   // ステータス変更
   if (body.status) {
-    await updateReservationStatus(reservation.id, body.status);
+    updates.status = body.status;
 
-    // 予約確定 → 来店時間・終了時間を保存 → LINE通知
+    // 予約確定 → 来店時間・終了時間も含めてまとめて更新 → LINE通知
     if (body.status === '予約確定') {
-      const timeFields: Record<string, unknown> = {};
-      if (body.checkInTime) timeFields.checkInTime = body.checkInTime;
-      if (body.checkOutTime) timeFields.checkOutTime = body.checkOutTime;
-      if (Object.keys(timeFields).length > 0) {
-        await updateReservation(reservation.id, timeFields);
-      }
-
-      if (reservation.lineUserId) {
-        const plans = await getPlans();
-        const plan = plans.find((p) => p.id === reservation.planId);
-        if (plan) {
-          await sendLinePush(reservation.lineUserId, [
-            buildConfirmMessage(reservation, plan.name, body.checkInTime ?? '', body.checkOutTime ?? ''),
-          ]).catch((e) => console.error('LINE push failed:', e));
-        }
-      }
+      if (body.checkInTime) updates.checkInTime = body.checkInTime;
+      if (body.checkOutTime) updates.checkOutTime = body.checkOutTime;
     }
   }
 
   // 備考・合計金額・担当割り当て・支払ステータス・予約情報更新
-  const updates: Record<string, unknown> = {};
   if (body.note !== undefined) updates.note = body.note;
   if (body.totalAmount !== undefined) updates.discountAmount = body.totalAmount;
   if (body.staffAssignment !== undefined) updates.staffAssignmentJson = body.staffAssignment;
@@ -111,6 +104,17 @@ export async function PATCH(
 
   if (Object.keys(updates).length > 0) {
     await updateReservation(reservation.id, updates);
+  }
+
+  // 予約確定 → LINE通知（DB更新後に送信）
+  if (body.status === '予約確定' && reservation.lineUserId) {
+    const plans = await getPlans();
+    const plan = plans.find((p) => p.id === reservation.planId);
+    if (plan) {
+      await sendLinePush(reservation.lineUserId, [
+        buildConfirmMessage(reservation, plan.name, body.checkInTime ?? '', body.checkOutTime ?? ''),
+      ]).catch((e) => console.error('LINE push failed:', e));
+    }
   }
 
   return NextResponse.json({ success: true });

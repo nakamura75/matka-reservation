@@ -56,8 +56,8 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
 
   // 予約シートのO列からlineUserIdを取得してcustomerに付与
   const lineUserId = Array.from(customerLineIds)[0] ?? undefined;
-  // 予約シートのAB列からchatLineUserIdを取得（Messaging API userId）
-  const chatLineUserId = customerReservations.find((r) => r.chatLineUserId?.trim())?.chatLineUserId ?? undefined;
+  // 顧客テーブルの chatLineUserId を優先、なければ予約テーブルから取得
+  const chatLineUserId = customer.chatLineUserId?.trim() || customerReservations.find((r) => r.chatLineUserId?.trim())?.chatLineUserId || undefined;
   const customerWithLine = { ...customer, lineUserId, chatLineUserId };
 
   // LINE未連携の場合に紐づける先の予約（最新の非キャンセル予約）

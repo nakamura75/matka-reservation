@@ -100,7 +100,7 @@ export default function ReserveForm() {
   const [childrenCount, setChildrenCount] = useState('');
   const [adultCount, setAdultCount] = useState('');
   const [childrenDetails, setChildrenDetails] = useState<{
-    name: string; gender: string; birthday: string; clothingSize: string;
+    name: string; furigana: string; gender: string; birthday: string; clothingSize: string;
   }[]>([]);
 
   // STEP 4
@@ -214,7 +214,7 @@ export default function ReserveForm() {
     const n = parseInt(val) || 0;
     setChildrenDetails((prev) => {
       const next = [...prev];
-      while (next.length < n) next.push({ name: '', gender: '', birthday: '', clothingSize: '' });
+      while (next.length < n) next.push({ name: '', furigana: '', gender: '', birthday: '', clothingSize: '' });
       return next.slice(0, n);
     });
   }
@@ -270,7 +270,7 @@ export default function ReserveForm() {
           adultCount,
           childrenDetail: childrenDetails.length > 0
             ? childrenDetails.map((c, i) =>
-                `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} / ${c.clothingSize}`
+                `${i + 1}人目: ${c.name}（${c.furigana}）（${c.gender}）${c.birthday} / ${c.clothingSize}`
               ).join('\n')
             : '',
           selectedOptions,
@@ -634,6 +634,17 @@ export default function ReserveForm() {
             </div>
 
             <div>
+              <label className="block text-xs text-gray-600 mb-1">フリガナ *</label>
+              <input
+                type="text"
+                value={child.furigana}
+                onChange={(e) => updateChildDetail(i, 'furigana', e.target.value)}
+                placeholder="例：サクラ"
+                className="w-full text-sm border border-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+
+            <div>
               <label className="block text-xs text-gray-600 mb-1">性別 *</label>
               <div className="flex gap-3">
                 {['男の子', '女の子'].map((g) => (
@@ -793,7 +804,7 @@ export default function ReserveForm() {
                 <p className="font-semibold text-brand">お子様 {i + 1}人目</p>
                 <div className="flex justify-between">
                   <span className="text-gray-500">お名前</span>
-                  <span className="font-medium">{child.name}</span>
+                  <span className="font-medium">{child.name}（{child.furigana}）</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">性別</span>
@@ -904,7 +915,7 @@ export default function ReserveForm() {
         if (!childrenCount || !adultCount) return false;
         const n = parseInt(childrenCount) || 0;
         if (n > 0) {
-          return childrenDetails.every((c) => c.name && c.gender && c.birthday && c.clothingSize);
+          return childrenDetails.every((c) => c.name && c.furigana && c.gender && c.birthday && c.clothingSize);
         }
         return true;
       }

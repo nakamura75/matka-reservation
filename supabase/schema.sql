@@ -115,10 +115,10 @@ CREATE INDEX idx_reservations_reservation_number ON reservations(reservation_num
 CREATE INDEX idx_reservations_status ON reservations(status);
 CREATE INDEX idx_reservations_line_user_id ON reservations(line_user_id);
 
--- 同日同時間帯の重複予約を防止（キャンセル・見学は除外するため部分インデックス）
+-- 同日同時間帯の重複予約を防止（キャンセル・見学・保留は除外するため部分インデックス）
 CREATE UNIQUE INDEX idx_reservations_no_duplicate
   ON reservations(date, time_slot)
-  WHERE status NOT IN ('キャンセル', '見学');
+  WHERE status NOT IN ('キャンセル', '見学', '保留');
 
 -- ============================================================
 -- 7. 予約オプション (reservation_options)

@@ -49,7 +49,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
   const [adultCount, setAdultCount] = useState('');
   const [familyNote, setFamilyNote] = useState('');
   const [childrenDetails, setChildrenDetails] = useState<{
-    name: string; gender: string; birthday: string; clothingSize: string;
+    name: string; furigana: string; gender: string; birthday: string; clothingSize: string;
   }[]>([]);
 
   // シーン変更時にプランを自動設定
@@ -91,7 +91,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
     const n = parseInt(val) || 0;
     setChildrenDetails((prev) => {
       const next = [...prev];
-      while (next.length < n) next.push({ name: '', gender: '', birthday: '', clothingSize: '' });
+      while (next.length < n) next.push({ name: '', furigana: '', gender: '', birthday: '', clothingSize: '' });
       return next.slice(0, n);
     });
   }
@@ -169,10 +169,12 @@ export default function NewReservationForm({ plans, options, customers, blockedD
         address: customer?.address ?? address,
         phone: customer?.phone ?? phone,
         email: customer?.email ?? email,
-        peopleCount: adultCount,
+        peopleCount: `お子様${childrenCount || 0}名・大人の方${adultCount || 0}名`,
+        childrenCount: Number(childrenCount) || 0,
+        adultCount,
         childrenDetail: childrenDetails.length > 0
           ? childrenDetails.map((c, i) =>
-              `${i + 1}人目: ${c.name}（${c.gender}）${c.birthday} / ${c.clothingSize}`
+              `${i + 1}人目: ${c.name}（${c.furigana}）（${c.gender}）${c.birthday} / ${c.clothingSize}`
             ).join('\n') + (familyNote ? `\n${familyNote}` : '')
           : familyNote,
         selectedOptions,
@@ -385,6 +387,18 @@ export default function NewReservationForm({ plans, options, customers, blockedD
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
                 />
               </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">フリガナ</label>
+                <input
+                  type="text"
+                  value={child.furigana}
+                  onChange={(e) => updateChildDetail(i, 'furigana', e.target.value)}
+                  placeholder="例：サクラ"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">生年月日</label>
                 <input

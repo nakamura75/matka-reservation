@@ -348,7 +348,7 @@ export async function checkSlotConflict(date: string, timeSlot: string, excludeI
     .select('id', { count: 'exact', head: true })
     .eq('date', date)
     .eq('time_slot', timeSlot)
-    .not('status', 'in', '("キャンセル","見学")');
+    .not('status', 'in', '("キャンセル","見学","保留")');
   if (excludeId) query = query.neq('id', excludeId);
   const { count } = await query;
   return (count ?? 0) > 0;

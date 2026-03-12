@@ -38,7 +38,8 @@ export default async function CustomersPage() {
       }
     }
     const chatLineId = r.chatLineUserId?.trim();
-    if (chatLineId && r.customerId && !chatLineIdByCustomerId[r.customerId]) {
+    if (chatLineId && r.customerId) {
+      // 最新の chatLineUserId を使用（上書き）
       chatLineIdByCustomerId[r.customerId] = chatLineId;
     }
   }
@@ -57,7 +58,7 @@ export default async function CustomersPage() {
     const isRepeater = totalByPhone > 1 || isRepeaterByLine;
 
     const lineUserId = Array.from(lineIds)[0] ?? undefined;
-    const chatLineUserId = chatLineIdByCustomerId[c.id] ?? undefined;
+    const chatLineUserId = c.chatLineUserId?.trim() || chatLineIdByCustomerId[c.id] || undefined;
     const duplicateCustomerIds = c.phone?.trim()
       ? (phoneToCustomerIds[c.phone.trim()] ?? []).filter((id) => id !== c.id)
       : [];
