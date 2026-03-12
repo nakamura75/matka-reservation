@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       success: false,
       errorMessage: error.message,
       errorStatus: error.status,
-      errorCode: (error as Record<string, unknown>).code,
+      errorCode: (error as unknown as Record<string, unknown>).code,
     });
   }
 
