@@ -19,6 +19,14 @@ function LoginForm() {
     setError('');
     setLoading(true);
 
+    // ローカル開発用バイパス（Supabase未接続時）
+    if (process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === 'true') {
+      document.cookie = 'dev-auth=true; path=/';
+      router.refresh();
+      router.push('/reservations');
+      return;
+    }
+
     const supabase = createClient();
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
