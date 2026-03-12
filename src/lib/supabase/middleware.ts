@@ -36,7 +36,8 @@ export async function updateSession(request: NextRequest) {
 
   // 管理画面へのアクセスで未認証 → /login にリダイレクト
   const isAdminRoute =
-    !request.nextUrl.pathname.startsWith('/reserve') &&
+    request.nextUrl.pathname !== '/reserve' &&
+    !request.nextUrl.pathname.startsWith('/reserve/') &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/reset-password') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
