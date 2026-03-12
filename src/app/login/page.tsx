@@ -26,13 +26,21 @@ function LoginForm() {
     });
 
     if (authError) {
-      setError('メールアドレスまたはパスワードが正しくありません。');
+      // デバッグ用に実際のエラーメッセージも表示
+      console.error('Auth error:', authError.message, authError.status);
+      const errorMessages: Record<string, string> = {
+        'Invalid login credentials': 'メールアドレスまたはパスワードが正しくありません。',
+        'Email not confirmed': 'メールアドレスが確認されていません。確認メールをご確認ください。',
+        'User banned': 'このアカウントは無効化されています。',
+        'Too many requests': 'ログイン試行回数が多すぎます。しばらくしてからお試しください。',
+      };
+      setError(errorMessages[authError.message] || `ログインエラー: ${authError.message}`);
       setLoading(false);
       return;
     }
 
-    router.push('/reservations');
     router.refresh();
+    router.push('/reservations');
   };
 
   return (
