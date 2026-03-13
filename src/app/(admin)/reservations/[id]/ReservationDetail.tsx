@@ -65,8 +65,8 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [coMin, setCoMin] = useState(parseM(reservation.checkOutTime ?? ''));
   const [saving, setSaving] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
-  const [lineIdInput, setLineIdInput] = useState('');
-  const [lineIdSaving, setLineIdSaving] = useState(false);
+  const [chatLineIdInput, setChatLineIdInput] = useState('');
+  const [chatLineIdSaving, setChatLineIdSaving] = useState(false);
 
   // 削除
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -671,34 +671,44 @@ export default function ReservationDetail({ reservation, customer, plan, options
                     <div className="flex gap-1.5">
                       <input
                         type="text"
-                        value={lineIdInput}
-                        onChange={(e) => setLineIdInput(e.target.value)}
-                        placeholder="LINE IDをペースト"
+                        value={chatLineIdInput}
+                        onChange={(e) => setChatLineIdInput(e.target.value)}
+                        placeholder="LINE OA チャットIDをペースト"
                         className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
                       />
                       <button
                         onClick={async () => {
-                          const id = lineIdInput.trim();
+                          const id = chatLineIdInput.trim();
                           if (!id) return;
-                          setLineIdSaving(true);
+                          setChatLineIdSaving(true);
                           try {
+                            // 予約テーブルのchatLineUserIdを更新
                             await fetch(`/api/reservations/${reservation.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ lineUserId: id }),
+                              body: JSON.stringify({ chatLineUserId: id }),
                             });
-                            setLineIdInput('');
+                            // 顧客テーブルのchatLineUserIdも更新
+                            if (reservation.customerId) {
+                              await fetch(`/api/customers/${reservation.customerId}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ chatLineUserId: id }),
+                              });
+                            }
+                            setChatLineIdInput('');
                             router.refresh();
                           } finally {
-                            setLineIdSaving(false);
+                            setChatLineIdSaving(false);
                           }
                         }}
-                        disabled={lineIdSaving || !lineIdInput.trim()}
+                        disabled={chatLineIdSaving || !chatLineIdInput.trim()}
                         className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
                       >
-                        {lineIdSaving ? '保存中...' : (reservation.lineUserId || reservation.chatLineUserId) ? '更新' : '登録'}
+                        {chatLineIdSaving ? '保存中...' : reservation.chatLineUserId ? '更新' : '登録'}
                       </button>
                     </div>
+                    <p className="text-[10px] text-gray-400 mt-1">LINE OA ManagerのチャットURLから /chat/ 以降のIDをコピー</p>
                   </dd>
                 </div>
                 <div>
