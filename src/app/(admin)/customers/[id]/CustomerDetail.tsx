@@ -233,7 +233,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                 )}
                 <div>
                   <dt className="text-gray-400 text-xs">登録日</dt>
-                  <dd className="text-gray-700 mt-0.5">{customer.createdAt}</dd>
+                  <dd className="text-gray-700 mt-0.5">{customer.createdAt ? customer.createdAt.slice(0, 10).replace(/-/g, '/') : '—'}</dd>
                 </div>
               </dl>
             )}
