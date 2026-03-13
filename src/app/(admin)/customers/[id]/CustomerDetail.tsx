@@ -16,13 +16,13 @@ interface Props {
   linkTargetReservationId: string | null;
 }
 
-export default function CustomerDetail({ customer, reservations, orders, isRepeater, linkTargetReservationId }: Props) {
+export default function CustomerDetail({ customer, reservations, orders, isRepeater }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [lineIdInput, setLineIdInput] = useState('');
-  const [lineIdSaving, setLineIdSaving] = useState(false);
+  const [chatLineIdInput, setChatLineIdInput] = useState(customer.chatLineUserId ?? '');
+  const [chatLineIdSaving, setChatLineIdSaving] = useState(false);
   const [form, setForm] = useState({
     name: customer.name,
     furigana: customer.furigana ?? '',
@@ -175,7 +175,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                       <span className="text-gray-400 text-xs">未連携</span>
                     )}
                   </dd>
-                  {customer.chatLineUserId ? (
+                  {customer.chatLineUserId && (
                     <dd className="mt-2">
                       <a
                         href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${customer.chatLineUserId}`}
@@ -184,49 +184,46 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"
                         style={{ backgroundColor: '#06C755' }}
                       >
-                        {/* LINE icon */}
                         <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-white" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2C6.477 2 2 6.032 2 11c0 2.99 1.566 5.634 3.988 7.32-.175.614-.635 2.22-.728 2.566-.115.42.154.414.323.302.133-.089 2.11-1.43 2.967-2.012.444.062.898.094 1.45.094 5.523 0 10-4.032 10-9S17.523 2 12 2zm-3.5 12.5h-1.25a.25.25 0 0 1-.25-.25v-4.5a.25.25 0 0 1 .25-.25H8.5a.25.25 0 0 1 .25.25v4.5a.25.25 0 0 1-.25.25zm2.5 0h-1.25a.25.25 0 0 1-.25-.25v-2.5l-1.5-2.087A.25.25 0 0 1 8.2 9.5H9.5a.25.25 0 0 1 .2.1l.8 1.114.8-1.114a.25.25 0 0 1 .2-.1h1.3a.25.25 0 0 1 .2.413L11.5 11.75v2.5a.25.25 0 0 1-.25.25zm5.25 0H13a.25.25 0 0 1-.25-.25v-4.5A.25.25 0 0 1 13 9.5h2.75a.25.25 0 0 1 0 .5H13.5v1.25h2.25a.25.25 0 0 1 0 .5H13.5v1.25h2.75a.25.25 0 0 1 0 .5z"/>
                         </svg>
                         LINEトークを開く
                       </a>
                     </dd>
-                  ) : null}
-                  {linkTargetReservationId && (
-                    <dd className="mt-2">
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          value={lineIdInput}
-                          onChange={(e) => setLineIdInput(e.target.value)}
-                          placeholder="LINE IDをペースト"
-                          className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
-                        />
-                        <button
-                          onClick={async () => {
-                            const id = lineIdInput.trim();
-                            if (!id) return;
-                            setLineIdSaving(true);
-                            try {
-                              await fetch(`/api/reservations/${linkTargetReservationId}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ lineUserId: id }),
-                              });
-                              setLineIdInput('');
-                              router.refresh();
-                            } finally {
-                              setLineIdSaving(false);
-                            }
-                          }}
-                          disabled={lineIdSaving || !lineIdInput.trim()}
-                          className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
-                        >
-                          {lineIdSaving ? '保存中...' : (customer.lineUserId || customer.chatLineUserId) ? '更新' : '登録'}
-                        </button>
-                      </div>
-                    </dd>
                   )}
+                  <dd className="mt-2">
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={chatLineIdInput}
+                        onChange={(e) => setChatLineIdInput(e.target.value)}
+                        placeholder="LINE OAチャットユーザーIDを入力"
+                        className="flex-1 text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
+                      />
+                      <button
+                        onClick={async () => {
+                          const id = chatLineIdInput.trim();
+                          if (!id) return;
+                          setChatLineIdSaving(true);
+                          try {
+                            await fetch(`/api/customers/${customer.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ chatLineUserId: id }),
+                            });
+                            router.refresh();
+                          } finally {
+                            setChatLineIdSaving(false);
+                          }
+                        }}
+                        disabled={chatLineIdSaving || !chatLineIdInput.trim()}
+                        className="shrink-0 text-xs px-2.5 py-1.5 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {chatLineIdSaving ? '保存中...' : customer.chatLineUserId ? '更新' : '登録'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-1">LINE OA ManagerのチャットURLから /chat/ 以降のIDをコピー</p>
+                  </dd>
                 </div>
                 {customer.note && (
                   <div>
