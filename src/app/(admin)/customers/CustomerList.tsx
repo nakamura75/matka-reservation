@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Customer } from '@/types';
+import { LINE_OA_BOT_ID } from '@/lib/constants';
 
 type CustomerWithCount = Customer & {
   reservationCount: number;
@@ -133,9 +134,9 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>
                   <td className="px-4 py-3 text-gray-500">{c.email ?? '—'}</td>
                   <td className="px-4 py-3">
-                    {(c.chatLineUserId || c.lineUserId) ? (
+                    {c.chatLineUserId ? (
                       <a
-                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${c.chatLineUserId || c.lineUserId}`}
+                        href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${c.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -147,12 +148,17 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                         </svg>
                         トーク
                       </a>
+                    ) : c.lineUserId ? (
+                      <span className="text-green-700 text-xs flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                        連携済み
+                      </span>
                     ) : (
                       <span className="text-gray-300 text-xs">未連携</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center text-gray-700">{c.reservationCount}</td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">{c.createdAt}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">{c.createdAt?.slice(0, 10).replace(/-/g, '/')}</td>
                 </tr>
               ))
             )}

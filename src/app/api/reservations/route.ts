@@ -1,5 +1,33 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+
+// ============================================================
+// 簡易レート制限（IPベース、1分あたり10リクエスト）
+// ※ サーバーレスではインスタンス単位のため完全ではない。本格対応はUpstash等を推奨
+// ============================================================
+const RATE_LIMIT_WINDOW = 60_000; // 1分
+const RATE_LIMIT_MAX = 10;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT_MAX;
+}
+
+// 定期的に古いエントリを掃除（メモリリーク防止）
+setInterval(() => {
+  const now = Date.now();
+  Array.from(rateLimitMap.entries()).forEach(([key, val]) => {
+    if (now > val.resetAt) rateLimitMap.delete(key);
+  });
+}, 60_000);
 import {
   getReservations,
   createReservation,
@@ -23,19 +51,38 @@ export async function GET() {
 
     const reservations = await getReservations();
     return NextResponse.json({ success: true, data: reservations });
-  } catch {
-    return NextResponse.json({ success: true, data: [] });
+  } catch (error) {
+    console.error('GET /api/reservations error:', error);
+    return NextResponse.json({ success: false, error: '予約一覧の取得に失敗しました' }, { status: 500 });
   }
 }
 
 /** POST /api/reservations - 予約作成（フォーム送信） */
-export async function POST(req: import('next/server').NextRequest) {
+export async function POST(req: NextRequest) {
   try {
+    // レート制限チェック
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json({ error: 'リクエストが多すぎます。しばらく待ってから再度お試しください。' }, { status: 429 });
+    }
+
     const body: ReservationFormData & { isVisit?: boolean; existingCustomerId?: string; _hp?: string } = await req.json();
 
     // Honeypotチェック: 値が入っていたらBotと判定
     if (body._hp) {
       return NextResponse.json({ success: true, data: { reservationId: '', reservationNumber: 'BOT', customerId: '' } });
+    }
+
+    // 入力文字列長の上限チェック
+    const MAX_LEN = 500;
+    const MAX_NOTE_LEN = 2000;
+    if ((body.customerName && body.customerName.length > MAX_LEN) ||
+        (body.furigana && body.furigana.length > MAX_LEN) ||
+        (body.phone && body.phone.length > 20) ||
+        (body.email && body.email.length > MAX_LEN) ||
+        (body.address && body.address.length > MAX_LEN) ||
+        (body.note && body.note.length > MAX_NOTE_LEN)) {
+      return NextResponse.json({ error: '入力値が長すぎます' }, { status: 400 });
     }
 
     const isVisit = body.isVisit === true;
@@ -58,11 +105,11 @@ export async function POST(req: import('next/server').NextRequest) {
       if (requestedDate < today) {
         return NextResponse.json({ error: '過去の日付には予約できません' }, { status: 400 });
       }
-      // 60日以内か確認
+      // 90日以内か確認
       const maxDate = new Date(today);
-      maxDate.setDate(maxDate.getDate() + 60);
+      maxDate.setDate(maxDate.getDate() + 90);
       if (requestedDate > maxDate) {
-        return NextResponse.json({ error: '予約は60日先までです' }, { status: 400 });
+        return NextResponse.json({ error: '予約は90日先までです' }, { status: 400 });
       }
     }
 
@@ -104,17 +151,6 @@ export async function POST(req: import('next/server').NextRequest) {
         createdAt: now,
       };
       await createCustomer(customer);
-    }
-
-    // 重複チェック（見学以外）
-    if (!isVisit) {
-      const conflict = await checkSlotConflict(body.date, body.timeSlot);
-      if (conflict) {
-        return NextResponse.json(
-          { error: 'この日時は既に予約が入っています' },
-          { status: 409 }
-        );
-      }
     }
 
     // 予約作成

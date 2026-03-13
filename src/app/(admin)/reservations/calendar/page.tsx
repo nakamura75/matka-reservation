@@ -27,20 +27,20 @@ export default async function CalendarPage() {
   }));
 
   // 終日ブロック日: holidays(closed/temporary) + blocked_slots(time_slot=null)
-  const blockedDates = new Set<string>();
-  const blockedTimeSlots = new Map<string, Set<string>>(); // date -> Set<time>
+  const blockedDates = new Map<string, string>(); // date -> reason
+  const blockedTimeSlots = new Map<string, Map<string, string>>(); // date -> (time -> reason)
 
   for (const h of holidays) {
     if (h.type === 'closed' || h.type === 'temporary') {
-      blockedDates.add(h.date);
+      blockedDates.set(h.date, h.name);
     }
   }
   for (const s of blockedSlots) {
     if (!s.timeSlot) {
-      blockedDates.add(s.date);
+      blockedDates.set(s.date, s.reason ?? '');
     } else {
-      if (!blockedTimeSlots.has(s.date)) blockedTimeSlots.set(s.date, new Set());
-      blockedTimeSlots.get(s.date)!.add(s.timeSlot);
+      if (!blockedTimeSlots.has(s.date)) blockedTimeSlots.set(s.date, new Map());
+      blockedTimeSlots.get(s.date)!.set(s.timeSlot, s.reason ?? '');
     }
   }
 
@@ -55,8 +55,8 @@ export default async function CalendarPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">予約カレンダー</h1>
       <ReservationCalendar
         reservations={enriched}
-        blockedDates={Array.from(blockedDates)}
-        blockedTimeSlots={Object.fromEntries(Array.from(blockedTimeSlots.entries()).map(([k, v]) => [k, Array.from(v)]))}
+        blockedDates={Object.fromEntries(blockedDates)}
+        blockedTimeSlots={Object.fromEntries(Array.from(blockedTimeSlots.entries()).map(([k, v]) => [k, Object.fromEntries(v)]))}
         holidayDates={Array.from(holidayDates)}
       />
     </div>

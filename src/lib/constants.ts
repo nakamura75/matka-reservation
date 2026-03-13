@@ -1,8 +1,14 @@
 export const LINE_OA_ID = '@082mluna';
-export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '2009330357-AnI0gz2I';
+export const LIFF_ID = process.env.NEXT_PUBLIC_LIFF_ID ?? '';
 
-// 予約可能な最大日数（今日から60日後まで）
-export const BOOKING_DAYS = 60;
+// LINE Official Account の Bot User ID（LINE Chat BizのURL生成に使用）
+export const LINE_OA_BOT_ID = 'U982d65770fb7074d43e2338084865ff7';
+
+// 予約可能な最大日数（今日から90日後まで）
+export const BOOKING_DAYS = 90;
+
+// 中3営業日以内はWeb予約不可（TEL案内）
+export const TEL_ONLY_BUSINESS_DAYS = 3;
 
 // 時間枠
 export const ALL_TIME_SLOTS = ['9:00', '12:00', '15:00'] as const;
@@ -24,6 +30,26 @@ export const SCENE_PLAN_MAP: Record<string, 'Discovery' | 'Maternity'> = {
 
 // 予約ステータス
 export const RESERVATION_STATUSES = ['予約済', '予約確定', '見学', '完了', 'キャンセル'] as const;
+
+// ステータス表示ラベル（DB値 → 画面表示）
+export const STATUS_LABEL: Record<string, string> = {
+  '予約済': '仮予約',
+  '予約確定': '予約確定',
+  '見学': '見学',
+  '保留': '保留',
+  '完了': '完了',
+  'キャンセル': 'キャンセル',
+};
+
+// ステータス色（Tailwind クラス）
+export const STATUS_COLORS: Record<string, string> = {
+  '予約済': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  '予約確定': 'bg-blue-100 text-blue-800 border-blue-200',
+  '見学': 'bg-purple-100 text-purple-700 border-purple-200',
+  '保留': 'bg-orange-100 text-orange-700 border-orange-200',
+  '完了': 'bg-green-100 text-green-800 border-green-200',
+  'キャンセル': 'bg-gray-100 text-gray-500 border-gray-200',
+};
 
 // 注文詳細ステータス
 export const ORDER_ITEM_STATUSES = ['受注', '発注済', '制作完了', '入荷', '発送済'] as const;

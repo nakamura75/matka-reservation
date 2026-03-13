@@ -257,7 +257,7 @@ export function buildConfirmMessage(
   const sceneNotes = getSceneNotes(reservation.scene);
 
   const bodyContents: Record<string, unknown>[] = [
-    labelValue('📆 予約日', formattedDate),
+    labelValue('📆 予約日時', `${formattedDate}  ${reservation.timeSlot}`),
     labelValue('📸 プラン', planName),
     separator(),
     // 来店時間を大きく強調
@@ -296,7 +296,7 @@ export function buildConfirmMessage(
       type: 'box',
       layout: 'vertical',
       contents: [
-        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/' }, align: 'center' },
+        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/news/matka-%E5%B0%82%E7%94%A8%E9%A7%90%E8%BB%8A%E5%A0%B4%E3%81%8C%E3%81%A7%E3%81%8D%E3%81%BE%E3%81%97%E3%81%9F%F0%9F%9A%99/' }, align: 'center' },
       ],
       margin: 'xs',
     } as Record<string, unknown>,
@@ -385,7 +385,7 @@ export function buildReminderMessage(
   const sceneNotes = getSceneNotes(reservation.scene);
 
   const bodyContents: Record<string, unknown>[] = [
-    labelValue('📆 予約日', formattedDate),
+    labelValue('📆 予約日時', `${formattedDate}  ${reservation.timeSlot}`),
     labelValue('📸 プラン', planName),
     separator(),
     // 来店時間を大きく強調
@@ -424,7 +424,7 @@ export function buildReminderMessage(
       type: 'box',
       layout: 'vertical',
       contents: [
-        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/' }, align: 'center' },
+        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/news/matka-%E5%B0%82%E7%94%A8%E9%A7%90%E8%BB%8A%E5%A0%B4%E3%81%8C%E3%81%A7%E3%81%8D%E3%81%BE%E3%81%97%E3%81%9F%F0%9F%9A%99/' }, align: 'center' },
       ],
       margin: 'xs',
     } as Record<string, unknown>,
@@ -460,11 +460,14 @@ export function buildReminderMessage(
 // LINE Webhook 署名検証
 // ============================================================
 
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 export function verifyLineSignature(body: string, signature: string): boolean {
   const secret = process.env.LINE_CHANNEL_SECRET;
   if (!secret) return false;
   const hash = createHmac('sha256', secret).update(body).digest('base64');
-  return hash === signature;
+  const hashBuf = Buffer.from(hash, 'base64');
+  const sigBuf = Buffer.from(signature, 'base64');
+  if (hashBuf.length !== sigBuf.length) return false;
+  return timingSafeEqual(hashBuf, sigBuf);
 }

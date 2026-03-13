@@ -5,31 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option } from '@/types';
-import { formatDate, formatCurrency, isWeekend } from '@/lib/utils';
-import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID } from '@/lib/constants';
+import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
+import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number };
 type NewOrderItem = { productId: string; productName: string; price: number; quantity: number };
-
-// ① 表示ラベル（DBの値 '予約済' は変えない）
-const STATUS_LABEL: Record<Reservation['status'], string> = {
-  '予約済': '仮予約',
-  '予約確定': '予約確定',
-  '見学': '見学',
-  '保留': '保留',
-  '完了': '完了',
-  'キャンセル': 'キャンセル',
-};
-
-const STATUS_COLORS = {
-  '予約済': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  '予約確定': 'bg-blue-100 text-blue-800 border-blue-200',
-  '見学': 'bg-purple-100 text-purple-700 border-purple-200',
-  '保留': 'bg-orange-100 text-orange-700 border-orange-200',
-  '完了': 'bg-green-100 text-green-800 border-green-200',
-  'キャンセル': 'bg-gray-100 text-gray-500 border-gray-200',
-} as const;
 
 const NEXT_STATUS: Record<Reservation['status'], Reservation['status'] | null> = {
   '予約済': '予約確定',
@@ -49,11 +30,6 @@ const NEXT_STATUS_LABEL_MAP: Record<string, string> = {
 // ④ 税計算ヘルパー（税込前提、消費税10%）
 function taxExcluded(amount: number) {
   return Math.round(amount / 1.1);
-}
-
-// ② 時間の秒を削除（H:MM:SS → H:MM のみ変換。H:MM はそのまま）
-function stripSeconds(time: string) {
-  return time ? time.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1') : time;
 }
 
 interface Props {
@@ -79,6 +55,14 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [note, setNote] = useState(reservation.note ?? '');
   const [checkInTime, setCheckInTime] = useState(reservation.checkInTime ?? '');
   const [checkOutTime, setCheckOutTime] = useState(reservation.checkOutTime ?? '');
+
+  // ドロップダウン用の時間・分 state
+  const parseH = (t: string) => t ? t.split(':')[0] ?? '' : '';
+  const parseM = (t: string) => t ? (t.split(':')[1] ?? '00').padStart(2, '0') : '';
+  const [ciHour, setCiHour] = useState(parseH(reservation.checkInTime ?? ''));
+  const [ciMin, setCiMin] = useState(parseM(reservation.checkInTime ?? ''));
+  const [coHour, setCoHour] = useState(parseH(reservation.checkOutTime ?? ''));
+  const [coMin, setCoMin] = useState(parseM(reservation.checkOutTime ?? ''));
   const [saving, setSaving] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [lineIdInput, setLineIdInput] = useState('');
@@ -663,7 +647,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                   <dd className="mt-0.5">
                     {reservation.chatLineUserId ? (
                       <a
-                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${reservation.chatLineUserId}`}
+                        href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${reservation.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
@@ -1292,24 +1276,68 @@ export default function ReservationDetail({ reservation, customer, plan, options
             {nextStatus === '予約確定' && (
               <div className="space-y-2 pb-1">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">来店時間（例: 8:00）</label>
-                  <input
-                    type="text"
-                    value={checkInTime}
-                    onChange={(e) => setCheckInTime(e.target.value)}
-                    placeholder="8:00"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
+                  <label className="block text-xs text-gray-500 mb-1">来店時間</label>
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={ciHour}
+                      onChange={(e) => {
+                        setCiHour(e.target.value);
+                        setCheckInTime(e.target.value ? `${e.target.value}:${ciMin || '00'}` : '');
+                      }}
+                      className="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    >
+                      <option value="">時</option>
+                      {Array.from({ length: 14 }, (_, i) => i + 7).map((h) => (
+                        <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                    <span className="text-gray-500">:</span>
+                    <select
+                      value={ciMin}
+                      onChange={(e) => {
+                        setCiMin(e.target.value);
+                        setCheckInTime(ciHour && e.target.value ? `${ciHour}:${e.target.value}` : '');
+                      }}
+                      className="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    >
+                      <option value="">分</option>
+                      {['00', '15', '30', '45'].map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">終了時間（例: 11:00）</label>
-                  <input
-                    type="text"
-                    value={checkOutTime}
-                    onChange={(e) => setCheckOutTime(e.target.value)}
-                    placeholder="11:00"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                  />
+                  <label className="block text-xs text-gray-500 mb-1">終了時間</label>
+                  <div className="flex items-center gap-1">
+                    <select
+                      value={coHour}
+                      onChange={(e) => {
+                        setCoHour(e.target.value);
+                        setCheckOutTime(e.target.value && coMin ? `${e.target.value}:${coMin}` : '');
+                      }}
+                      className="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    >
+                      <option value="">時</option>
+                      {Array.from({ length: 14 }, (_, i) => i + 7).map((h) => (
+                        <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                    <span className="text-gray-500">:</span>
+                    <select
+                      value={coMin}
+                      onChange={(e) => {
+                        setCoMin(e.target.value);
+                        setCheckOutTime(coHour && e.target.value ? `${coHour}:${e.target.value}` : '');
+                      }}
+                      className="flex-1 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                    >
+                      <option value="">分</option>
+                      {['00', '15', '30', '45'].map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             )}

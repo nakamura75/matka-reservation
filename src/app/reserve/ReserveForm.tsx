@@ -107,6 +107,7 @@ export default function ReserveForm() {
 
   // STEP 5
   const [phoneCallPreference, setPhoneCallPreference] = useState('希望しない'); // ② 電話希望
+  const [phoneCallTopics, setPhoneCallTopics] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -271,7 +272,9 @@ export default function ReserveForm() {
               ).join('\n')
             : '',
           selectedOptions,
-          phoneCallPreference,
+          phoneCallPreference: phoneCallPreference === '希望する' && phoneCallTopics.length > 0
+            ? `希望する（${phoneCallTopics.join('、')}）`
+            : phoneCallPreference,
           note,
           cancelPolicyAgreed: true,
           lineUserId,
@@ -358,6 +361,7 @@ export default function ReserveForm() {
       <div className="space-y-6">
         <div>
           <h2 className="text-base font-bold text-gray-900 mb-3">撮影シーンを選択</h2>
+          <p className="text-xs text-gray-500 mb-2">※七五三とバースデーを同時に撮影される場合は「七五三」をお選びください。</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {SHOOTING_SCENES.map((s) => (
               <button
@@ -443,14 +447,16 @@ export default function ReserveForm() {
                       const slot = slotMap.get(dateStr);
                       const isPast = dateStr <= todayStr;
                       const isAvailable = !isPast && !!slot;
+                      const isTelOnly = slot?.telOnly === true;
                       const isSelected = selectedDate === dateStr;
                       const dow = new Date(dateStr + 'T00:00:00').getDay();
                       const isRed = dow === 0 || !!slot?.isHoliday;
                       const isBlue = dow === 6;
-                      if (!isAvailable) {
+                      if (!isAvailable || isTelOnly) {
                         return (
-                          <div key={dateStr} className={`aspect-square flex items-center justify-center text-xs rounded-lg ${isPast ? 'text-gray-200' : 'text-gray-300'}`}>
-                            {day}
+                          <div key={dateStr} className={`aspect-square flex flex-col items-center justify-center text-xs rounded-lg ${isTelOnly ? 'bg-orange-50 text-orange-400' : isPast ? 'text-gray-200' : 'text-gray-300'}`}>
+                            <span>{day}</span>
+                            {isTelOnly && <span className="text-[8px] font-bold leading-none">TEL</span>}
                           </div>
                         );
                       }
@@ -470,6 +476,14 @@ export default function ReserveForm() {
                 </div>
                 {slots.filter(s => s.date.startsWith(`${calendarYM.year}-${String(calendarYM.month + 1).padStart(2, '0')}`)).length === 0 && (
                   <p className="text-center text-xs text-gray-400 mt-3">この月に空き枠がありません</p>
+                )}
+                {slots.some(s => s.telOnly) && (
+                  <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                    <p className="text-xs text-orange-700">
+                      <span className="font-bold">TEL</span> の日程は直近のためWeb予約を受け付けておりません。<br />
+                      お電話でご予約ください（TEL: <a href="tel:052-846-2378" className="underline">052-846-2378</a>）
+                    </p>
+                  </div>
                 )}
               </div>
             )}
@@ -762,6 +776,9 @@ export default function ReserveForm() {
           {email && <p className="text-gray-500">✉️ {email}</p>}
           <p className="text-gray-500">📍 {zip} {address}</p>
           <p className="text-gray-500">お子様: {childrenCount}名　大人の方: {adultCount === '5以上' ? '5名以上' : adultCount + '名'}</p>
+          <p className="text-gray-500">📞 お電話: {phoneCallPreference === '希望する' && phoneCallTopics.length > 0
+            ? `希望する（${phoneCallTopics.join('、')}）`
+            : phoneCallPreference}</p>
         </div>
 
         {/* ③ お子様詳細を確認画面に表示 */}
@@ -812,7 +829,7 @@ export default function ReserveForm() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
-            placeholder="ご要望・ご質問があればご記入ください..."
+            placeholder="持ち込み小物があればご記入ください"
             className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand resize-none"
           />
         </div>
@@ -833,13 +850,44 @@ export default function ReserveForm() {
                     name="phoneCallPreference"
                     value={option}
                     checked={phoneCallPreference === option}
-                    onChange={(e) => setPhoneCallPreference(e.target.value)}
+                    onChange={(e) => {
+                      setPhoneCallPreference(e.target.value);
+                      if (e.target.value === '希望しない') setPhoneCallTopics([]);
+                    }}
                     className="w-4 h-4 accent-brand"
                   />
                   <span className="text-sm text-gray-700">{option}</span>
                 </label>
               ))}
             </div>
+            {phoneCallPreference === '希望する' && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-gray-600 font-medium">お電話で確認したい内容を教えてください（複数選択可）</p>
+                {[
+                  '撮影当日の流れや準備について',
+                  '料金・プランの詳細について',
+                  '衣装・ヘアメイクについて',
+                  'お子様の体調・状況の相談',
+                  'その他（備考欄にご記入ください）',
+                ].map((topic) => (
+                  <label key={topic} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={phoneCallTopics.includes(topic)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setPhoneCallTopics((prev) => [...prev, topic]);
+                        } else {
+                          setPhoneCallTopics((prev) => prev.filter((t) => t !== topic));
+                        }
+                      }}
+                      className="w-4 h-4 accent-brand"
+                    />
+                    <span className="text-xs text-gray-700">{topic}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import { createAdminClient } from './supabase/admin';
-import { BOOKING_DAYS, ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS } from './constants';
+import { BOOKING_DAYS, ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, TEL_ONLY_BUSINESS_DAYS } from './constants';
 import type { AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 
 // ============================================================
@@ -15,7 +15,21 @@ function getJSTDayOfWeek(dt: Date): number {
   return jst.getUTCDay();
 }
 
-/** 今日から60日分の空き枠を取得 */
+/** 営業日（blockedDatesに含まれない日）をn日分カウントした境界日付を返す */
+function getTelOnlyBoundaryDate(today: Date, blockedDates: Set<string>, businessDays: number): string {
+  let count = 0;
+  const d = new Date(today);
+  while (count < businessDays) {
+    d.setDate(d.getDate() + 1);
+    const dateStr = toJSTDateStr(d);
+    if (!blockedDates.has(dateStr)) {
+      count++;
+    }
+  }
+  return toJSTDateStr(d);
+}
+
+/** 今日から90日分の空き枠を取得 */
 export async function getAvailableSlots(scene?: ShootingScene): Promise<AvailableSlot[]> {
   const supabase = createAdminClient();
   const today = new Date();
@@ -87,7 +101,10 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
     ? SHICHIGOSAN_TIME_SLOTS
     : ALL_TIME_SLOTS;
 
-  // 60日分の空き枠を生成
+  // 中3営業日の境界日付を計算
+  const telOnlyBoundary = getTelOnlyBoundaryDate(today, blockedDates, TEL_ONLY_BUSINESS_DAYS);
+
+  // 90日分の空き枠を生成
   const result: AvailableSlot[] = [];
   for (let i = 1; i <= BOOKING_DAYS; i++) {
     const date = new Date(today);
@@ -106,9 +123,12 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
       available: !blockedSlots.get(dateStr)?.has(time),
     }));
 
-    // 空き枠が1つでもあれば追加
+    // TEL予約のみ（境界日以前）
+    const telOnly = dateStr <= telOnlyBoundary;
+
+    // 空き枠が1つでもあれば追加（TELのみでも表示する）
     if (slots.some((s) => s.available)) {
-      result.push({ date: dateStr, slots, isWeekend, isHoliday });
+      result.push({ date: dateStr, slots, isWeekend, isHoliday, telOnly });
     }
   }
 

@@ -6,24 +6,7 @@ import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import type { Customer, Reservation, Order } from '@/types';
 import { formatDate } from '@/lib/utils';
-
-const STATUS_COLORS = {
-  '予約済': 'bg-yellow-100 text-yellow-800',
-  '予約確定': 'bg-blue-100 text-blue-800',
-  '見学': 'bg-purple-100 text-purple-700',
-  '保留': 'bg-orange-100 text-orange-700',
-  '完了': 'bg-green-100 text-green-800',
-  'キャンセル': 'bg-gray-100 text-gray-500',
-} as const;
-
-const STATUS_LABEL: Record<string, string> = {
-  '予約済': '仮予約',
-  '予約確定': '予約確定',
-  '見学': '見学',
-  '保留': '保留',
-  '完了': '完了',
-  'キャンセル': 'キャンセル',
-};
+import { LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
 
 interface Props {
   customer: Customer;
@@ -192,10 +175,10 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                       <span className="text-gray-400 text-xs">未連携</span>
                     )}
                   </dd>
-                  {(customer.chatLineUserId || customer.lineUserId) ? (
+                  {customer.chatLineUserId ? (
                     <dd className="mt-2">
                       <a
-                        href={`https://chat.line.biz/U982d65770fb7074d43e2338084865ff7/chat/${customer.chatLineUserId || customer.lineUserId}`}
+                        href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${customer.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors"

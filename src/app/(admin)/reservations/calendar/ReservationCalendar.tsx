@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import type { Reservation } from '@/types';
+import { STATUS_LABEL } from '@/lib/constants';
 
 const STATUS_DOT: Record<Reservation['status'], string> = {
   '予約済': 'bg-yellow-400',
@@ -14,21 +15,16 @@ const STATUS_DOT: Record<Reservation['status'], string> = {
   'キャンセル': 'bg-gray-300',
 };
 
-const STATUS_LABEL: Record<Reservation['status'], string> = {
-  '予約済': '仮予約',
-  '予約確定': '予約確定',
-  '見学': '見学',
-  '保留': '保留',
-  '完了': '完了',
-  'キャンセル': 'キャンセル',
-};
-
-const TIME_ORDER = ['9:00', '12:00', '15:00'];
+/** 時間文字列を分に変換してソート用の数値を返す */
+function timeToMinutes(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
 
 interface Props {
   reservations: Reservation[];
-  blockedDates?: string[];        // 終日ブロック日 (YYYY-MM-DD)
-  blockedTimeSlots?: Record<string, string[]>; // 日付 -> 時間帯ブロック
+  blockedDates?: Record<string, string>;        // 終日ブロック日 (YYYY-MM-DD -> 理由)
+  blockedTimeSlots?: Record<string, Record<string, string>>; // 日付 -> (時間帯 -> 理由)
   holidayDates?: string[];        // 祝日（予約可能、料金異なる）
 }
 
@@ -49,8 +45,8 @@ function toDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export default function ReservationCalendar({ reservations, blockedDates = [], blockedTimeSlots = {}, holidayDates = [] }: Props) {
-  const blockedDateSet = useMemo(() => new Set(blockedDates), [blockedDates]);
+export default function ReservationCalendar({ reservations, blockedDates = {}, blockedTimeSlots = {}, holidayDates = [] }: Props) {
+  const blockedDateMap = useMemo(() => new Map(Object.entries(blockedDates)), [blockedDates]);
   const holidayDateSet = useMemo(() => new Set(holidayDates), [holidayDates]);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -213,13 +209,18 @@ export default function ReservationCalendar({ reservations, blockedDates = [], b
             const weekday = (startWeekday + i) % 7;
             const isSunday = weekday === 0;
             const isSaturday = weekday === 6;
-            const isBlocked = blockedDateSet.has(dateStr);
+            const isBlocked = blockedDateMap.has(dateStr);
             const isHoliday = holidayDateSet.has(dateStr);
             const partialBlocked = blockedTimeSlots[dateStr];
 
-            const sorted = [...dayReservations].sort(
-              (a, b) => TIME_ORDER.indexOf(a.timeSlot) - TIME_ORDER.indexOf(b.timeSlot)
-            );
+            // ブロック枠と予約を統合して時系列順にソート
+            type CalItem = { kind: 'reservation'; time: string; r: Reservation } | { kind: 'blocked'; time: string; reason: string };
+            const calItems: CalItem[] = [
+              ...dayReservations.map((r) => ({ kind: 'reservation' as const, time: r.timeSlot, r })),
+              ...(partialBlocked
+                ? Object.entries(partialBlocked).map(([time, reason]) => ({ kind: 'blocked' as const, time, reason }))
+                : []),
+            ].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
             return (
               <div
@@ -243,33 +244,34 @@ export default function ReservationCalendar({ reservations, blockedDates = [], b
                 </div>
 
                 {isBlocked ? (
-                  <p className="text-[10px] text-gray-400 mt-1 text-center">予約不可</p>
+                  <p className="text-[10px] text-gray-400 mt-1 text-center">予約不可{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
                 ) : (
                   <div className="space-y-0.5 mt-0.5">
-                    {partialBlocked && partialBlocked.length > 0 && (
-                      <p className="text-[10px] text-red-400 truncate">
-                        {partialBlocked.join(', ')} 不可
-                      </p>
+                    {calItems.slice(0, 5).map((item, idx) =>
+                      item.kind === 'blocked' ? (
+                        <p key={`b-${idx}`} className="text-[10px] text-red-400 truncate">
+                          {item.time.replace(/^(\d):/, '0$1:')} 不可{item.reason ? ` - ${item.reason}` : ''}
+                        </p>
+                      ) : (
+                        <Link
+                          key={item.r.id}
+                          href={`/reservations/${item.r.id}`}
+                          className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded truncate hover:opacity-80 transition-opacity
+                            ${item.r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
+                              item.r.status === '完了' ? 'bg-green-50 text-green-700' :
+                              item.r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
+                              item.r.status === '見学' ? 'bg-purple-50 text-purple-700' :
+                              'bg-yellow-50 text-yellow-700'}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[item.r.status]}`} />
+                          <span className="truncate">
+                            {item.r.timeSlot} {item.r.customerName ?? ''}
+                          </span>
+                        </Link>
+                      )
                     )}
-                    {sorted.slice(0, 3).map((r) => (
-                      <Link
-                        key={r.id}
-                        href={`/reservations/${r.id}`}
-                        className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded truncate hover:opacity-80 transition-opacity
-                          ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
-                            r.status === '完了' ? 'bg-green-50 text-green-700' :
-                            r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                            r.status === '見学' ? 'bg-purple-50 text-purple-700' :
-                            'bg-yellow-50 text-yellow-700'}`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
-                        <span className="truncate">
-                          {r.timeSlot} {r.customerName ?? ''}
-                        </span>
-                      </Link>
-                    ))}
-                    {sorted.length > 3 && (
-                      <p className="text-xs text-gray-400 pl-1">+{sorted.length - 3}件</p>
+                    {calItems.length > 5 && (
+                      <p className="text-xs text-gray-400 pl-1">+{calItems.length - 5}件</p>
                     )}
                   </div>
                 )}
@@ -286,13 +288,18 @@ export default function ReservationCalendar({ reservations, blockedDates = [], b
             const isToday = toDateStr(today) === dateStr;
             const isSunday = i === 0;
             const isSaturday = i === 6;
-            const isBlocked = blockedDateSet.has(dateStr);
+            const isBlocked = blockedDateMap.has(dateStr);
             const isHoliday = holidayDateSet.has(dateStr);
             const partialBlocked = blockedTimeSlots[dateStr];
 
-            const sorted = [...dayReservations].sort(
-              (a, b) => TIME_ORDER.indexOf(a.timeSlot) - TIME_ORDER.indexOf(b.timeSlot)
-            );
+            // ブロック枠と予約を統合して時系列順にソート
+            type WeekCalItem = { kind: 'reservation'; time: string; r: Reservation } | { kind: 'blocked'; time: string; reason: string };
+            const weekCalItems: WeekCalItem[] = [
+              ...dayReservations.map((r) => ({ kind: 'reservation' as const, time: r.timeSlot, r })),
+              ...(partialBlocked
+                ? Object.entries(partialBlocked).map(([time, reason]) => ({ kind: 'blocked' as const, time, reason }))
+                : []),
+            ].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
             return (
               <div
@@ -315,32 +322,33 @@ export default function ReservationCalendar({ reservations, blockedDates = [], b
                 </div>
 
                 {isBlocked ? (
-                  <p className="text-xs text-gray-400 text-center mt-8">予約不可</p>
+                  <p className="text-xs text-gray-400 text-center mt-8">予約不可{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
                 ) : (
                   <div className="space-y-1">
-                    {partialBlocked && partialBlocked.length > 0 && (
-                      <p className="text-[10px] text-red-400">
-                        {partialBlocked.join(', ')} 不可
-                      </p>
+                    {weekCalItems.map((item, idx) =>
+                      item.kind === 'blocked' ? (
+                        <p key={`b-${idx}`} className="text-[10px] text-red-400">
+                          {item.time.replace(/^(\d):/, '0$1:')} 不可{item.reason ? ` - ${item.reason}` : ''}
+                        </p>
+                      ) : (
+                        <Link
+                          key={item.r.id}
+                          href={`/reservations/${item.r.id}`}
+                          className={`flex items-center gap-1 text-xs px-1.5 py-1 rounded hover:opacity-80 transition-opacity
+                            ${item.r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
+                              item.r.status === '完了' ? 'bg-green-50 text-green-700' :
+                              item.r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
+                              item.r.status === '見学' ? 'bg-purple-50 text-purple-700' :
+                              'bg-yellow-50 text-yellow-700'}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[item.r.status]}`} />
+                          <span className="truncate">
+                            {item.r.timeSlot} {item.r.customerName ?? ''}
+                          </span>
+                        </Link>
+                      )
                     )}
-                    {sorted.map((r) => (
-                      <Link
-                        key={r.id}
-                        href={`/reservations/${r.id}`}
-                        className={`flex items-center gap-1 text-xs px-1.5 py-1 rounded hover:opacity-80 transition-opacity
-                          ${r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
-                            r.status === '完了' ? 'bg-green-50 text-green-700' :
-                            r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                            r.status === '見学' ? 'bg-purple-50 text-purple-700' :
-                            'bg-yellow-50 text-yellow-700'}`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
-                        <span className="truncate">
-                          {r.timeSlot} {r.customerName ?? ''}
-                        </span>
-                      </Link>
-                    ))}
-                    {sorted.length === 0 && !partialBlocked?.length && (
+                    {weekCalItems.length === 0 && (
                       <p className="text-xs text-gray-300 text-center mt-4">—</p>
                     )}
                   </div>

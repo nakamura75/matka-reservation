@@ -10,9 +10,9 @@ export function generateId(): string {
   return crypto.randomUUID();
 }
 
-/** 日付が土日祝かどうかを判定（祝日は別途チェック必要） */
+/** 日付が土日祝かどうかを判定（JST基準、祝日は別途チェック必要） */
 export function isWeekend(dateStr: string): boolean {
-  const d = new Date(dateStr);
+  const d = new Date(dateStr + 'T00:00:00+09:00');
   const day = d.getDay();
   return day === 0 || day === 6;
 }
@@ -45,14 +45,19 @@ export function formatCurrency(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
-/** 日付を日本語形式で表示 */
+/** 日付を YYYY/MM/DD(曜日) 形式で表示（JST基準） */
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  });
+  const d = new Date(dateStr + 'T00:00:00+09:00');
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const w = weekdays[d.getDay()];
+  return `${y}/${m}/${day}(${w})`;
+}
+
+/** 時間の秒を削除（H:MM:SS → H:MM のみ変換。H:MM はそのまま） */
+export function stripSeconds(time: string): string {
+  return time ? time.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1') : time;
 }

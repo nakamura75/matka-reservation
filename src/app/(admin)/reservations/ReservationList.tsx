@@ -4,25 +4,8 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { Reservation, ReservationStatus } from '@/types';
-import { formatDate } from '@/lib/utils';
-
-const STATUS_LABEL: Record<ReservationStatus, string> = {
-  '予約済': '仮予約',
-  '予約確定': '予約確定',
-  '見学': '見学',
-  '保留': '保留',
-  '完了': '完了',
-  'キャンセル': 'キャンセル',
-};
-
-const STATUS_COLORS: Record<ReservationStatus, string> = {
-  '予約済': 'bg-yellow-100 text-yellow-800',
-  '予約確定': 'bg-blue-100 text-blue-800',
-  '見学': 'bg-purple-100 text-purple-700',
-  '保留': 'bg-orange-100 text-orange-700',
-  '完了': 'bg-green-100 text-green-800',
-  'キャンセル': 'bg-gray-100 text-gray-500',
-};
+import { formatDate, stripSeconds } from '@/lib/utils';
+import { STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
 
 const TAB_ORDER: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
 
@@ -33,10 +16,6 @@ const PAGE_SIZE = 20;
 
 type SortKey = 'date' | 'createdAt';
 type SortDir = 'asc' | 'desc';
-
-function stripSeconds(time: string) {
-  return time ? time.replace(/^(\d{1,2}:\d{2}):\d{2}$/, '$1') : time;
-}
 
 export default function ReservationList({ reservations }: { reservations: Reservation[] }) {
   const [search, setSearch] = useState('');
@@ -135,18 +114,18 @@ export default function ReservationList({ reservations }: { reservations: Reserv
 
       {/* テーブル */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead className="bg-cream text-gray-500 text-xs uppercase tracking-wide">
             <tr>
-              <th className="px-4 py-3 text-left">予約番号</th>
-              <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => handleSort('date')}>
+              <th className="px-4 py-3 text-left w-[15%]">予約番号</th>
+              <th className="px-4 py-3 text-left w-[16%] cursor-pointer select-none" onClick={() => handleSort('date')}>
                 予約日<SortIcon column="date" />
               </th>
-              <th className="px-4 py-3 text-left">時間</th>
-              <th className="px-4 py-3 text-left">顧客名</th>
-              <th className="px-4 py-3 text-left">シーン</th>
-              <th className="px-4 py-3 text-left">ステータス</th>
-              <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => handleSort('createdAt')}>
+              <th className="px-4 py-3 text-left w-[8%]">時間</th>
+              <th className="px-4 py-3 text-left w-[14%]">顧客名</th>
+              <th className="px-4 py-3 text-left w-[15%]">シーン</th>
+              <th className="px-4 py-3 text-left w-[12%]">ステータス</th>
+              <th className="px-4 py-3 text-left w-[12%] cursor-pointer select-none" onClick={() => handleSort('createdAt')}>
                 登録日<SortIcon column="createdAt" />
               </th>
             </tr>
@@ -193,7 +172,10 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
-                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString('ja-JP') : ''}
+                    {r.createdAt ? (() => {
+                      const d = new Date(r.createdAt);
+                      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                    })() : ''}
                   </td>
                 </tr>
               ))

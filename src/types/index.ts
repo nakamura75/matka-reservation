@@ -258,4 +258,5 @@ export interface AvailableSlot {
   }[];
   isWeekend: boolean;   // 土日祝判定
   isHoliday: boolean;   // カレンダーブロック
+  telOnly?: boolean;    // TEL予約のみ（中3営業日以内）
 }
