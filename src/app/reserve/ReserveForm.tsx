@@ -120,7 +120,10 @@ export default function ReserveForm() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const liffId = LIFF_ID;
-    if (!liffId) return;
+    if (!liffId) {
+      console.warn('[LIFF] LIFF_ID が未設定です');
+      return;
+    }
 
     import('@line/liff').then((liff) => {
       liff.default.init({ liffId })
@@ -130,11 +133,11 @@ export default function ReserveForm() {
             liff.default.getProfile().then((profile) => {
               setLineUserId(profile.userId);
               setLineName(profile.displayName);
-            }).catch(() => {});
+            }).catch((e) => console.error('[LIFF] getProfile失敗:', e));
           }
         })
-        .catch(() => {});
-    }).catch(() => {});
+        .catch((e) => console.error('[LIFF] init失敗:', e));
+    }).catch((e) => console.error('[LIFF] SDK読み込み失敗:', e));
   }, []);
 
   // マスタデータ取得
