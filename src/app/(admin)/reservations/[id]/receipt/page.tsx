@@ -57,8 +57,11 @@ export default async function ReceiptPage({
 
   const optionTotal = optionsWithInfo.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
-  // 領収書は常に現在のプラン・オプション・商品の合計を使用
-  const total = planPrice + optionTotal + orderItemTotal;
+  // 手動で金額修正されている場合はその金額を使用、なければ計算値
+  const calculatedTotal = planPrice + optionTotal + orderItemTotal;
+  const total = (reservation.discountAmount != null && reservation.discountAmount > 0)
+    ? reservation.discountAmount + orderItemTotal
+    : calculatedTotal;
 
   const issueDate = new Date().toLocaleDateString('ja-JP', {
     year: 'numeric',
