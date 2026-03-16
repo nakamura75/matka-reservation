@@ -309,13 +309,14 @@ export default function ReserveForm() {
       <div className="max-w-lg mx-auto px-4 py-12 text-center">
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
           <CheckCircleIcon className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">仮予約を受け付けました</h2>
+          <h2 className="font-bold mb-1" style={{ color: '#e53935', fontSize: '14px' }}>仮予約を受け付けました</h2>
+          <p className="font-bold mb-2" style={{ color: '#e53935', fontSize: '20px' }}>※まだ予約は完了しておりません</p>
           <p className="text-sm text-gray-500 mb-6">
             3日以内に担当者よりご連絡いたします。
           </p>
           <div className="bg-brand-light rounded-xl p-4 mb-6">
             <p className="text-xs text-gray-500 mb-1">予約番号</p>
-            <p className="text-2xl font-bold text-brand tracking-wide">{reservationNumber}</p>
+            <p className="font-bold text-brand tracking-wide" style={{ fontSize: '13px' }}>{reservationNumber}</p>
           </div>
           {!isInLine && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
