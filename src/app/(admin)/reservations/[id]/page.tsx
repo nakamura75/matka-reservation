@@ -58,6 +58,7 @@ export default async function ReservationDetailPage({
       reservation={reservation}
       customer={customer}
       plan={plan ?? null}
+      allPlans={plans.filter((p) => p.isActive)}
       options={optionsWithInfo}
       allOptions={options.filter((o) => o.isActive)}
       staff={staff}

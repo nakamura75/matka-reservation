@@ -58,6 +58,7 @@ export async function PATCH(
     familyNote?: string;
     customerNote?: string;
     phonePreference?: string;
+    planId?: string;
   } & Record<string, unknown>;
 
   const reservation = await getReservationById(params.id);
@@ -101,6 +102,7 @@ export async function PATCH(
   if (body.phonePreference !== undefined) updates.phonePreference = body.phonePreference;
   if (body.lineUserId !== undefined) updates.lineUserId = body.lineUserId;
   if (body.chatLineUserId !== undefined) updates.chatLineUserId = body.chatLineUserId;
+  if (body.planId !== undefined) updates.planId = body.planId;
 
   if (Object.keys(updates).length > 0) {
     await updateReservation(reservation.id, updates);
@@ -109,7 +111,8 @@ export async function PATCH(
   // 予約確定 → LINE通知（DB更新後に送信）
   if (body.status === '予約確定' && reservation.lineUserId) {
     const plans = await getPlans();
-    const plan = plans.find((p) => p.id === reservation.planId);
+    const updatedPlanId = body.planId ?? reservation.planId;
+    const plan = plans.find((p) => p.id === updatedPlanId);
     if (plan) {
       await sendLinePush(reservation.lineUserId, [
         buildConfirmMessage(reservation, plan.name, body.checkInTime ?? '', body.checkOutTime ?? ''),

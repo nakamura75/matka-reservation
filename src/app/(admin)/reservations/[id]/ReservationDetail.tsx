@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -36,6 +36,7 @@ interface Props {
   reservation: Reservation;
   customer: Customer | null;
   plan: Plan | null;
+  allPlans: Plan[];
   options: OptionWithInfo[];
   allOptions: Option[];
   staff: Staff[];
@@ -48,7 +49,7 @@ function parseAssignment(json?: string): StaffAssignment {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-export default function ReservationDetail({ reservation, customer, plan, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders }: Props) {
+export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
@@ -166,6 +167,8 @@ export default function ReservationDetail({ reservation, customer, plan, options
   const [editFamilyNote, setEditFamilyNote] = useState(reservation.familyNote ?? '');
   const [editCustomerNote, setEditCustomerNote] = useState(reservation.customerNote ?? '');
   const [editPhonePreference, setEditPhonePreference] = useState(reservation.phonePreference ?? '');
+  const [editPlanId, setEditPlanId] = useState(reservation.planId ?? '');
+  const [currentPlan, setCurrentPlan] = useState(plan);
 
   function cancelInfoEdit() {
     setEditDate(reservation.date ?? '');
@@ -177,6 +180,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
     setEditFamilyNote(reservation.familyNote ?? '');
     setEditCustomerNote(reservation.customerNote ?? '');
     setEditPhonePreference(reservation.phonePreference ?? '');
+    setEditPlanId(reservation.planId ?? '');
     setInfoEditing(false);
   }
 
@@ -196,9 +200,12 @@ export default function ReservationDetail({ reservation, customer, plan, options
           familyNote: editFamilyNote,
           customerNote: editCustomerNote,
           phonePreference: editPhonePreference,
+          planId: editPlanId,
         }),
       });
       if (res.ok) {
+        const newPlan = allPlans.find((p) => p.id === editPlanId) ?? null;
+        setCurrentPlan(newPlan);
         setInfoEditing(false);
         router.refresh();
       } else {
@@ -287,13 +294,18 @@ export default function ReservationDetail({ reservation, customer, plan, options
   // 撮影合計（プラン＋オプション）※見学は料金0
   const isVisit = status === '見学';
   const optionTotal = isVisit ? 0 : currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
-  const planPrice = isVisit ? 0 : (plan?.price ?? 0);
+  const planPrice = isVisit ? 0 : (currentPlan?.price ?? 0);
   const computedTotal = planPrice + optionTotal;
 
   // 商品合計（linkedOrders の合計）
   const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
   // 全体合計（直接編集可、デフォルトは自動計算）
   const [grandTotal, setGrandTotal] = useState(computedTotal + orderItemTotal);
+
+  // プラン・オプション変更時に合計を自動更新
+  useEffect(() => {
+    setGrandTotal(computedTotal + orderItemTotal);
+  }, [computedTotal, orderItemTotal]);
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -534,6 +546,19 @@ export default function ReservationDetail({ reservation, customer, plan, options
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">プラン</label>
+                  <select
+                    value={editPlanId}
+                    onChange={(e) => setEditPlanId(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  >
+                    <option value="">選択...</option>
+                    {allPlans.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}（{formatCurrency(p.price)}）</option>
+                    ))}
+                  </select>
+                </div>
                 {(editScene === 'その他' || editOtherSceneNote) && (
                   <div className="col-span-2">
                     <label className="block text-xs text-gray-400 mb-1">希望の撮影シーン（その他）</label>
@@ -615,7 +640,7 @@ export default function ReservationDetail({ reservation, customer, plan, options
                 <div>
                   <dt className="text-gray-400">プラン</dt>
                   <dd className="font-medium text-gray-900 mt-0.5">
-                    {plan?.name ?? reservation.planId}
+                    {currentPlan?.name ?? reservation.planId}
                   </dd>
                 </div>
                 <div>
