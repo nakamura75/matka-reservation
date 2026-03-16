@@ -143,7 +143,7 @@ export default function ReserveForm() {
   // マスタデータ取得
   useEffect(() => {
     fetch('/api/plans').then(r => r.json()).then(d => setPlans(d.data ?? []));
-    fetch('/api/options').then(r => r.json()).then(d => setOptions(d.data ?? []));
+    fetch('/api/options').then(r => r.json()).then(d => setOptions((d.data ?? []).filter((o: Option) => o.showInForm !== false)));
   }, []);
 
   // plans ロード後（またはシーン・日付変更後）に planId を再評価

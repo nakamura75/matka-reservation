@@ -38,6 +38,7 @@ export interface Option {
   description?: string;
   isActive: boolean;   // 有効
   externalCode?: string; // 外部コード（Square連携用）
+  showInForm?: boolean;  // 予約フォームに表示
 }
 
 // ============================================================

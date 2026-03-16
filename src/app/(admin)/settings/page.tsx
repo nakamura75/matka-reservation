@@ -230,6 +230,7 @@ function OptionsTab() {
             <tr>
               {fields.map((f) => <th key={f.label} className="px-4 py-3 text-left">{f.label}</th>)}
               <th className="px-4 py-3 text-left">有効</th>
+              <th className="px-4 py-3 text-left">フォーム表示</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -260,6 +261,25 @@ function OptionsTab() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${opt.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {opt.isActive ? '有効' : '無効'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={opt.showInForm === false ? '非表示' : '表示'}
+                      onChange={async (e) => {
+                        const showInForm = e.target.value === '表示';
+                        const updated = { ...opt, showInForm };
+                        await fetch('/api/settings/options', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(updated),
+                        });
+                        setOptions((prev) => prev.map((o) => (o.id === opt.id ? { ...o, showInForm } : o)));
+                      }}
+                      className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
+                    >
+                      <option value="表示">表示</option>
+                      <option value="非表示">非表示</option>
+                    </select>
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => setEditingId(opt.id)} className="text-gray-400 hover:text-brand">

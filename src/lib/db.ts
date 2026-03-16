@@ -240,6 +240,7 @@ export async function getOptions(): Promise<Option[]> {
   const { data, error } = await supabase()
     .from('options')
     .select('*')
+    .order('sort_order', { ascending: true })
     .order('id');
   if (error) throw error;
   return (data ?? []).map((r) => ({
@@ -249,6 +250,7 @@ export async function getOptions(): Promise<Option[]> {
     description: r.description,
     isActive: r.is_active,
     externalCode: r.external_code,
+    showInForm: r.show_in_form ?? true,
   }));
 }
 
@@ -260,6 +262,7 @@ export async function createOption(data: Option): Promise<void> {
     description: data.description ?? '',
     is_active: data.isActive,
     external_code: data.externalCode ?? '',
+    show_in_form: data.showInForm ?? true,
   });
   if (error) throw error;
 }
@@ -271,6 +274,7 @@ export async function updateOption(data: Option): Promise<void> {
     description: data.description ?? '',
     is_active: data.isActive,
     external_code: data.externalCode ?? '',
+    show_in_form: data.showInForm ?? true,
   }).eq('id', data.id);
   if (error) throw error;
 }
