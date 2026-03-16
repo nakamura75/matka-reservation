@@ -366,7 +366,7 @@ function ProductsTab() {
             {adding && (
               <tr className="bg-brand-light">
                 <td className="px-2 py-2" />
-                {fields.map(({ key, type }) => (
+                {fields.map(({ key }) => (
                   <td key={String(key)} className="px-4 py-2" />
                 ))}
                 <td className="px-4 py-2" />
