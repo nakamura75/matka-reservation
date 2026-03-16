@@ -252,15 +252,59 @@ function getSceneNotes(scene: Reservation['scene']): string[] {
 export function buildConfirmMessage(
   reservation: Reservation,
   planName: string,
+  planPrice: number,
+  options: { name: string; price: number; quantity: number }[],
   checkInTime: string,
   checkOutTime: string
 ): LineMessage {
   const formattedDate = reservation.date.replace(/-/g, '/');
   const sceneNotes = getSceneNotes(reservation.scene);
 
+  const optionTotal = options.reduce((sum, o) => sum + o.price * o.quantity, 0);
+  const total = (reservation.discountAmount != null && reservation.discountAmount > 0)
+    ? reservation.discountAmount
+    : planPrice + optionTotal;
+
+  const optionItems = options.map((o) => ({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      textComponent(`${o.name} ×${o.quantity}`, { size: 'xs', flex: 3 }),
+      textComponent(`¥${(o.price * o.quantity).toLocaleString()}`, { size: 'xs', align: 'end', flex: 2 }),
+    ],
+    margin: 'xs',
+  }));
+
   const bodyContents: Record<string, unknown>[] = [
     labelValue('📆 予約日時', `${formattedDate}  ${reservation.timeSlot}`),
     labelValue('📸 プラン', planName),
+    labelValue('プラン料金', `¥${planPrice.toLocaleString()}`),
+  ];
+
+  if (options.length > 0) {
+    bodyContents.push(separator());
+    bodyContents.push(textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }));
+    bodyContents.push(...optionItems);
+  }
+
+  bodyContents.push(separator());
+  bodyContents.push({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      textComponent('合計（税込）', { weight: 'bold', flex: 3 }),
+      textComponent(`¥${total.toLocaleString()}`, {
+        weight: 'bold',
+        color: BRAND_COLOR,
+        size: 'lg',
+        align: 'end',
+        flex: 2,
+      }),
+    ],
+    margin: 'md',
+  } as Record<string, unknown>);
+
+  bodyContents.push(
     separator(),
     // 来店時間を大きく強調
     {
@@ -276,10 +320,12 @@ export function buildConfirmMessage(
       cornerRadius: '8px',
       paddingAll: '12px',
       margin: 'md',
-    },
+    } as Record<string, unknown>,
     separator(),
     textComponent('⚠️ 撮影に関する注意事項', { weight: 'bold', size: 'xs', color: '#FF6B35', margin: 'md' }),
-    ...sceneNotes.map((note) => textComponent(`・${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })),
+  );
+  bodyContents.push(...sceneNotes.map((note) => textComponent(`・${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })));
+  bodyContents.push(
     separator(),
     textComponent('❓ よくあるご質問', { weight: 'bold', size: 'xs', margin: 'md' }),
     {
@@ -312,7 +358,7 @@ export function buildConfirmMessage(
     textComponent('撮影データは3営業日以内にLINEにてお送りいたします。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
     separator(),
     textComponent('当日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
-  ];
+  );
 
   return {
     type: 'flex',

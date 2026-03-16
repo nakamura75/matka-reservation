@@ -6,6 +6,7 @@ import {
   updateReservation,
   deleteReservation,
   getPlans,
+  getOptions,
 } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage } from '@/lib/line';
 import type { ReservationStatus } from '@/types';
@@ -110,12 +111,23 @@ export async function PATCH(
 
   // 予約確定 → LINE通知（DB更新後に送信）
   if (body.status === '予約確定' && reservation.lineUserId) {
-    const plans = await getPlans();
+    const [plans, allOptions, reservationOptions] = await Promise.all([
+      getPlans(),
+      getOptions(),
+      getReservationOptions(reservation.id),
+    ]);
     const updatedPlanId = body.planId ?? reservation.planId;
     const plan = plans.find((p) => p.id === updatedPlanId);
     if (plan) {
+      // 最新のDB状態を再取得（金額修正やオプション追加が反映済み）
+      const updatedReservation = await getReservationById(reservation.id);
+      const optionsWithInfo = reservationOptions.map((ro) => {
+        const opt = allOptions.find((o) => o.id === ro.optionId);
+        return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
+      }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
+
       await sendLinePush(reservation.lineUserId, [
-        buildConfirmMessage(reservation, plan.name, body.checkInTime ?? '', body.checkOutTime ?? ''),
+        buildConfirmMessage(updatedReservation ?? reservation, plan.name, plan.price, optionsWithInfo, body.checkInTime ?? '', body.checkOutTime ?? ''),
       ]).catch((e) => console.error('LINE push failed:', e));
     }
   }
