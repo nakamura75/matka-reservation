@@ -145,7 +145,9 @@ export function buildTentativeMessage(
   options: { name: string; price: number; quantity: number }[]
 ): LineMessage {
   const optionTotal = options.reduce((sum, o) => sum + o.price * o.quantity, 0);
-  const total = planPrice + optionTotal - (reservation.discountAmount ?? 0);
+  const total = (reservation.discountAmount != null && reservation.discountAmount > 0)
+    ? reservation.discountAmount
+    : planPrice + optionTotal;
   const formattedDate = reservation.date.replace(/-/g, '/');
 
   const optionItems = options.map((o) => ({

@@ -9,7 +9,6 @@ import {
   getReservationByNumber,
   getCustomerById,
   linkLineUserId,
-  saveChatLineUserId,
   getReservationOptions,
   getOptions,
   getPlans,
@@ -74,11 +73,8 @@ async function handleTextMessage(event: LineEvent) {
     return;
   }
 
-  // LINE_UserID を予約に紐づける
-  await Promise.all([
-    linkLineUserId(reservation.id, userId),
-    saveChatLineUserId(reservation.id, userId),
-  ]);
+  // LINE_UserID を予約に紐づける（chatLineUserIdは手動ペーストのみ）
+  await linkLineUserId(reservation.id, userId);
 
   // 仮予約完了通知を送信
   const [plans, options, reservationOptions, customer] = await Promise.all([
