@@ -586,6 +586,7 @@ export async function getProducts(): Promise<Product[]> {
   const { data, error } = await supabase()
     .from('products')
     .select('*')
+    .order('sort_order', { ascending: true })
     .order('id');
   if (error) throw error;
   return (data ?? []).map((r) => ({
@@ -595,6 +596,7 @@ export async function getProducts(): Promise<Product[]> {
     image: r.image,
     description: r.description,
     isActive: r.is_active,
+    sortOrder: r.sort_order ?? 0,
   }));
 }
 
@@ -606,6 +608,7 @@ export async function createProduct(data: Product): Promise<void> {
     image: data.image ?? '',
     description: data.description ?? '',
     is_active: data.isActive,
+    sort_order: data.sortOrder ?? 0,
   });
   if (error) throw error;
 }
@@ -617,8 +620,18 @@ export async function updateProduct(data: Product): Promise<void> {
     image: data.image ?? '',
     description: data.description ?? '',
     is_active: data.isActive,
+    sort_order: data.sortOrder ?? 0,
   }).eq('id', data.id);
   if (error) throw error;
+}
+
+export async function updateProductSortOrders(items: { id: string; sortOrder: number }[]): Promise<void> {
+  for (const item of items) {
+    const { error } = await supabase().from('products').update({
+      sort_order: item.sortOrder,
+    }).eq('id', item.id);
+    if (error) throw error;
+  }
 }
 
 // ============================================================

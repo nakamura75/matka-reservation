@@ -12,6 +12,7 @@ interface Props {
   customers: Customer[];
   blockedDates?: string[];
   blockedTimeSlots?: Record<string, string[]>;
+  holidayDates?: string[];
 }
 
 interface SelectedOption {
@@ -19,8 +20,9 @@ interface SelectedOption {
   quantity: number;
 }
 
-export default function NewReservationForm({ plans, options, customers, blockedDates = [], blockedTimeSlots = {} }: Props) {
+export default function NewReservationForm({ plans, options, customers, blockedDates = [], blockedTimeSlots = {}, holidayDates = [] }: Props) {
   const blockedDateSet = new Set(blockedDates);
+  const holidayDateSet = new Set(holidayDates);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -52,6 +54,11 @@ export default function NewReservationForm({ plans, options, customers, blockedD
     name: string; furigana: string; gender: string; birthday: string; clothingSize: string;
   }[]>([]);
 
+  // 祝日または土日かどうか
+  function isHolidayOrWeekend(d: string) {
+    return isWeekend(d) || holidayDateSet.has(d);
+  }
+
   // シーン変更時にプランを自動設定
   function handleSceneChange(s: string) {
     setScene(s);
@@ -59,7 +66,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
     if (planType) {
       const matchingPlan = plans.find((p) =>
         p.name.includes(planType) &&
-        (date ? (isWeekend(date) ? p.name.includes('休日') : p.name.includes('平日')) : true)
+        (date ? (isHolidayOrWeekend(date) ? p.name.includes('休日') : p.name.includes('平日')) : true)
       );
       if (matchingPlan) setPlanId(matchingPlan.id);
     }
@@ -73,10 +80,10 @@ export default function NewReservationForm({ plans, options, customers, blockedD
     if (scene) {
       const planType = SCENE_PLAN_MAP[scene];
       if (planType) {
-        const weekend = isWeekend(d);
+        const holiday = isHolidayOrWeekend(d);
         const matchingPlan = plans.find((p) =>
           p.name.includes(planType) &&
-          (weekend ? p.name.includes('休日') : p.name.includes('平日'))
+          (holiday ? p.name.includes('休日') : p.name.includes('平日'))
         );
         if (matchingPlan) setPlanId(matchingPlan.id);
       }
@@ -303,7 +310,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
             )}
             {date && !isDateBlocked && (
               <p className="text-xs mt-1 text-gray-400">
-                {isWeekend(date) ? '🏖 休日料金' : '📅 平日料金'}
+                {isHolidayOrWeekend(date) ? '🏖 休日料金' : '📅 平日料金'}
               </p>
             )}
           </div>

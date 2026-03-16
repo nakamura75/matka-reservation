@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getProducts, createProduct, updateProduct } from '@/lib/db';
+import { getProducts, createProduct, updateProduct, updateProductSortOrders } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +40,19 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     await updateProduct(body);
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    const body = await req.json();
+    await updateProductSortOrders(body.items);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: 'サーバーエラーが発生しました' }, { status: 500 });

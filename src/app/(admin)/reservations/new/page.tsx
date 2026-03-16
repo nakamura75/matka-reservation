@@ -17,11 +17,14 @@ export default async function NewReservationPage() {
 
   // 終日ブロック日
   const blockedDates: string[] = [];
+  const holidayDates: string[] = [];
   const blockedTimeSlotsMap: Record<string, string[]> = {};
 
   for (const h of holidays) {
     if (h.type === 'closed' || h.type === 'temporary') {
       blockedDates.push(h.date);
+    } else if (h.type === 'holiday') {
+      holidayDates.push(h.date);
     }
   }
   for (const s of blockedSlots) {
@@ -42,6 +45,7 @@ export default async function NewReservationPage() {
         customers={customers}
         blockedDates={blockedDates}
         blockedTimeSlots={blockedTimeSlotsMap}
+        holidayDates={holidayDates}
       />
     </div>
   );

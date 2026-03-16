@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { PlusIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ChevronDownIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/utils';
 import type { Plan, Option, Product, Staff, Holiday, BlockedSlot } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -284,6 +284,7 @@ function ProductsTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings/products').then(r => r.json()).then(d => {
@@ -300,10 +301,11 @@ function ProductsTab() {
 
   async function handleSave(data: Partial<Product>, isNew = false) {
     if (isNew) {
+      const maxSort = products.reduce((max, p) => Math.max(max, p.sortOrder ?? 0), 0);
       const res = await fetch('/api/settings/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, isActive: true }),
+        body: JSON.stringify({ ...data, isActive: true, sortOrder: maxSort + 1 }),
       });
       const json = await res.json();
       if (json.success) {
@@ -322,11 +324,29 @@ function ProductsTab() {
     }
   }
 
+  async function moveProduct(index: number, direction: 'up' | 'down') {
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    if (swapIndex < 0 || swapIndex >= products.length) return;
+    const newProducts = [...products];
+    [newProducts[index], newProducts[swapIndex]] = [newProducts[swapIndex], newProducts[index]];
+    const updated = newProducts.map((p, i) => ({ ...p, sortOrder: i }));
+    setProducts(updated);
+    setSaving(true);
+    await fetch('/api/settings/products', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: updated.map((p, i) => ({ id: p.id, sortOrder: i })) }),
+    });
+    setSaving(false);
+  }
+
   if (loading) return <p className="text-sm text-gray-400 py-8 text-center">読み込み中...</p>;
 
   return (
     <div>
-      <div className="flex justify-end mb-3">
+      <div className="flex items-center justify-between mb-3">
+        {saving && <span className="text-xs text-gray-400">保存中...</span>}
+        {!saving && <span />}
         <button onClick={() => setAdding(true)}
           className="flex items-center gap-1 text-sm text-brand hover:text-brand-dark border border-brand/20 rounded-lg px-3 py-1.5 hover:bg-brand-light">
           <PlusIcon className="w-4 h-4" />商品追加
@@ -336,12 +356,23 @@ function ProductsTab() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-400 text-xs">
             <tr>
+              <th className="px-2 py-3 text-center w-[70px]">並替</th>
               {fields.map((f) => <th key={f.label} className="px-4 py-3 text-left">{f.label}</th>)}
               <th className="px-4 py-3 text-left">有効</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
+            {adding && (
+              <tr className="bg-brand-light">
+                <td className="px-2 py-2" />
+                {fields.map(({ key, type }) => (
+                  <td key={String(key)} className="px-4 py-2" />
+                ))}
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
+              </tr>
+            )}
             {adding && (
               <EditableRow<Product>
                 item={{ name: '', price: 0, description: '' }}
@@ -350,7 +381,7 @@ function ProductsTab() {
                 onCancel={() => setAdding(false)}
               />
             )}
-            {products.map((p) =>
+            {products.map((p, idx) =>
               editingId === p.id ? (
                 <EditableRow<Product>
                   key={p.id}
@@ -361,6 +392,24 @@ function ProductsTab() {
                 />
               ) : (
                 <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-2 py-3">
+                    <div className="flex flex-col items-center gap-0.5">
+                      <button
+                        onClick={() => moveProduct(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-0.5 text-gray-400 hover:text-brand disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUpIcon className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => moveProduct(idx, 'down')}
+                        disabled={idx === products.length - 1}
+                        className="p-0.5 text-gray-400 hover:text-brand disabled:opacity-20 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDownIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                   <td className="px-4 py-3 text-gray-700">{formatCurrency(p.price)}</td>
                   <td className="px-4 py-3 text-gray-500">{p.description || '—'}</td>

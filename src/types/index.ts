@@ -184,6 +184,7 @@ export interface Product {
   image?: string;        // 商品画像
   description?: string;  // 説明
   isActive: boolean;     // 有効
+  sortOrder?: number;    // 表示順
 }
 
 // ============================================================

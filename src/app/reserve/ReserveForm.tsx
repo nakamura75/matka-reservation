@@ -150,13 +150,13 @@ export default function ReserveForm() {
   useEffect(() => {
     if (plans.length === 0 || !scene) return;
     const planType = SCENE_PLAN_MAP[scene];
-    const weekend = selectedDate ? isWeekend(selectedDate) : false;
+    const holiday = selectedDate ? (isWeekend(selectedDate) || !!slots.find(s => s.date === selectedDate)?.isHoliday) : false;
     const match =
-      plans.find((p) => p.name.includes(planType) && p.name.includes(selectedDate && weekend ? '休日' : '平日'))
+      plans.find((p) => p.name.includes(planType) && p.name.includes(selectedDate && holiday ? '休日' : '平日'))
       ?? plans.find((p) => p.name.includes(planType))
       ?? plans[0];
     if (match) setPlanId(match.id);
-  }, [plans, scene, selectedDate]);
+  }, [plans, scene, selectedDate, slots]);
 
   // 空き枠取得
   const fetchSlots = useCallback(async (s: ShootingScene) => {
@@ -196,9 +196,9 @@ export default function ReserveForm() {
     setSelectedTime('');
     if (scene) {
       const planType = SCENE_PLAN_MAP[scene];
-      const weekend = isWeekend(dateStr);
+      const holiday = isWeekend(dateStr) || !!slots.find(s => s.date === dateStr)?.isHoliday;
       const match = plans.find((p) =>
-        p.name.includes(planType) && (weekend ? p.name.includes('休日') : p.name.includes('平日'))
+        p.name.includes(planType) && (holiday ? p.name.includes('休日') : p.name.includes('平日'))
       ) ?? plans.find((p) => p.name.includes(planType)) ?? plans[0];
       if (match) setPlanId(match.id);
     }
