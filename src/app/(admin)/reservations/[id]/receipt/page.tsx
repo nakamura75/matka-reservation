@@ -59,9 +59,11 @@ export default async function ReceiptPage({
   const planPrice = plan?.price ?? 0;
   // 手動で金額修正されている場合はその金額を使用、なければ計算値
   const calculatedTotal = planPrice + optionTotal + orderItemTotal;
-  const total = (reservation.discountAmount != null && reservation.discountAmount > 0)
-    ? reservation.discountAmount + orderItemTotal
+  const hasDiscount = reservation.discountAmount != null && reservation.discountAmount > 0;
+  const total = hasDiscount
+    ? reservation.discountAmount! + orderItemTotal
     : calculatedTotal;
+  const discountDiff = calculatedTotal - total;
 
   const issueDate = new Date().toLocaleDateString('ja-JP', {
     year: 'numeric',
@@ -189,7 +191,19 @@ export default async function ReceiptPage({
 
           {/* 小計・税・合計 */}
           <div className="subtotal-area">
-            <div className="subtotal-row">
+            {hasDiscount && (
+              <>
+                <div className="subtotal-row">
+                  <span>定価（税込）</span>
+                  <span>{formatCurrency(calculatedTotal)}</span>
+                </div>
+                <div className="subtotal-row" style={{ color: '#e53e3e' }}>
+                  <span>値引き</span>
+                  <span>-{formatCurrency(discountDiff)}</span>
+                </div>
+              </>
+            )}
+            <div className="subtotal-row" style={hasDiscount ? { borderTop: '1px solid #ccc', paddingTop: 8, marginTop: 4 } : {}}>
               <span>小計（税抜）</span>
               <span>{formatCurrency(taxExcluded(total))}</span>
             </div>
