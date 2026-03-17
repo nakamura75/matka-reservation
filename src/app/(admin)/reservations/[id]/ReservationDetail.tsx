@@ -219,6 +219,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   // 担当割り当て
   const photographers = staff.filter((s) => s.role === 'フォトグラファー' && s.isActive !== 'FALSE');
   const hairMakeupStaff = staff.filter((s) => s.role === 'ヘアメイク' && s.isActive !== 'FALSE');
+  const allStaff = staff.filter((s) => s.isActive !== 'FALSE');
   const planType: 'Discovery' | 'Maternity' = reservation.scene === 'マタニティ' ? 'Maternity' : 'Discovery';
   const breakdown = PLAN_STAFF_BREAKDOWN[planType];
   const hasHolidayFee = isWeekend(reservation.date);
@@ -835,7 +836,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
                 >
                   <option value="">未選択</option>
-                  {photographers.map((s) => (
+                  {allStaff.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
@@ -853,7 +854,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
                 >
                   <option value="">未選択</option>
-                  {photographers.map((s) => (
+                  {allStaff.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
@@ -871,7 +872,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
                 >
                   <option value="">未選択</option>
-                  {hairMakeupStaff.map((s) => (
+                  {allStaff.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
@@ -889,7 +890,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
                 >
                   <option value="">未選択</option>
-                  {hairMakeupStaff.map((s) => (
+                  {allStaff.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
@@ -924,7 +925,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
                   >
                     <option value="">未選択</option>
-                    {hairMakeupStaff.map((s) => (
+                    {allStaff.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
