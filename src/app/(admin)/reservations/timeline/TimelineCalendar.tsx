@@ -298,7 +298,7 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
               </div>
 
               {/* 各日のカラム */}
-              {weekDays.map((day, dayIdx) => {
+              {weekDays.map((day) => {
                 const dateStr = toDateStr(day);
                 const dayReservations = weekReservationMap.get(dateStr) ?? [];
                 const isBlocked = blockedDateMap.has(dateStr);
