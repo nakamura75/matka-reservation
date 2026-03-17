@@ -217,8 +217,6 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   }
 
   // 担当割り当て
-  const photographers = staff.filter((s) => s.role === 'フォトグラファー' && s.isActive !== 'FALSE');
-  const hairMakeupStaff = staff.filter((s) => s.role === 'ヘアメイク' && s.isActive !== 'FALSE');
   const allStaff = staff.filter((s) => s.isActive !== 'FALSE');
   const planType: 'Discovery' | 'Maternity' = reservation.scene === 'マタニティ' ? 'Maternity' : 'Discovery';
   const breakdown = PLAN_STAFF_BREAKDOWN[planType];
