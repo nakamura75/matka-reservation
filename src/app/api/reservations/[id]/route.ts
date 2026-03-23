@@ -42,6 +42,7 @@ export async function PATCH(
     status?: ReservationStatus;
     note?: string;
     totalAmount?: number;
+    discountRate?: number;
     staffAssignment?: string;
     checkInTime?: string;
     checkOutTime?: string;
@@ -88,6 +89,7 @@ export async function PATCH(
   // 備考・合計金額・担当割り当て・支払ステータス・予約情報更新
   if (body.note !== undefined) updates.note = body.note;
   if (body.totalAmount !== undefined) updates.discountAmount = body.totalAmount;
+  if (body.discountRate !== undefined) updates.discountRate = body.discountRate;
   if (body.staffAssignment !== undefined) updates.staffAssignmentJson = body.staffAssignment;
   if (body.paymentStatus !== undefined) updates.paymentStatus = body.paymentStatus;
   if (body.paymentDate !== undefined) updates.paymentDate = body.paymentDate;

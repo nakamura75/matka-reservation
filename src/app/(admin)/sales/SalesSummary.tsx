@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { Reservation, Staff, Order, OrderItem } from '@/types';
+import type { Reservation, Staff, Order, OrderItem, Holiday } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
 import { isWeekend } from '@/lib/utils';
+
+function isHolidayOrWeekend(dateStr: string, holidayDates: Set<string>): boolean {
+  return isWeekend(dateStr) || holidayDates.has(dateStr);
+}
 
 interface EnrichedOrderItem extends OrderItem { productPrice: number; }
 interface EnrichedOrder extends Omit<Order, 'items'> { items: EnrichedOrderItem[]; }
@@ -12,6 +16,7 @@ interface Props {
   reservations: Reservation[];
   staff: Staff[];
   orders: EnrichedOrder[];
+  holidays: Holiday[];
 }
 
 const ROLES = ['photo', 'assistant', 'hair', 'makeup'] as const;
@@ -33,7 +38,7 @@ function formatYen(amount: number): string {
   return '¥' + amount.toLocaleString('ja-JP');
 }
 
-export default function SalesSummary({ reservations, staff, orders }: Props) {
+export default function SalesSummary({ reservations, staff, orders, holidays }: Props) {
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
@@ -91,13 +96,17 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
     () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status !== '発送済').length, 0),
     [monthOrders]
   );
+  const holidayDates = useMemo(
+    () => new Set(holidays.filter((h) => h.type === 'holiday').map((h) => h.date)),
+    [holidays]
+  );
   const holidayFeeTotal = useMemo(
-    () => completedReservations.filter((r) => isWeekend(r.date)).length * HOLIDAY_FEE,
-    [completedReservations]
+    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates)).length * HOLIDAY_FEE,
+    [completedReservations, holidayDates]
   );
   const holidayFeeCount = useMemo(
-    () => completedReservations.filter((r) => isWeekend(r.date)).length,
-    [completedReservations]
+    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates)).length,
+    [completedReservations, holidayDates]
   );
 
   // 予約リストから担当者別金額を集計する共通関数
@@ -113,6 +122,8 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
       const assignment = parseAssignment(r.staffAssignmentJson);
       const planType = SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery';
       const breakdown = PLAN_STAFF_BREAKDOWN[planType];
+      const rate = (r as Reservation & { discountRate?: number }).discountRate ?? 0;
+      const multiplier = 1 - rate / 100;
       for (const role of ROLES) {
         const staffId = assignment[role];
         if (!staffId) continue;
@@ -124,9 +135,10 @@ export default function SalesSummary({ reservations, staff, orders }: Props) {
             total: 0,
           };
         }
+        const amount = Math.round(breakdown[role] * multiplier);
         map[staffId].counts[role] += 1;
-        map[staffId].amounts[role] += breakdown[role];
-        map[staffId].total += breakdown[role];
+        map[staffId].amounts[role] += amount;
+        map[staffId].total += amount;
       }
     }
     return Object.values(map).sort((a, b) => b.total - a.total);

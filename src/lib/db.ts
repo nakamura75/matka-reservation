@@ -96,6 +96,7 @@ function dbToReservation(r: Record<string, unknown>): Reservation {
     reservationNumber: r.reservation_number as string | undefined,
     discountAmount: (r.discount_amount as number) || 0,
     discountReason: r.discount_reason as string | undefined,
+    discountRate: (r.discount_rate as number) || 0,
     checkInTime: r.check_in_time as string | undefined,
     checkOutTime: r.check_out_time as string | undefined,
     calendarEventId: calendarEventId,
@@ -131,6 +132,7 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
   if (r.reservationNumber !== undefined) m.reservation_number = r.reservationNumber;
   if (r.discountAmount !== undefined) m.discount_amount = r.discountAmount;
   if (r.discountReason !== undefined) m.discount_reason = r.discountReason;
+  if (r.discountRate !== undefined) m.discount_rate = r.discountRate;
   if (r.checkInTime !== undefined) m.check_in_time = r.checkInTime;
   if (r.checkOutTime !== undefined) m.check_out_time = r.checkOutTime;
   if (r.calendarEventId !== undefined) m.calendar_event_id = r.calendarEventId;
@@ -475,11 +477,12 @@ export async function getOrders(): Promise<Order[]> {
     paidDate: r.paid_date,
     note: r.note,
     flag: r.flag,
+    deadline: r.deadline as string | undefined,
   }));
 }
 
 export async function createOrder(data: Omit<Order, 'items'>): Promise<void> {
-  const { error } = await supabase().from('orders').insert({
+  const row: Record<string, unknown> = {
     id: data.id,
     customer_id: data.customerId,
     reservation_id: data.reservationId ?? '',
@@ -488,13 +491,15 @@ export async function createOrder(data: Omit<Order, 'items'>): Promise<void> {
     paid_date: data.paidDate ?? '',
     note: data.note ?? '',
     flag: data.flag ?? false,
-  });
+  };
+  if (data.deadline) row.deadline = data.deadline;
+  const { error } = await supabase().from('orders').insert(row);
   if (error) throw error;
 }
 
 export async function updateOrder(
   id: string,
-  fields: { isPaid?: boolean; paidDate?: string; note?: string }
+  fields: { isPaid?: boolean; paidDate?: string; note?: string; deadline?: string }
 ): Promise<void> {
   const row: Record<string, unknown> = {};
   if (fields.isPaid !== undefined) {
@@ -502,6 +507,7 @@ export async function updateOrder(
     if (fields.isPaid && fields.paidDate) row.paid_date = fields.paidDate;
   }
   if (fields.note !== undefined) row.note = fields.note;
+  if (fields.deadline !== undefined) row.deadline = fields.deadline;
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase().from('orders').update(row).eq('id', id);
   if (error) throw error;
@@ -528,9 +534,10 @@ export async function getOrderItems(orderId?: string): Promise<OrderItem[]> {
     customerId: r.customer_id,
     quantity: r.quantity,
     status: r.status as OrderItem['status'],
-    completedDate: r.completed_date,
+    selectedDate: r.selected_date as string | undefined,
+    layoutDate: r.layout_date as string | undefined,
     orderedDate: r.ordered_date,
-    arrivedDate: r.arrived_date,
+    packedDate: r.packed_date as string | undefined,
     shippedDate: r.shipped_date,
     trackingNumber: r.tracking_number,
     note: r.note,
@@ -547,9 +554,10 @@ export async function createOrderItem(
     customer_id: data.customerId ?? '',
     quantity: data.quantity,
     status: data.status,
-    completed_date: data.completedDate ?? '',
+    selected_date: data.selectedDate ?? '',
+    layout_date: data.layoutDate ?? '',
     ordered_date: data.orderedDate ?? '',
-    arrived_date: data.arrivedDate ?? '',
+    packed_date: data.packedDate ?? '',
     shipped_date: data.shippedDate ?? '',
     tracking_number: data.trackingNumber ?? '',
     note: data.note ?? '',
@@ -561,9 +569,10 @@ export async function updateOrderItem(
   id: string,
   fields: {
     status?: OrderItem['status'];
-    completedDate?: string;
+    selectedDate?: string;
+    layoutDate?: string;
     orderedDate?: string;
-    arrivedDate?: string;
+    packedDate?: string;
     shippedDate?: string;
     trackingNumber?: string;
     note?: string;
@@ -571,9 +580,10 @@ export async function updateOrderItem(
 ): Promise<void> {
   const row: Record<string, unknown> = {};
   if (fields.status !== undefined) row.status = fields.status;
-  if (fields.completedDate !== undefined) row.completed_date = fields.completedDate;
+  if (fields.selectedDate !== undefined) row.selected_date = fields.selectedDate;
+  if (fields.layoutDate !== undefined) row.layout_date = fields.layoutDate;
   if (fields.orderedDate !== undefined) row.ordered_date = fields.orderedDate;
-  if (fields.arrivedDate !== undefined) row.arrived_date = fields.arrivedDate;
+  if (fields.packedDate !== undefined) row.packed_date = fields.packedDate;
   if (fields.shippedDate !== undefined) row.shipped_date = fields.shippedDate;
   if (fields.trackingNumber !== undefined) row.tracking_number = fields.trackingNumber;
   if (fields.note !== undefined) row.note = fields.note;

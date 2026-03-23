@@ -8,6 +8,7 @@ import {
   getOrders,
   getOrderItems,
   getProducts,
+  getHolidays,
 } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
@@ -19,7 +20,7 @@ export default async function ReservationDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [reservation, plans, options, staff, allOrders, allOrderItems, products] = await Promise.all([
+  const [reservation, plans, options, staff, allOrders, allOrderItems, products, holidays] = await Promise.all([
     getReservationById(params.id),
     getPlans(),
     getOptions(), // マスターオプション一覧（予約オプション選択肢＆enrichに使用）
@@ -27,6 +28,7 @@ export default async function ReservationDetailPage({
     getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getHolidays().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   if (!reservation) notFound();
@@ -64,6 +66,7 @@ export default async function ReservationDetailPage({
       staff={staff}
       products={products.filter((p) => p.isActive)}
       linkedOrders={linkedOrders}
+      holidays={holidays}
     />
   );
 }

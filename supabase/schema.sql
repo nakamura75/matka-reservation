@@ -98,6 +98,7 @@ CREATE TABLE reservations (
   reservation_number TEXT,
   discount_amount INTEGER DEFAULT 0,
   discount_reason TEXT,
+  discount_rate INTEGER DEFAULT 0,
   check_in_time TEXT,
   check_out_time TEXT,
   calendar_event_id TEXT,
@@ -141,10 +142,11 @@ CREATE TABLE orders (
   customer_id TEXT REFERENCES customers(id) ON DELETE CASCADE,
   reservation_id TEXT,
   order_date TEXT NOT NULL,
-  is_paid BOOLEAN NOT NULL DEFAULT false,
+  is_paid BOOLEAN NOT NULL DEFAULT true,
   paid_date TEXT,
   note TEXT,
-  flag BOOLEAN DEFAULT false
+  flag BOOLEAN DEFAULT false,
+  deadline TEXT
 );
 
 CREATE INDEX idx_orders_customer_id ON orders(customer_id);
@@ -159,9 +161,10 @@ CREATE TABLE order_items (
   customer_id TEXT,
   quantity INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT '受注',
-  completed_date TEXT,
+  selected_date TEXT,
+  layout_date TEXT,
   ordered_date TEXT,
-  arrived_date TEXT,
+  packed_date TEXT,
   shipped_date TEXT,
   tracking_number TEXT,
   note TEXT

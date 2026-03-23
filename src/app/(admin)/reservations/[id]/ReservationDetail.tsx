@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option } from '@/types';
+import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option, Holiday } from '@/types';
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
-import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
+import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number };
@@ -42,6 +42,7 @@ interface Props {
   staff: Staff[];
   products: Product[];
   linkedOrders: LinkedOrder[];
+  holidays: Holiday[];
 }
 
 function parseAssignment(json?: string): StaffAssignment {
@@ -49,7 +50,7 @@ function parseAssignment(json?: string): StaffAssignment {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders }: Props) {
+export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders, holidays }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
@@ -136,13 +137,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       const total = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
       setLinkedOrders((prev) => [
         ...prev,
-        { id: orderId, orderDate: new Date().toLocaleDateString('ja-JP'), isPaid: false, total, itemCount: orderItems.length },
+        { id: orderId, orderDate: new Date().toLocaleDateString('ja-JP'), isPaid: true, total, itemCount: orderItems.length },
       ]);
-      // 自動計算モードなら合計を連動更新
-      setGrandTotal((prev) => {
-        const autoTotal = computedTotal + linkedOrders.reduce((s, o) => s + o.total, 0);
-        return prev === autoTotal ? autoTotal + total : prev;
-      });
       setShowOrderForm(false);
       setOrderItems([]);
     } finally {
@@ -220,7 +216,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const allStaff = staff.filter((s) => s.isActive !== 'FALSE');
   const planType: 'Discovery' | 'Maternity' = reservation.scene === 'マタニティ' ? 'Maternity' : 'Discovery';
   const breakdown = PLAN_STAFF_BREAKDOWN[planType];
-  const hasHolidayFee = isWeekend(reservation.date);
+  const isHolidayDate = holidays.some((h) => h.date === reservation.date && h.type === 'holiday');
+  const hasHolidayFee = isWeekend(reservation.date) || isHolidayDate;
   const [assignment, setAssignment] = useState<StaffAssignment>(
     parseAssignment(reservation.staffAssignmentJson)
   );
@@ -298,13 +295,12 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
   // 商品合計（linkedOrders の合計）
   const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
-  // 全体合計（直接編集可、デフォルトは自動計算）
-  const [grandTotal, setGrandTotal] = useState(computedTotal + orderItemTotal);
-
-  // プラン・オプション変更時に合計を自動更新
-  useEffect(() => {
-    setGrandTotal(computedTotal + orderItemTotal);
-  }, [computedTotal, orderItemTotal]);
+  // 割引率（0, 5, 10）
+  const [discountRate, setDiscountRate] = useState(reservation.discountRate ?? 0);
+  // 割引後の撮影合計
+  const discountedShootingTotal = Math.round(computedTotal * (1 - discountRate / 100));
+  // 全体合計
+  const grandTotal = discountedShootingTotal + orderItemTotal;
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -363,7 +359,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, totalAmount: grandTotal }),
+        body: JSON.stringify({ note, discountRate }),
       });
       setIsEditingNote(false);
       router.refresh();
@@ -821,7 +817,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-700">フォト</p>
-                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.photo)}</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(Math.round(breakdown.photo * (1 - discountRate / 100)))}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
                 </div>
                 <select
                   value={assignment.photo ?? ''}
@@ -839,7 +835,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-700">アシスタント</p>
-                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.assistant)}</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(Math.round(breakdown.assistant * (1 - discountRate / 100)))}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
                 </div>
                 <select
                   value={assignment.assistant ?? ''}
@@ -857,7 +853,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-700">ヘア</p>
-                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.hair)}</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(Math.round(breakdown.hair * (1 - discountRate / 100)))}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
                 </div>
                 <select
                   value={assignment.hair ?? ''}
@@ -875,7 +871,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-700">メイク</p>
-                  <p className="text-xs text-gray-400">{formatCurrency(breakdown.makeup)}</p>
+                  <p className="text-xs text-gray-400">{formatCurrency(Math.round(breakdown.makeup * (1 - discountRate / 100)))}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
                 </div>
                 <select
                   value={assignment.makeup ?? ''}
@@ -935,11 +931,11 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             </div>
           </section>
 
-          {/* ③ 備考・合計金額（値引きフィールド削除、合計直接編集） */}
+          {/* ③ 備考・割引 */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
               <PencilSquareIcon className="w-4 h-4" />
-              備考・合計金額
+              備考・割引
               {!isEditingNote && (
                 <button
                   type="button"
@@ -963,24 +959,28 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">合計金額（税込）</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      value={grandTotal}
-                      onChange={(e) => setGrandTotal(Number(e.target.value))}
-                      className="w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-                      min={0}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setGrandTotal(computedTotal + orderItemTotal)}
-                      className="text-xs text-gray-400 hover:text-gray-600 underline"
-                    >
-                      自動計算に戻す
-                    </button>
+                  <label className="block text-xs text-gray-400 mb-1">割引</label>
+                  <div className="flex gap-2">
+                    {DISCOUNT_RATES.map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => setDiscountRate(rate)}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                          discountRate === rate
+                            ? 'bg-brand text-white border-brand'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-brand/30'
+                        }`}
+                      >
+                        {rate === 0 ? '割引なし' : `${rate}%OFF`}
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">自動計算: {formatCurrency(computedTotal + orderItemTotal)}</p>
+                  {discountRate > 0 && (
+                    <p className="text-xs text-red-500 mt-2">
+                      定価 {formatCurrency(computedTotal)} → {formatCurrency(discountedShootingTotal)}（-{formatCurrency(computedTotal - discountedShootingTotal)}）
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -994,7 +994,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     type="button"
                     onClick={() => {
                       setNote(reservation.note ?? '');
-                      setGrandTotal(computedTotal + orderItemTotal);
+                      setDiscountRate(reservation.discountRate ?? 0);
                       setIsEditingNote(false);
                     }}
                     disabled={saving}
@@ -1015,8 +1015,12 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">合計金額（税込）</p>
-                  <p className="font-semibold">{formatCurrency(grandTotal)}</p>
+                  <p className="text-xs text-gray-400 mb-1">割引</p>
+                  {discountRate > 0 ? (
+                    <p className="font-semibold text-red-500">{discountRate}%OFF（-{formatCurrency(computedTotal - discountedShootingTotal)}）</p>
+                  ) : (
+                    <p className="text-gray-400">なし</p>
+                  )}
                 </div>
               </div>
             )}
@@ -1074,9 +1078,21 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 </div>
               )}
               <div className="flex justify-between font-semibold text-gray-800 border-t border-gray-100 pt-2">
-                <span>撮影合計</span>
+                <span>撮影小計</span>
                 <span>{formatCurrency(computedTotal)}</span>
               </div>
+              {discountRate > 0 && (
+                <>
+                  <div className="flex justify-between text-red-500 text-sm">
+                    <span>{discountRate}%OFF</span>
+                    <span>-{formatCurrency(computedTotal - discountedShootingTotal)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-gray-800">
+                    <span>撮影合計（割引後）</span>
+                    <span>{formatCurrency(discountedShootingTotal)}</span>
+                  </div>
+                </>
+              )}
 
               {/* 商品 */}
               {orderItemTotal > 0 && (
@@ -1172,9 +1188,6 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                       <span className="text-gray-600">{order.orderDate}（{order.itemCount}点）</span>
                       <div className="flex items-center gap-2">
                         {order.total > 0 && <span className="text-gray-700">¥{order.total.toLocaleString()}</span>}
-                        <span className={`px-1.5 py-0.5 rounded-full ${order.isPaid ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {order.isPaid ? '入金済' : '未入金'}
-                        </span>
                       </div>
                     </Link>
                   </li>
