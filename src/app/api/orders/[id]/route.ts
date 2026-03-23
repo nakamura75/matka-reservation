@@ -78,6 +78,7 @@ export async function PATCH(
       isPaid: body.isPaid,
       paidDate: body.paidDate,
       note: body.note,
+      deadline: body.deadline,
     });
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -33,12 +33,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const today = new Date().toLocaleDateString('ja-JP');
     const order = {
       id: generateId(),
       customerId: body.customerId,
       reservationId: body.reservationId ?? '',
-      orderDate: new Date().toLocaleDateString('ja-JP'),
-      isPaid: false,
+      orderDate: today,
+      isPaid: true,
+      paidDate: today,
       flag: false,
       note: body.note ?? '',
     };

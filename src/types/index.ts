@@ -95,8 +95,9 @@ export interface Reservation {
   phonePreference?: string;// 電話希望
   scene?: ShootingScene;   // 撮影シーン
   reservationNumber?: string; // 予約番号（M-YYYYMMDD-XXXX）
-  discountAmount?: number; // 値引額
-  discountReason?: string; // 値引理由
+  discountAmount?: number; // 値引額（旧: 互換用）
+  discountReason?: string; // 値引理由（旧: 互換用）
+  discountRate?: number;   // 割引率（0 | 5 | 10）
   paymentMethod?: string;  // 支払方法（現金/カード/振込・AC列）
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
@@ -135,13 +136,14 @@ export interface Order {
   note?: string;           // 備考
   flag?: boolean;          // フラグ
   total?: number;          // 合計（VC）
+  deadline?: string;       // 納期（YYYY-MM-DD）
   items?: OrderItem[];
 }
 
 // ============================================================
 // 注文詳細
 // ============================================================
-export type OrderItemStatus = '受注' | '発注済' | '制作完了' | '入荷' | '発送済';
+export type OrderItemStatus = '受注' | 'セレクト済' | 'レイアウト済' | '発注済' | '梱包済' | '発送済';
 
 export interface OrderItem {
   id: string;              // ID注文詳細
@@ -151,9 +153,10 @@ export interface OrderItem {
   customerId?: string;     // ID顧客（VC）
   quantity: number;        // 数量
   status: OrderItemStatus; // ステータス
-  completedDate?: string;  // 制作完了日
+  selectedDate?: string;   // セレクト済日
+  layoutDate?: string;     // レイアウト済日
   orderedDate?: string;    // 発注日
-  arrivedDate?: string;    // 入荷日
+  packedDate?: string;     // 梱包済日
   shippedDate?: string;    // 発送日
   trackingNumber?: string; // 追跡番号
   note?: string;           // 備考

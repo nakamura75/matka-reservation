@@ -57,12 +57,16 @@ export default async function ReceiptPage({
 
   const optionTotal = optionsWithInfo.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
-  // 手動で金額修正されている場合はその金額を使用、なければ計算値
-  const calculatedTotal = planPrice + optionTotal + orderItemTotal;
-  const hasDiscount = reservation.discountAmount != null && reservation.discountAmount > 0;
-  const total = hasDiscount
-    ? reservation.discountAmount! + orderItemTotal
-    : calculatedTotal;
+  const shootingTotal = planPrice + optionTotal;
+  const rate = reservation.discountRate ?? 0;
+  const discountedShooting = rate > 0
+    ? Math.round(shootingTotal * (1 - rate / 100))
+    : (reservation.discountAmount != null && reservation.discountAmount > 0)
+      ? reservation.discountAmount!
+      : shootingTotal;
+  const calculatedTotal = shootingTotal + orderItemTotal;
+  const total = discountedShooting + orderItemTotal;
+  const hasDiscount = total < calculatedTotal;
   const discountDiff = calculatedTotal - total;
 
   const issueDate = new Date().toLocaleDateString('ja-JP', {

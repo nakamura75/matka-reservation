@@ -9,13 +9,14 @@ import { formatDate, formatCurrency } from '@/lib/utils';
 
 type EnrichedItem = OrderItem & { productName: string; unitPrice: number; subtotal: number };
 
-const ITEM_STATUSES: OrderItem['status'][] = ['受注', '発注済', '制作完了', '入荷', '発送済'];
+const ITEM_STATUSES: OrderItem['status'][] = ['受注', 'セレクト済', 'レイアウト済', '発注済', '梱包済', '発送済'];
 const STATUS_COLORS: Record<OrderItem['status'], string> = {
-  '受注':    'bg-gray-100 text-gray-600',
-  '発注済':  'bg-blue-100 text-blue-700',
-  '制作完了': 'bg-yellow-100 text-yellow-700',
-  '入荷':    'bg-purple-100 text-purple-700',
-  '発送済':  'bg-green-100 text-green-700',
+  '受注':       'bg-gray-100 text-gray-600',
+  'セレクト済':  'bg-yellow-100 text-yellow-700',
+  'レイアウト済': 'bg-orange-100 text-orange-700',
+  '発注済':      'bg-blue-100 text-blue-700',
+  '梱包済':      'bg-purple-100 text-purple-700',
+  '発送済':      'bg-green-100 text-green-700',
 };
 
 interface Props {
@@ -29,8 +30,8 @@ interface Props {
 export default function OrderDetail({ order, customer, reservation, items: initialItems, allProducts }: Props) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
-  const [isPaid, setIsPaid] = useState(order.isPaid);
   const [note, setNote] = useState(order.note ?? '');
+  const [deadline, setDeadline] = useState(order.deadline ?? '');
   const [saving, setSaving] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
   const [newProductId, setNewProductId] = useState('');
@@ -46,9 +47,10 @@ export default function OrderDetail({ order, customer, reservation, items: initi
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          isPaid,
-          paidDate: isPaid ? new Date().toLocaleDateString('ja-JP') : '',
+          isPaid: true,
+          paidDate: new Date().toLocaleDateString('ja-JP'),
           note,
+          deadline,
         }),
       });
       router.refresh();
@@ -88,9 +90,10 @@ export default function OrderDetail({ order, customer, reservation, items: initi
     setUpdatingItem(item.id);
     const today = new Date().toLocaleDateString('ja-JP');
     const dateFields: Partial<OrderItem> = {};
+    if (status === 'セレクト済') dateFields.selectedDate = today;
+    if (status === 'レイアウト済') dateFields.layoutDate = today;
     if (status === '発注済') dateFields.orderedDate = today;
-    if (status === '制作完了') dateFields.completedDate = today;
-    if (status === '入荷') dateFields.arrivedDate = today;
+    if (status === '梱包済') dateFields.packedDate = today;
     if (status === '発送済') dateFields.shippedDate = today;
 
     await fetch(`/api/orders/${order.id}/items`, {
@@ -127,8 +130,8 @@ export default function OrderDetail({ order, customer, reservation, items: initi
           注文詳細
           <span className="text-base text-gray-400 font-normal ml-3">{order.orderDate}</span>
         </h1>
-        <span className={`text-sm px-3 py-1 rounded-full font-medium ${isPaid ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-          {isPaid ? '入金済' : '未入金'}
+        <span className="text-sm px-3 py-1 rounded-full font-medium bg-green-100 text-green-700">
+          入金済
         </span>
       </div>
 
@@ -189,11 +192,17 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                         <p className="text-sm text-gray-500 mt-0.5">
                           {formatCurrency(item.unitPrice)} × {item.quantity} = {formatCurrency(item.subtotal)}
                         </p>
-                        {item.orderedDate && (
-                          <p className="text-xs text-gray-400 mt-1">発注日: {item.orderedDate}</p>
+                        {item.selectedDate && (
+                          <p className="text-xs text-gray-400 mt-1">セレクト日: {item.selectedDate}</p>
                         )}
-                        {item.arrivedDate && (
-                          <p className="text-xs text-gray-400">入荷日: {item.arrivedDate}</p>
+                        {item.layoutDate && (
+                          <p className="text-xs text-gray-400">レイアウト日: {item.layoutDate}</p>
+                        )}
+                        {item.orderedDate && (
+                          <p className="text-xs text-gray-400">発注日: {item.orderedDate}</p>
+                        )}
+                        {item.packedDate && (
+                          <p className="text-xs text-gray-400">梱包日: {item.packedDate}</p>
                         )}
                         {item.shippedDate && (
                           <p className="text-xs text-gray-400">発送日: {item.shippedDate}</p>
@@ -240,6 +249,17 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                 <span className="text-gray-900">{formatCurrency(total)}</span>
               </div>
             )}
+          </section>
+
+          {/* 納期 */}
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">納期</h2>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+            />
           </section>
 
           {/* 備考 */}
@@ -291,18 +311,8 @@ export default function OrderDetail({ order, customer, reservation, items: initi
             </section>
           )}
 
-          {/* 入金管理 */}
+          {/* 保存 */}
           <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">入金管理</h2>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isPaid}
-                onChange={(e) => setIsPaid(e.target.checked)}
-                className="w-4 h-4 accent-brand"
-              />
-              <span className="text-sm text-gray-700">入金済みにする</span>
-            </label>
             <button
               onClick={saveOrder}
               disabled={saving}
