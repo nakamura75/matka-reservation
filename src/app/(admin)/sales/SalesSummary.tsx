@@ -262,12 +262,14 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                     <tr className="hover:bg-gray-50">
                       <td className="px-5 py-3 font-medium text-gray-800">
                         matka.
-                        <span className="text-xs text-gray-400 font-normal ml-1">
-                          （{[
-                            holidayFeeCount > 0 && `休日料金 ×${holidayFeeCount}`,
-                            shippedOrderTotal > 0 && '商品',
-                          ].filter(Boolean).join(' ＋ ')}）
-                        </span>
+                        <div className="text-xs text-gray-400 font-normal mt-0.5 space-y-0.5">
+                          {holidayFeeCount > 0 && (
+                            <div>休日料金 ×{holidayFeeCount}　{formatYen(holidayFeeTotal)}</div>
+                          )}
+                          {shippedOrderTotal > 0 && (
+                            <div>商品（発送済）　{formatYen(shippedOrderTotal)}</div>
+                          )}
+                        </div>
                       </td>
                       {ROLES.map((role) => (
                         <td key={role} className="px-4 py-3 text-right text-gray-300">—</td>
