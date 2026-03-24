@@ -1080,8 +1080,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     }}
                     className={`px-3 py-1 text-sm font-medium rounded-lg border transition-colors ${
                       snsPermission === val
-                        ? val === 'OK' ? 'bg-green-500 text-white border-green-500'
-                          : val === '子OK' ? 'bg-blue-500 text-white border-blue-500'
+                        ? (val === 'OK' || val === '子OK') ? 'bg-green-500 text-white border-green-500'
                           : val === 'NG' ? 'bg-red-500 text-white border-red-500'
                           : 'bg-gray-500 text-white border-gray-500'
                         : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
