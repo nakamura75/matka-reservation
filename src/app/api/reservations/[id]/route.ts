@@ -61,6 +61,7 @@ export async function PATCH(
     customerNote?: string;
     phonePreference?: string;
     planId?: string;
+    snsPermission?: string;
   } & Record<string, unknown>;
 
   const reservation = await getReservationById(params.id);
@@ -106,6 +107,7 @@ export async function PATCH(
   if (body.lineUserId !== undefined) updates.lineUserId = body.lineUserId;
   if (body.chatLineUserId !== undefined) updates.chatLineUserId = body.chatLineUserId;
   if (body.planId !== undefined) updates.planId = body.planId;
+  if (body.snsPermission !== undefined) updates.snsPermission = body.snsPermission;
 
   if (Object.keys(updates).length > 0) {
     await updateReservation(reservation.id, updates);
