@@ -99,6 +99,7 @@ export interface Reservation {
   discountReason?: string; // 値引理由（旧: 互換用）
   discountRate?: number;   // 割引率（0 | 5 | 10）
   paymentMethod?: string;  // 支払方法（現金/カード/振込・AC列）
+  snsPermission?: string;  // SNS掲載可否（未確認/OK/NG）
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
   calendarEventId?: string; // GoogleカレンダーイベントID（X列）

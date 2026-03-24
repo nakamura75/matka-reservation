@@ -65,6 +65,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [ciMin, setCiMin] = useState(parseM(reservation.checkInTime ?? ''));
   const [coHour, setCoHour] = useState(parseH(reservation.checkOutTime ?? ''));
   const [coMin, setCoMin] = useState(parseM(reservation.checkOutTime ?? ''));
+  const [snsPermission, setSnsPermission] = useState(reservation.snsPermission ?? '未確認');
   const [saving, setSaving] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [chatLineIdInput, setChatLineIdInput] = useState('');
@@ -359,7 +360,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, discountRate }),
+        body: JSON.stringify({ note, discountRate, snsPermission }),
       });
       setIsEditingNote(false);
       router.refresh();
@@ -982,6 +983,27 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     </p>
                   )}
                 </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">SNS掲載可否</label>
+                  <div className="flex gap-2">
+                    {['未確認', 'OK', 'NG'].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => setSnsPermission(val)}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                          snsPermission === val
+                            ? val === 'OK' ? 'bg-green-500 text-white border-green-500'
+                              : val === 'NG' ? 'bg-red-500 text-white border-red-500'
+                              : 'bg-gray-500 text-white border-gray-500'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                        }`}
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={saveNote}
@@ -995,6 +1017,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     onClick={() => {
                       setNote(reservation.note ?? '');
                       setDiscountRate(reservation.discountRate ?? 0);
+                      setSnsPermission(reservation.snsPermission ?? '未確認');
                       setIsEditingNote(false);
                     }}
                     disabled={saving}
@@ -1021,6 +1044,16 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   ) : (
                     <p className="text-gray-400">なし</p>
                   )}
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">SNS掲載可否</p>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    snsPermission === 'OK' ? 'bg-green-100 text-green-800'
+                      : snsPermission === 'NG' ? 'bg-red-100 text-red-800'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {snsPermission}
+                  </span>
                 </div>
               </div>
             )}
