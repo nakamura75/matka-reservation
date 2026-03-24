@@ -65,7 +65,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [ciMin, setCiMin] = useState(parseM(reservation.checkInTime ?? ''));
   const [coHour, setCoHour] = useState(parseH(reservation.checkOutTime ?? ''));
   const [coMin, setCoMin] = useState(parseM(reservation.checkOutTime ?? ''));
-  const [snsPermission, setSnsPermission] = useState(reservation.snsPermission ?? '未確認');
+  const [snsPermission, setSnsPermission] = useState(reservation.snsPermission ?? '未');
   const [saving, setSaving] = useState(false);
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [chatLineIdInput, setChatLineIdInput] = useState('');
@@ -1065,7 +1065,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">SNS掲載</h2>
               <div className="flex gap-2">
-                {['未確認', 'OK', 'NG'].map((val) => (
+                {['未', 'OK', '子OK', 'NG'].map((val) => (
                   <button
                     key={val}
                     type="button"
@@ -1081,6 +1081,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     className={`px-3 py-1 text-sm font-medium rounded-lg border transition-colors ${
                       snsPermission === val
                         ? val === 'OK' ? 'bg-green-500 text-white border-green-500'
+                          : val === '子OK' ? 'bg-blue-500 text-white border-blue-500'
                           : val === 'NG' ? 'bg-red-500 text-white border-red-500'
                           : 'bg-gray-500 text-white border-gray-500'
                         : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
