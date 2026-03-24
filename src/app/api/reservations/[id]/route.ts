@@ -110,7 +110,12 @@ export async function PATCH(
   if (body.snsPermission !== undefined) updates.snsPermission = body.snsPermission;
 
   if (Object.keys(updates).length > 0) {
-    await updateReservation(reservation.id, updates);
+    try {
+      await updateReservation(reservation.id, updates);
+    } catch (err) {
+      console.error('updateReservation failed:', err);
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
   }
 
   // 予約確定 → LINE通知（DB更新後に送信）
