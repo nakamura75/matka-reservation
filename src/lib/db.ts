@@ -106,6 +106,7 @@ function dbToReservation(r: Record<string, unknown>): Reservation {
     otherSceneNote: r.other_scene_note as string | undefined,
     chatLineUserId: r.chat_line_user_id as string | undefined,
     paymentMethod: r.payment_method as string | undefined,
+    snsPermission: r.sns_permission as string | undefined,
   };
 }
 
@@ -142,6 +143,7 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
   if (r.otherSceneNote !== undefined) m.other_scene_note = r.otherSceneNote;
   if (r.chatLineUserId !== undefined) m.chat_line_user_id = r.chatLineUserId;
   if (r.paymentMethod !== undefined) m.payment_method = r.paymentMethod;
+  if (r.snsPermission !== undefined) m.sns_permission = r.snsPermission;
   return m;
 }
 
