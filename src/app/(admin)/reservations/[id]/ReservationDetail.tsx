@@ -1060,10 +1060,10 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             )}
           </section>
 
-          {/* SNS掲載可否 */}
+          {/* SNS掲載 */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">SNS掲載可否</h2>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">SNS掲載</h2>
               <div className="flex gap-2">
                 {['未確認', 'OK', 'NG'].map((val) => (
                   <button
