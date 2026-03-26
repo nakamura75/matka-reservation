@@ -61,6 +61,7 @@ export async function PATCH(
     customerNote?: string;
     phonePreference?: string;
     planId?: string;
+    snsPermission?: string;
   } & Record<string, unknown>;
 
   const reservation = await getReservationById(params.id);
@@ -106,9 +107,15 @@ export async function PATCH(
   if (body.lineUserId !== undefined) updates.lineUserId = body.lineUserId;
   if (body.chatLineUserId !== undefined) updates.chatLineUserId = body.chatLineUserId;
   if (body.planId !== undefined) updates.planId = body.planId;
+  if (body.snsPermission !== undefined) updates.snsPermission = body.snsPermission;
 
   if (Object.keys(updates).length > 0) {
-    await updateReservation(reservation.id, updates);
+    try {
+      await updateReservation(reservation.id, updates);
+    } catch (err) {
+      console.error('updateReservation failed:', err);
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
   }
 
   // 予約確定 → LINE通知（DB更新後に送信）

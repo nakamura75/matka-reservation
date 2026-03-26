@@ -1070,12 +1070,27 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     key={val}
                     type="button"
                     onClick={async () => {
+                      const prev = snsPermission;
                       setSnsPermission(val);
-                      await fetch(`/api/reservations/${reservation.id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ snsPermission: val }),
-                      });
+                      try {
+                        const res = await fetch(`/api/reservations/${reservation.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ snsPermission: val }),
+                        });
+                        if (!res.ok) {
+                          const err = await res.json().catch(() => ({}));
+                          console.error('SNS permission save failed:', err);
+                          setSnsPermission(prev);
+                          alert('保存に失敗しました');
+                          return;
+                        }
+                      } catch (e) {
+                        console.error('SNS permission save error:', e);
+                        setSnsPermission(prev);
+                        alert('保存に失敗しました');
+                        return;
+                      }
                       router.refresh();
                     }}
                     className={`px-3 py-1 text-sm font-medium rounded-lg border transition-colors ${
