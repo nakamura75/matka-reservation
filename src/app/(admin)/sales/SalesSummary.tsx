@@ -38,10 +38,19 @@ function formatYen(amount: number): string {
   return '¥' + amount.toLocaleString('ja-JP');
 }
 
+function taxExcluded(amount: number): number {
+  return Math.round(amount / 1.1);
+}
+
+type TaxMode = 'included' | 'excluded';
+
 export default function SalesSummary({ reservations, staff, orders, holidays }: Props) {
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+  const [taxMode, setTaxMode] = useState<TaxMode>('included');
+
+  const applyTax = (amount: number) => taxMode === 'excluded' ? taxExcluded(amount) : amount;
 
   const staffById = useMemo(() => {
     const map: Record<string, Staff> = {};
@@ -170,12 +179,22 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     return totals;
   }, [byStaff]);
 
+  // 支払方法別の集計（完了のみ）
+  const paymentBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    for (const r of completedReservations) {
+      const method = r.paymentMethod || '未設定';
+      breakdown[method] = (breakdown[method] ?? 0) + (r.total ?? 0);
+    }
+    return breakdown;
+  }, [completedReservations]);
+
   const hasStaffRows = byStaff.length > 0 || shippedOrderTotal > 0 || holidayFeeTotal > 0;
 
   return (
     <div className="space-y-4">
-      {/* 月選択 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
+      {/* 月選択 & 税切り替え */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 flex-wrap">
         <label className="text-sm text-gray-600 font-medium">対象月</label>
         <input
           type="month"
@@ -184,30 +203,63 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         <span className="text-xs text-gray-400">完了・予約済・予約確定から集計</span>
+        <div className="ml-auto flex rounded-lg border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setTaxMode('included')}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              taxMode === 'included'
+                ? 'bg-brand text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            税込
+          </button>
+          <button
+            onClick={() => setTaxMode('excluded')}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              taxMode === 'excluded'
+                ? 'bg-brand text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            税抜
+          </button>
+        </div>
       </div>
 
       {/* サマリーカード */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs text-gray-500 mb-1">確定売上</p>
+          <p className="text-xs text-gray-500 mb-1">確定売上{taxMode === 'excluded' ? '（税抜）' : ''}</p>
           <p className="text-xs text-gray-400 mb-2">
             完了 {completedReservations.length} 件
             {shippedItemCount > 0 && <span className="ml-2">＋ 発送済商品 {shippedItemCount} 点</span>}
           </p>
-          <p className="text-2xl font-bold text-gray-900">{formatYen(grandTotal + shippedOrderTotal)}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatYen(applyTax(grandTotal + shippedOrderTotal))}</p>
           {shippedOrderTotal > 0 && (
-            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(shippedOrderTotal)}</p>
+            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(applyTax(shippedOrderTotal))}</p>
+          )}
+          {Object.keys(paymentBreakdown).length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
+              {Object.entries(paymentBreakdown)
+                .sort(([, a], [, b]) => b - a)
+                .map(([method, amount]) => (
+                  <p key={method} className="text-xs text-gray-400">
+                    {method} {formatYen(applyTax(amount))}
+                  </p>
+                ))}
+            </div>
           )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs text-gray-500 mb-1">見込み売上</p>
+          <p className="text-xs text-gray-500 mb-1">見込み売上{taxMode === 'excluded' ? '（税抜）' : ''}</p>
           <p className="text-xs text-gray-400 mb-2">
             仮予約・確定 {pendingReservations.length} 件
             {pendingItemCount > 0 && <span className="ml-2">＋ 商品 {pendingItemCount} 点</span>}
           </p>
-          <p className="text-2xl font-bold text-blue-600">{formatYen(pendingTotal + pendingOrderTotal)}</p>
+          <p className="text-2xl font-bold text-blue-600">{formatYen(applyTax(pendingTotal + pendingOrderTotal))}</p>
           {pendingOrderTotal > 0 && (
-            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(pendingOrderTotal)}</p>
+            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(applyTax(pendingOrderTotal))}</p>
           )}
         </div>
       </div>
@@ -244,7 +296,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                         <td key={role} className="px-4 py-3 text-right text-gray-600">
                           {row.counts[role] > 0 ? (
                             <span>
-                              {formatYen(row.amounts[role])}
+                              {formatYen(applyTax(row.amounts[role]))}
                               <span className="text-xs text-gray-400 ml-1">×{row.counts[role]}</span>
                             </span>
                           ) : (
@@ -253,7 +305,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                         </td>
                       ))}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                        {formatYen(row.total)}
+                        {formatYen(applyTax(row.total))}
                       </td>
                     </tr>
                   ))}
@@ -264,10 +316,10 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                         matka.
                         <div className="text-xs text-gray-400 font-normal mt-0.5 space-y-0.5">
                           {holidayFeeCount > 0 && (
-                            <div>休日料金 ×{holidayFeeCount}　{formatYen(holidayFeeTotal)}</div>
+                            <div>休日料金 ×{holidayFeeCount}　{formatYen(applyTax(holidayFeeTotal))}</div>
                           )}
                           {shippedOrderTotal > 0 && (
-                            <div>商品（発送済）　{formatYen(shippedOrderTotal)}</div>
+                            <div>商品（発送済）　{formatYen(applyTax(shippedOrderTotal))}</div>
                           )}
                         </div>
                       </td>
@@ -275,7 +327,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                         <td key={role} className="px-4 py-3 text-right text-gray-300">—</td>
                       ))}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                        {formatYen(shippedOrderTotal + holidayFeeTotal)}
+                        {formatYen(applyTax(shippedOrderTotal + holidayFeeTotal))}
                       </td>
                     </tr>
                   )}
@@ -288,11 +340,24 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                   <td className="px-5 py-3 font-semibold text-gray-700">合計</td>
                   {ROLES.map((role) => (
                     <td key={role} className="px-4 py-3 text-right font-semibold text-gray-700">
-                      {roleTotals[role] ? formatYen(roleTotals[role]) : '—'}
+                      {roleTotals[role] ? formatYen(applyTax(roleTotals[role])) : '—'}
                     </td>
                   ))}
-                  <td className="px-5 py-3 text-right font-bold text-brand text-base">
-                    {formatYen(staffGrandTotal + shippedOrderTotal + holidayFeeTotal)}
+                  <td className="px-5 py-3 text-right">
+                    <div className="font-bold text-brand text-base">
+                      {formatYen(applyTax(staffGrandTotal + shippedOrderTotal + holidayFeeTotal))}
+                    </div>
+                    {Object.keys(paymentBreakdown).length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {Object.entries(paymentBreakdown)
+                          .sort(([, a], [, b]) => b - a)
+                          .map(([method, amount]) => (
+                            <div key={method} className="text-xs text-gray-400">
+                              {method} {formatYen(applyTax(amount))}
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </td>
                 </tr>
               </tfoot>
