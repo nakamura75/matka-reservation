@@ -59,7 +59,7 @@ export interface StaffAssignment {
   assistant?: string;  // アシスタント担当 staffId
   hair?: string;       // ヘア担当 staffId
   makeup?: string;     // メイク担当 staffId
-  options?: Record<string, string>; // { optionId: staffId }
+  options?: Record<string, string>; // { reservationOptionId: staffId }
 }
 
 // ============================================================

@@ -905,11 +905,11 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     <p className="text-xs text-gray-400">{formatCurrency(o.price * o.quantity)}</p>
                   </div>
                   <select
-                    value={assignment.options?.[o.optionId] ?? ''}
+                    value={assignment.options?.[o.id] ?? ''}
                     onChange={(e) =>
                       setAssignment((a) => ({
                         ...a,
-                        options: { ...(a.options ?? {}), [o.optionId]: e.target.value || '' },
+                        options: { ...(a.options ?? {}), [o.id]: e.target.value || '' },
                       }))
                     }
                     className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
