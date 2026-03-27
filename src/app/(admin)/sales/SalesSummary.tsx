@@ -132,7 +132,8 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
   );
 
   // 単価別の件数を記録する型
-  type UnitBreakdown = Record<number, number>; // { 単価: 件数 }
+  type UnitEntry = { count: number; discounted: boolean };
+  type UnitBreakdown = Record<number, UnitEntry>; // { 単価: { count, discounted } }
   type StaffRow = {
     name: string;
     counts: Record<Role, number>;
@@ -166,9 +167,13 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
           };
         }
         const unitPrice = Math.round(breakdown[role] * multiplier);
+        const discounted = rate > 0;
         map[staffId].counts[role] += 1;
         map[staffId].amounts[role] += unitPrice;
-        map[staffId].unitBreakdowns[role][unitPrice] = (map[staffId].unitBreakdowns[role][unitPrice] ?? 0) + 1;
+        if (!map[staffId].unitBreakdowns[role][unitPrice]) {
+          map[staffId].unitBreakdowns[role][unitPrice] = { count: 0, discounted };
+        }
+        map[staffId].unitBreakdowns[role][unitPrice].count += 1;
         map[staffId].total += unitPrice;
       }
     }
@@ -316,16 +321,17 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                       <td className="px-5 py-3 font-medium text-gray-800">{row.name}</td>
                       {ROLES.map((role) => {
                         const bd = row.unitBreakdowns[role];
-                        const entries = Object.entries(bd).map(([p, c]) => [Number(p), c] as [number, number]);
+                        const entries = Object.entries(bd).map(([p, entry]) => ({ unitPrice: Number(p), ...entry }));
                         return (
                           <td key={role} className="px-4 py-3 text-right text-gray-600">
                             {row.counts[role] > 0 ? (
                               <div>
                                 <div className="font-medium">{formatYen(applyTax(row.amounts[role]))}</div>
                                 <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
-                                  {entries.map(([unitPrice, count]) => (
+                                  {entries.map(({ unitPrice, count, discounted }) => (
                                     <div key={unitPrice}>
                                       {formatYen(applyTax(unitPrice))} ×{count}
+                                      {discounted && <span className="text-red-400 ml-1">割引あり</span>}
                                     </div>
                                   ))}
                                 </div>
