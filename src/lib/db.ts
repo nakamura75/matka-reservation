@@ -97,6 +97,7 @@ function dbToReservation(r: Record<string, unknown>): Reservation {
     discountAmount: (r.discount_amount as number) || 0,
     discountReason: r.discount_reason as string | undefined,
     discountRate: (r.discount_rate as number) || 0,
+    productDiscountRate: (r.product_discount_rate as number) || 0,
     checkInTime: r.check_in_time as string | undefined,
     checkOutTime: r.check_out_time as string | undefined,
     calendarEventId: calendarEventId,
@@ -134,6 +135,7 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
   if (r.discountAmount !== undefined) m.discount_amount = r.discountAmount;
   if (r.discountReason !== undefined) m.discount_reason = r.discountReason;
   if (r.discountRate !== undefined) m.discount_rate = r.discountRate;
+  if (r.productDiscountRate !== undefined) m.product_discount_rate = r.productDiscountRate;
   if (r.checkInTime !== undefined) m.check_in_time = r.checkInTime;
   if (r.checkOutTime !== undefined) m.check_out_time = r.checkOutTime;
   if (r.calendarEventId !== undefined) m.calendar_event_id = r.calendarEventId;

@@ -296,12 +296,16 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
   // 商品合計（linkedOrders の合計）
   const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
-  // 割引率（0, 5, 10）
+  // 撮影割引率（0, 5, 10）
   const [discountRate, setDiscountRate] = useState(reservation.discountRate ?? 0);
+  // 商品割引率（0, 5, 10）
+  const [productDiscountRate, setProductDiscountRate] = useState(reservation.productDiscountRate ?? 0);
   // 割引後の撮影合計
   const discountedShootingTotal = Math.round(computedTotal * (1 - discountRate / 100));
+  // 割引後の商品合計
+  const discountedProductTotal = Math.round(orderItemTotal * (1 - productDiscountRate / 100));
   // 全体合計
-  const grandTotal = discountedShootingTotal + orderItemTotal;
+  const grandTotal = discountedShootingTotal + discountedProductTotal;
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -360,7 +364,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note, discountRate }),
+        body: JSON.stringify({ note, discountRate, productDiscountRate }),
       });
       setIsEditingNote(false);
       router.refresh();
@@ -960,7 +964,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">割引</label>
+                  <label className="block text-xs text-gray-400 mb-1">撮影割引</label>
                   <div className="flex gap-2">
                     {DISCOUNT_RATES.map((rate) => (
                       <button
@@ -983,6 +987,32 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     </p>
                   )}
                 </div>
+                {orderItemTotal > 0 && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">商品割引</label>
+                    <div className="flex gap-2">
+                      {DISCOUNT_RATES.map((rate) => (
+                        <button
+                          key={rate}
+                          type="button"
+                          onClick={() => setProductDiscountRate(rate)}
+                          className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                            productDiscountRate === rate
+                              ? 'bg-brand text-white border-brand'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-brand/30'
+                          }`}
+                        >
+                          {rate === 0 ? '割引なし' : `${rate}%OFF`}
+                        </button>
+                      ))}
+                    </div>
+                    {productDiscountRate > 0 && (
+                      <p className="text-xs text-red-500 mt-2">
+                        定価 {formatCurrency(orderItemTotal)} → {formatCurrency(discountedProductTotal)}（-{formatCurrency(orderItemTotal - discountedProductTotal)}）
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={saveNote}
@@ -996,6 +1026,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     onClick={() => {
                       setNote(reservation.note ?? '');
                       setDiscountRate(reservation.discountRate ?? 0);
+                      setProductDiscountRate(reservation.productDiscountRate ?? 0);
                       setIsEditingNote(false);
                     }}
                     disabled={saving}
@@ -1016,13 +1047,23 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">割引</p>
+                  <p className="text-xs text-gray-400 mb-1">撮影割引</p>
                   {discountRate > 0 ? (
                     <p className="font-semibold text-red-500">{discountRate}%OFF（-{formatCurrency(computedTotal - discountedShootingTotal)}）</p>
                   ) : (
                     <p className="text-gray-400">なし</p>
                   )}
                 </div>
+                {orderItemTotal > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">商品割引</p>
+                    {productDiscountRate > 0 ? (
+                      <p className="font-semibold text-red-500">{productDiscountRate}%OFF（-{formatCurrency(orderItemTotal - discountedProductTotal)}）</p>
+                    ) : (
+                      <p className="text-gray-400">なし</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -1150,9 +1191,21 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     <span>商品</span>
                   </div>
                   <div className="flex justify-between font-semibold text-gray-800">
-                    <span>商品合計</span>
+                    <span>商品小計</span>
                     <span>{formatCurrency(orderItemTotal)}</span>
                   </div>
+                  {productDiscountRate > 0 && (
+                    <>
+                      <div className="flex justify-between text-red-500 text-sm">
+                        <span>{productDiscountRate}%OFF</span>
+                        <span>-{formatCurrency(orderItemTotal - discountedProductTotal)}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-gray-800">
+                        <span>商品合計（割引後）</span>
+                        <span>{formatCurrency(discountedProductTotal)}</span>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
