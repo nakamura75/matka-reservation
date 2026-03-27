@@ -94,6 +94,13 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     [monthReservations]
   );
 
+  // 予約ID → 商品割引率マップ
+  const productDiscountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of reservations) map[r.id] = r.productDiscountRate ?? 0;
+    return map;
+  }, [reservations]);
+
   // 選択月の注文明細を分類（紐づく予約日で月絞り込み、なければ注文日）
   const monthOrders = useMemo(
     () => orders.filter((o) => {
@@ -103,14 +110,20 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     [orders, reservationDateMap, selectedMonth]
   );
   const shippedOrderTotal = useMemo(
-    () => monthOrders.reduce((sum, o) =>
-      sum + o.items.filter((i) => i.status === '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0), 0),
-    [monthOrders]
+    () => monthOrders.reduce((sum, o) => {
+      const raw = o.items.filter((i) => i.status === '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0);
+      const rate = o.reservationId ? (productDiscountMap[o.reservationId] ?? 0) : 0;
+      return sum + Math.round(raw * (1 - rate / 100));
+    }, 0),
+    [monthOrders, productDiscountMap]
   );
   const pendingOrderTotal = useMemo(
-    () => monthOrders.reduce((sum, o) =>
-      sum + o.items.filter((i) => i.status !== '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0), 0),
-    [monthOrders]
+    () => monthOrders.reduce((sum, o) => {
+      const raw = o.items.filter((i) => i.status !== '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0);
+      const rate = o.reservationId ? (productDiscountMap[o.reservationId] ?? 0) : 0;
+      return sum + Math.round(raw * (1 - rate / 100));
+    }, 0),
+    [monthOrders, productDiscountMap]
   );
   const shippedItemCount = useMemo(
     () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status === '発送済').length, 0),
@@ -133,15 +146,23 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     [completedReservations, holidayDates]
   );
 
+  // 単価別の件数を記録する型
+  type UnitEntry = { count: number; discounted: boolean };
+  type UnitBreakdown = Record<number, UnitEntry>; // { 単価: { count, discounted } }
+  type StaffRow = {
+    name: string;
+    counts: Record<Role, number>;
+    amounts: Record<Role, number>;
+    unitBreakdowns: Record<Role, UnitBreakdown>;
+    total: number;
+  };
+
   // 予約リストから担当者別金額を集計する共通関数
   function calcByStaff(
     targets: Reservation[],
     nameMap: Record<string, Staff>
   ) {
-    const map: Record<
-      string,
-      { name: string; counts: Record<Role, number>; amounts: Record<Role, number>; total: number }
-    > = {};
+    const map: Record<string, StaffRow> = {};
     for (const r of targets) {
       const assignment = parseAssignment(r.staffAssignmentJson);
       const planType = SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery';
@@ -156,13 +177,19 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
             name: nameMap[staffId]?.name ?? staffId,
             counts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
             amounts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
+            unitBreakdowns: { photo: {}, assistant: {}, hair: {}, makeup: {} },
             total: 0,
           };
         }
-        const amount = Math.round(breakdown[role] * multiplier);
+        const unitPrice = Math.round(breakdown[role] * multiplier);
+        const discounted = rate > 0;
         map[staffId].counts[role] += 1;
-        map[staffId].amounts[role] += amount;
-        map[staffId].total += amount;
+        map[staffId].amounts[role] += unitPrice;
+        if (!map[staffId].unitBreakdowns[role][unitPrice]) {
+          map[staffId].unitBreakdowns[role][unitPrice] = { count: 0, discounted };
+        }
+        map[staffId].unitBreakdowns[role][unitPrice].count += 1;
+        map[staffId].total += unitPrice;
       }
     }
     return Object.values(map).sort((a, b) => b.total - a.total);
@@ -305,20 +332,33 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
               ) : (
                 <>
                   {byStaff.map((row) => (
-                    <tr key={row.name} className="hover:bg-gray-50">
+                    <tr key={row.name} className="hover:bg-gray-50 align-top">
                       <td className="px-5 py-3 font-medium text-gray-800">{row.name}</td>
-                      {ROLES.map((role) => (
-                        <td key={role} className="px-4 py-3 text-right text-gray-600">
-                          {row.counts[role] > 0 ? (
-                            <span>
-                              {formatYen(applyTax(row.amounts[role]))}
-                              <span className="text-xs text-gray-400 ml-1">×{row.counts[role]}</span>
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                      ))}
+                      {ROLES.map((role) => {
+                        const bd = row.unitBreakdowns[role];
+                        const entries = Object.entries(bd).map(([p, entry]) => ({ unitPrice: Number(p), ...entry }));
+                        return (
+                          <td key={role} className="px-4 py-3 text-right text-gray-600">
+                            {row.counts[role] > 0 ? (
+                              <div>
+                                <div className="font-medium">{formatYen(applyTax(row.amounts[role]))}</div>
+                                <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
+                                  {entries.map(({ unitPrice, count, discounted }) => (
+                                    <div key={unitPrice} className="flex items-baseline justify-end gap-1">
+                                      {discounted
+                                        ? <span className="text-red-400">割引あり</span>
+                                        : <span>&nbsp;</span>}
+                                      <span className="tabular-nums">{formatYen(applyTax(unitPrice))} ×{count}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
                         {formatYen(applyTax(row.total))}
                       </td>

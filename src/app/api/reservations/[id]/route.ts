@@ -43,6 +43,7 @@ export async function PATCH(
     note?: string;
     totalAmount?: number;
     discountRate?: number;
+    productDiscountRate?: number;
     staffAssignment?: string;
     checkInTime?: string;
     checkOutTime?: string;
@@ -91,6 +92,7 @@ export async function PATCH(
   if (body.note !== undefined) updates.note = body.note;
   if (body.totalAmount !== undefined) updates.discountAmount = body.totalAmount;
   if (body.discountRate !== undefined) updates.discountRate = body.discountRate;
+  if (body.productDiscountRate !== undefined) updates.productDiscountRate = body.productDiscountRate;
   if (body.staffAssignment !== undefined) updates.staffAssignmentJson = body.staffAssignment;
   if (body.paymentStatus !== undefined) updates.paymentStatus = body.paymentStatus;
   if (body.paymentDate !== undefined) updates.paymentDate = body.paymentDate;

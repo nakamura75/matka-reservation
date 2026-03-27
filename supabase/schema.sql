@@ -99,6 +99,7 @@ CREATE TABLE reservations (
   discount_amount INTEGER DEFAULT 0,
   discount_reason TEXT,
   discount_rate INTEGER DEFAULT 0,
+  product_discount_rate INTEGER DEFAULT 0,
   check_in_time TEXT,
   check_out_time TEXT,
   calendar_event_id TEXT,

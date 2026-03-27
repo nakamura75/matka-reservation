@@ -59,13 +59,17 @@ export default async function ReceiptPage({
   const planPrice = plan?.price ?? 0;
   const shootingTotal = planPrice + optionTotal;
   const rate = reservation.discountRate ?? 0;
+  const productRate = reservation.productDiscountRate ?? 0;
   const discountedShooting = rate > 0
     ? Math.round(shootingTotal * (1 - rate / 100))
     : (reservation.discountAmount != null && reservation.discountAmount > 0)
       ? reservation.discountAmount!
       : shootingTotal;
+  const discountedProduct = productRate > 0
+    ? Math.round(orderItemTotal * (1 - productRate / 100))
+    : orderItemTotal;
   const calculatedTotal = shootingTotal + orderItemTotal;
-  const total = discountedShooting + orderItemTotal;
+  const total = discountedShooting + discountedProduct;
   const hasDiscount = total < calculatedTotal;
   const discountDiff = calculatedTotal - total;
 

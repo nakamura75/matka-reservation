@@ -39,6 +39,8 @@ export default function OrderDetail({ order, customer, reservation, items: initi
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
   const total = items.reduce((sum, i) => sum + i.subtotal, 0);
+  const pDiscountRate = reservation?.productDiscountRate ?? 0;
+  const discountedTotal = Math.round(total * (1 - pDiscountRate / 100));
 
   async function saveOrder() {
     setSaving(true);
@@ -244,9 +246,23 @@ export default function OrderDetail({ order, customer, reservation, items: initi
             )}
 
             {items.length > 0 && (
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between text-sm font-bold">
-                <span className="text-gray-500">合計</span>
-                <span className="text-gray-900">{formatCurrency(total)}</span>
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 space-y-1">
+                {pDiscountRate > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>小計</span>
+                      <span>{formatCurrency(total)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-red-500">
+                      <span>{pDiscountRate}%OFF</span>
+                      <span>-{formatCurrency(total - discountedTotal)}</span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-gray-500">合計</span>
+                  <span className="text-gray-900">{formatCurrency(discountedTotal)}</span>
+                </div>
               </div>
             )}
           </section>

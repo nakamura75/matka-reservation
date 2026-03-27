@@ -59,7 +59,7 @@ export interface StaffAssignment {
   assistant?: string;  // アシスタント担当 staffId
   hair?: string;       // ヘア担当 staffId
   makeup?: string;     // メイク担当 staffId
-  options?: Record<string, string>; // { optionId: staffId }
+  options?: Record<string, string>; // { reservationOptionId: staffId }
 }
 
 // ============================================================
@@ -97,7 +97,8 @@ export interface Reservation {
   reservationNumber?: string; // 予約番号（M-YYYYMMDD-XXXX）
   discountAmount?: number; // 値引額（旧: 互換用）
   discountReason?: string; // 値引理由（旧: 互換用）
-  discountRate?: number;   // 割引率（0 | 5 | 10）
+  discountRate?: number;   // 撮影割引率（0 | 5 | 10）
+  productDiscountRate?: number; // 商品割引率（0 | 5 | 10）
   paymentMethod?: string;  // 支払方法（現金/カード/振込・AC列）
   snsPermission?: string;  // SNS掲載（未/OK/子OK/NG）
   checkInTime?: string;    // 入店時間
