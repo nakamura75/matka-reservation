@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import type { Reservation } from '@/types';
 import { STATUS_LABEL } from '@/lib/constants';
@@ -71,11 +72,30 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
   const blockedDateMap = useMemo(() => new Map(Object.entries(blockedDates)), [blockedDates]);
   const holidayDateSet = useMemo(() => new Set(holidayDates), [holidayDates]);
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
-  const [view, setView] = useState<'month' | 'week'>('week');
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const initialYear = Number(searchParams.get('year')) || today.getFullYear();
+  const initialMonth = searchParams.get('month') != null ? Number(searchParams.get('month')) : today.getMonth();
+  const initialView = (searchParams.get('view') as 'month' | 'week') || 'week';
+  const initialWeekParam = searchParams.get('week');
+  const initialWeekStart = initialWeekParam ? new Date(initialWeekParam) : getWeekStart(today);
+
+  const [year, setYear] = useState(initialYear);
+  const [month, setMonth] = useState(initialMonth);
+  const [view, setView] = useState<'month' | 'week'>(initialView);
+  const [weekStart, setWeekStart] = useState(() => initialWeekStart);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const updateURL = useCallback((y: number, m: number, v: string, ws: Date) => {
+    const params = new URLSearchParams();
+    params.set('year', String(y));
+    params.set('month', String(m));
+    params.set('view', v);
+    params.set('week', toDateStr(ws));
+    router.push(`${pathname}?${params.toString()}`);
+  }, [router, pathname]);
 
   // 週表示の初期スクロールを9:00に合わせる
   useEffect(() => {
@@ -85,15 +105,27 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
   }, [view, weekStart]);
 
   function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else setMonth(m => m - 1);
+    const newMonth = month === 0 ? 11 : month - 1;
+    const newYear = month === 0 ? year - 1 : year;
+    setYear(newYear); setMonth(newMonth);
+    updateURL(newYear, newMonth, view, weekStart);
   }
   function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else setMonth(m => m + 1);
+    const newMonth = month === 11 ? 0 : month + 1;
+    const newYear = month === 11 ? year + 1 : year;
+    setYear(newYear); setMonth(newMonth);
+    updateURL(newYear, newMonth, view, weekStart);
   }
-  function prevWeek() { setWeekStart(d => addDays(d, -7)); }
-  function nextWeek() { setWeekStart(d => addDays(d, 7)); }
+  function prevWeek() {
+    const newWeek = addDays(weekStart, -7);
+    setWeekStart(newWeek);
+    updateURL(year, month, view, newWeek);
+  }
+  function nextWeek() {
+    const newWeek = addDays(weekStart, 7);
+    setWeekStart(newWeek);
+    updateURL(year, month, view, newWeek);
+  }
 
   // 月表示のグリッド計算
   const { days, startWeekday } = useMemo(() => {
@@ -188,13 +220,13 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
             <button
-              onClick={() => setView('week')}
+              onClick={() => { setView('week'); updateURL(year, month, 'week', weekStart); }}
               className={`px-3 py-1.5 ${view === 'week' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               週
             </button>
             <button
-              onClick={() => setView('month')}
+              onClick={() => { setView('month'); updateURL(year, month, 'month', weekStart); }}
               className={`px-3 py-1.5 border-l border-gray-200 ${view === 'month' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               月

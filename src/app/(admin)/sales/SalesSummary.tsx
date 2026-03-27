@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { Reservation, Staff, Order, OrderItem, Holiday } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
 import { isWeekend } from '@/lib/utils';
@@ -47,8 +48,22 @@ type TaxMode = 'included' | 'excluded';
 export default function SalesSummary({ reservations, staff, orders, holidays }: Props) {
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
-  const [taxMode, setTaxMode] = useState<TaxMode>('included');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const initialMonth = searchParams.get('month') || defaultMonth;
+  const initialTax = (searchParams.get('tax') as TaxMode) || 'included';
+
+  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+  const [taxMode, setTaxMode] = useState<TaxMode>(initialTax);
+
+  const updateURL = useCallback((m: string, t: string) => {
+    const params = new URLSearchParams();
+    params.set('month', m);
+    params.set('tax', t);
+    router.push(`${pathname}?${params.toString()}`);
+  }, [router, pathname]);
 
   const applyTax = (amount: number) => taxMode === 'excluded' ? taxExcluded(amount) : amount;
 
@@ -226,13 +241,13 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
         <input
           type="month"
           value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
+          onChange={(e) => { setSelectedMonth(e.target.value); updateURL(e.target.value, taxMode); }}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         <span className="text-xs text-gray-400">完了・予約済・予約確定から集計</span>
         <div className="ml-auto flex rounded-lg border border-gray-200 overflow-hidden">
           <button
-            onClick={() => setTaxMode('included')}
+            onClick={() => { setTaxMode('included'); updateURL(selectedMonth, 'included'); }}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
               taxMode === 'included'
                 ? 'bg-brand text-white'
@@ -242,7 +257,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
             税込
           </button>
           <button
-            onClick={() => setTaxMode('excluded')}
+            onClick={() => { setTaxMode('excluded'); updateURL(selectedMonth, 'excluded'); }}
             className={`px-3 py-1.5 text-xs font-medium transition-colors ${
               taxMode === 'excluded'
                 ? 'bg-brand text-white'
