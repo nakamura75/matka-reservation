@@ -79,6 +79,13 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     [monthReservations]
   );
 
+  // 予約ID → 商品割引率マップ
+  const productDiscountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of reservations) map[r.id] = r.productDiscountRate ?? 0;
+    return map;
+  }, [reservations]);
+
   // 選択月の注文明細を分類（紐づく予約日で月絞り込み、なければ注文日）
   const monthOrders = useMemo(
     () => orders.filter((o) => {
@@ -88,14 +95,20 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     [orders, reservationDateMap, selectedMonth]
   );
   const shippedOrderTotal = useMemo(
-    () => monthOrders.reduce((sum, o) =>
-      sum + o.items.filter((i) => i.status === '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0), 0),
-    [monthOrders]
+    () => monthOrders.reduce((sum, o) => {
+      const raw = o.items.filter((i) => i.status === '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0);
+      const rate = o.reservationId ? (productDiscountMap[o.reservationId] ?? 0) : 0;
+      return sum + Math.round(raw * (1 - rate / 100));
+    }, 0),
+    [monthOrders, productDiscountMap]
   );
   const pendingOrderTotal = useMemo(
-    () => monthOrders.reduce((sum, o) =>
-      sum + o.items.filter((i) => i.status !== '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0), 0),
-    [monthOrders]
+    () => monthOrders.reduce((sum, o) => {
+      const raw = o.items.filter((i) => i.status !== '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0);
+      const rate = o.reservationId ? (productDiscountMap[o.reservationId] ?? 0) : 0;
+      return sum + Math.round(raw * (1 - rate / 100));
+    }, 0),
+    [monthOrders, productDiscountMap]
   );
   const shippedItemCount = useMemo(
     () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status === '発送済').length, 0),
