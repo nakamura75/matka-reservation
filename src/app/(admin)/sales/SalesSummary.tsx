@@ -131,15 +131,22 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     [completedReservations, holidayDates]
   );
 
+  // 単価別の件数を記録する型
+  type UnitBreakdown = Record<number, number>; // { 単価: 件数 }
+  type StaffRow = {
+    name: string;
+    counts: Record<Role, number>;
+    amounts: Record<Role, number>;
+    unitBreakdowns: Record<Role, UnitBreakdown>;
+    total: number;
+  };
+
   // 予約リストから担当者別金額を集計する共通関数
   function calcByStaff(
     targets: Reservation[],
     nameMap: Record<string, Staff>
   ) {
-    const map: Record<
-      string,
-      { name: string; counts: Record<Role, number>; amounts: Record<Role, number>; total: number }
-    > = {};
+    const map: Record<string, StaffRow> = {};
     for (const r of targets) {
       const assignment = parseAssignment(r.staffAssignmentJson);
       const planType = SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery';
@@ -154,13 +161,15 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
             name: nameMap[staffId]?.name ?? staffId,
             counts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
             amounts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
+            unitBreakdowns: { photo: {}, assistant: {}, hair: {}, makeup: {} },
             total: 0,
           };
         }
-        const amount = Math.round(breakdown[role] * multiplier);
+        const unitPrice = Math.round(breakdown[role] * multiplier);
         map[staffId].counts[role] += 1;
-        map[staffId].amounts[role] += amount;
-        map[staffId].total += amount;
+        map[staffId].amounts[role] += unitPrice;
+        map[staffId].unitBreakdowns[role][unitPrice] = (map[staffId].unitBreakdowns[role][unitPrice] ?? 0) + 1;
+        map[staffId].total += unitPrice;
       }
     }
     return Object.values(map).sort((a, b) => b.total - a.total);
@@ -303,20 +312,30 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
               ) : (
                 <>
                   {byStaff.map((row) => (
-                    <tr key={row.name} className="hover:bg-gray-50">
+                    <tr key={row.name} className="hover:bg-gray-50 align-top">
                       <td className="px-5 py-3 font-medium text-gray-800">{row.name}</td>
-                      {ROLES.map((role) => (
-                        <td key={role} className="px-4 py-3 text-right text-gray-600">
-                          {row.counts[role] > 0 ? (
-                            <span>
-                              {formatYen(applyTax(row.amounts[role]))}
-                              <span className="text-xs text-gray-400 ml-1">×{row.counts[role]}</span>
-                            </span>
-                          ) : (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                      ))}
+                      {ROLES.map((role) => {
+                        const bd = row.unitBreakdowns[role];
+                        const entries = Object.entries(bd).map(([p, c]) => [Number(p), c] as [number, number]);
+                        return (
+                          <td key={role} className="px-4 py-3 text-right text-gray-600">
+                            {row.counts[role] > 0 ? (
+                              <div>
+                                <div className="font-medium">{formatYen(applyTax(row.amounts[role]))}</div>
+                                <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
+                                  {entries.map(([unitPrice, count]) => (
+                                    <div key={unitPrice}>
+                                      {formatYen(applyTax(unitPrice))} ×{count}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
                         {formatYen(applyTax(row.total))}
                       </td>
