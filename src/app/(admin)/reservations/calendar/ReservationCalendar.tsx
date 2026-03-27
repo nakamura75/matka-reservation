@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import type { Reservation } from '@/types';
 import { STATUS_LABEL } from '@/lib/constants';
@@ -49,21 +50,54 @@ export default function ReservationCalendar({ reservations, blockedDates = {}, b
   const blockedDateMap = useMemo(() => new Map(Object.entries(blockedDates)), [blockedDates]);
   const holidayDateSet = useMemo(() => new Set(holidayDates), [holidayDates]);
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth()); // 0-indexed
-  const [view, setView] = useState<'month' | 'week'>('month');
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(today));
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // URLパラメータから初期値を取得
+  const initialYear = Number(searchParams.get('year')) || today.getFullYear();
+  const initialMonth = searchParams.get('month') != null ? Number(searchParams.get('month')) : today.getMonth();
+  const initialView = (searchParams.get('view') as 'month' | 'week') || 'month';
+  const initialWeekParam = searchParams.get('week');
+  const initialWeekStart = initialWeekParam ? new Date(initialWeekParam) : getWeekStart(today);
+
+  const [year, setYear] = useState(initialYear);
+  const [month, setMonth] = useState(initialMonth);
+  const [view, setView] = useState<'month' | 'week'>(initialView);
+  const [weekStart, setWeekStart] = useState(() => initialWeekStart);
+
+  // URLパラメータを更新する関数
+  const updateURL = useCallback((y: number, m: number, v: string, ws: Date) => {
+    const params = new URLSearchParams();
+    params.set('year', String(y));
+    params.set('month', String(m));
+    params.set('view', v);
+    params.set('week', toDateStr(ws));
+    router.push(`${pathname}?${params.toString()}`);
+  }, [router, pathname]);
 
   function prevMonth() {
-    if (month === 0) { setYear(y => y - 1); setMonth(11); }
-    else setMonth(m => m - 1);
+    const newMonth = month === 0 ? 11 : month - 1;
+    const newYear = month === 0 ? year - 1 : year;
+    setYear(newYear); setMonth(newMonth);
+    updateURL(newYear, newMonth, view, weekStart);
   }
   function nextMonth() {
-    if (month === 11) { setYear(y => y + 1); setMonth(0); }
-    else setMonth(m => m + 1);
+    const newMonth = month === 11 ? 0 : month + 1;
+    const newYear = month === 11 ? year + 1 : year;
+    setYear(newYear); setMonth(newMonth);
+    updateURL(newYear, newMonth, view, weekStart);
   }
-  function prevWeek() { setWeekStart(d => addDays(d, -7)); }
-  function nextWeek() { setWeekStart(d => addDays(d, 7)); }
+  function prevWeek() {
+    const newWeek = addDays(weekStart, -7);
+    setWeekStart(newWeek);
+    updateURL(year, month, view, newWeek);
+  }
+  function nextWeek() {
+    const newWeek = addDays(weekStart, 7);
+    setWeekStart(newWeek);
+    updateURL(year, month, view, newWeek);
+  }
 
   // カレンダーの日付グリッドを生成（月表示）
   const { days, startWeekday } = useMemo(() => {
@@ -122,13 +156,13 @@ export default function ReservationCalendar({ reservations, blockedDates = {}, b
           {/* 月/週 切り替えタブ */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
             <button
-              onClick={() => setView('month')}
+              onClick={() => { setView('month'); updateURL(year, month, 'month', weekStart); }}
               className={`px-3 py-1.5 ${view === 'month' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               月
             </button>
             <button
-              onClick={() => setView('week')}
+              onClick={() => { setView('week'); updateURL(year, month, 'week', weekStart); }}
               className={`px-3 py-1.5 border-l border-gray-200 ${view === 'week' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               週
