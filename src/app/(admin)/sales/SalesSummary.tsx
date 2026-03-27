@@ -329,9 +329,11 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
                                 <div className="font-medium">{formatYen(applyTax(row.amounts[role]))}</div>
                                 <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
                                   {entries.map(({ unitPrice, count, discounted }) => (
-                                    <div key={unitPrice}>
-                                      {formatYen(applyTax(unitPrice))} ×{count}
-                                      {discounted && <span className="text-red-400 ml-1">割引あり</span>}
+                                    <div key={unitPrice} className="flex items-baseline justify-end gap-1">
+                                      {discounted
+                                        ? <span className="text-red-400">割引あり</span>
+                                        : <span>&nbsp;</span>}
+                                      <span className="tabular-nums">{formatYen(applyTax(unitPrice))} ×{count}</span>
                                     </div>
                                   ))}
                                 </div>
