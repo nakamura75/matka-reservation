@@ -596,6 +596,11 @@ export async function updateOrderItem(
   if (error) throw error;
 }
 
+export async function deleteOrderItem(id: string): Promise<void> {
+  const { error } = await supabase().from('order_items').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ============================================================
 // 商品
 // ============================================================

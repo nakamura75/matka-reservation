@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Order, OrderItem, Customer, Reservation, Product } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
@@ -37,6 +37,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
   const [newProductId, setNewProductId] = useState('');
   const [newQty, setNewQty] = useState(1);
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
+  const [deletingItem, setDeletingItem] = useState<string | null>(null);
 
   const total = items.reduce((sum, i) => sum + i.subtotal, 0);
   const pDiscountRate = reservation?.productDiscountRate ?? 0;
@@ -108,6 +109,22 @@ export default function OrderDetail({ order, customer, reservation, items: initi
       prev.map((i) => (i.id === item.id ? { ...i, status, ...dateFields } : i))
     );
     setUpdatingItem(null);
+  }
+
+  async function deleteItem(item: EnrichedItem) {
+    if (!confirm(`「${item.productName}」を削除しますか？`)) return;
+    setDeletingItem(item.id);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/items?itemId=${item.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
+      }
+    } finally {
+      setDeletingItem(null);
+    }
   }
 
   async function updateTrackingNumber(item: EnrichedItem, trackingNumber: string) {
@@ -223,9 +240,19 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>
-                          {item.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>
+                            {item.status}
+                          </span>
+                          <button
+                            onClick={() => deleteItem(item)}
+                            disabled={deletingItem === item.id}
+                            className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                            title="削除"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
                         <div className="flex gap-1 flex-wrap justify-end">
                           {ITEM_STATUSES.filter((s) => s !== item.status).map((s) => (
                             <button

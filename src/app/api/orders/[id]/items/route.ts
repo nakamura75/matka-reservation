@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOrderItems, createOrderItem, updateOrderItem, getOrders } from '@/lib/db';
+import { getOrderItems, createOrderItem, updateOrderItem, deleteOrderItem, getOrders } from '@/lib/db';
 import { generateId } from '@/lib/utils';
 import type { OrderItem } from '@/types';
 
@@ -36,6 +36,32 @@ export async function POST(
     return NextResponse.json({ success: true, data: item });
   } catch (err) {
     console.error('POST /api/orders/[id]/items error:', err);
+    return NextResponse.json({ error: 'サーバーエラー' }, { status: 500 });
+  }
+}
+
+/** DELETE /api/orders/[id]/items - 注文詳細を削除 */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const itemId = searchParams.get('itemId');
+    if (!itemId) return NextResponse.json({ error: 'itemId is required' }, { status: 400 });
+
+    const items = await getOrderItems(params.id);
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+
+    await deleteOrderItem(itemId);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/orders/[id]/items error:', err);
     return NextResponse.json({ error: 'サーバーエラー' }, { status: 500 });
   }
 }
