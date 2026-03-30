@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import type { Reservation, Staff, Order, OrderItem, Holiday } from '@/types';
+import type { Reservation, Staff, Order, OrderItem, Holiday, ReservationOption } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
 import { isWeekend } from '@/lib/utils';
 
@@ -18,9 +18,11 @@ interface Props {
   staff: Staff[];
   orders: EnrichedOrder[];
   holidays: Holiday[];
+  reservationOptions: ReservationOption[];
+  optionPriceMap: Record<string, number>;
 }
 
-const ROLES = ['photo', 'assistant', 'hair', 'makeup'] as const;
+const ROLES = ['photo', 'assistant', 'hair', 'makeup', 'option'] as const;
 type Role = typeof ROLES[number];
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -28,9 +30,10 @@ const ROLE_LABEL: Record<Role, string> = {
   assistant: 'アシスタント',
   hair: 'ヘア',
   makeup: 'メイク',
+  option: 'オプション',
 };
 
-function parseAssignment(json?: string): Partial<Record<Role, string>> {
+function parseAssignment(json?: string): Partial<Record<'photo' | 'assistant' | 'hair' | 'makeup', string>> & { options?: Record<string, string> } {
   if (!json) return {};
   try { return JSON.parse(json); } catch { return {}; }
 }
@@ -45,7 +48,7 @@ function taxExcluded(amount: number): number {
 
 type TaxMode = 'included' | 'excluded';
 
-export default function SalesSummary({ reservations, staff, orders, holidays }: Props) {
+export default function SalesSummary({ reservations, staff, orders, holidays, reservationOptions, optionPriceMap }: Props) {
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const router = useRouter();
@@ -157,6 +160,19 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
     total: number;
   };
 
+  // 予約IDごとのオプション一覧マップ
+  const optionsByReservation = useMemo(() => {
+    const map: Record<string, ReservationOption[]> = {};
+    for (const ro of reservationOptions) {
+      if (!map[ro.reservationId]) map[ro.reservationId] = [];
+      map[ro.reservationId].push(ro);
+    }
+    return map;
+  }, [reservationOptions]);
+
+  const emptyRoleCounts = (): Record<Role, number> => ({ photo: 0, assistant: 0, hair: 0, makeup: 0, option: 0 });
+  const emptyRoleBreakdowns = (): Record<Role, UnitBreakdown> => ({ photo: {}, assistant: {}, hair: {}, makeup: {}, option: {} });
+
   // 予約リストから担当者別金額を集計する共通関数
   function calcByStaff(
     targets: Reservation[],
@@ -169,15 +185,16 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
       const breakdown = PLAN_STAFF_BREAKDOWN[planType];
       const rate = (r as Reservation & { discountRate?: number }).discountRate ?? 0;
       const multiplier = 1 - rate / 100;
-      for (const role of ROLES) {
+      // プラン役割（photo/assistant/hair/makeup）
+      for (const role of (['photo', 'assistant', 'hair', 'makeup'] as const)) {
         const staffId = assignment[role];
         if (!staffId) continue;
         if (!map[staffId]) {
           map[staffId] = {
             name: nameMap[staffId]?.name ?? staffId,
-            counts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
-            amounts: { photo: 0, assistant: 0, hair: 0, makeup: 0 },
-            unitBreakdowns: { photo: {}, assistant: {}, hair: {}, makeup: {} },
+            counts: emptyRoleCounts(),
+            amounts: emptyRoleCounts(),
+            unitBreakdowns: emptyRoleBreakdowns(),
             total: 0,
           };
         }
@@ -189,6 +206,31 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
           map[staffId].unitBreakdowns[role][unitPrice] = { count: 0, discounted };
         }
         map[staffId].unitBreakdowns[role][unitPrice].count += 1;
+        map[staffId].total += unitPrice;
+      }
+      // オプション担当
+      const resOptions = optionsByReservation[r.id] ?? [];
+      for (const ro of resOptions) {
+        const staffId = assignment.options?.[ro.id];
+        if (!staffId) continue;
+        if (!map[staffId]) {
+          map[staffId] = {
+            name: nameMap[staffId]?.name ?? staffId,
+            counts: emptyRoleCounts(),
+            amounts: emptyRoleCounts(),
+            unitBreakdowns: emptyRoleBreakdowns(),
+            total: 0,
+          };
+        }
+        const optPrice = (optionPriceMap[ro.optionId] ?? 0) * ro.quantity;
+        const unitPrice = Math.round(optPrice * multiplier);
+        const discounted = rate > 0;
+        map[staffId].counts.option += 1;
+        map[staffId].amounts.option += unitPrice;
+        if (!map[staffId].unitBreakdowns.option[unitPrice]) {
+          map[staffId].unitBreakdowns.option[unitPrice] = { count: 0, discounted };
+        }
+        map[staffId].unitBreakdowns.option[unitPrice].count += 1;
         map[staffId].total += unitPrice;
       }
     }
@@ -214,7 +256,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays }: 
 
   // 役割ごとの列合計（完了のみ）
   const roleTotals = useMemo(() => {
-    const totals: Record<Role, number> = { photo: 0, assistant: 0, hair: 0, makeup: 0 };
+    const totals: Record<Role, number> = { photo: 0, assistant: 0, hair: 0, makeup: 0, option: 0 };
     for (const row of byStaff) {
       for (const role of ROLES) totals[role] += row.amounts[role];
     }
