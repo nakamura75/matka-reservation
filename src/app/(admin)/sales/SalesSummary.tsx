@@ -319,16 +319,9 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
             完了 {completedReservations.length} 件
             {shippedItemCount > 0 && <span className="ml-2">＋ 発送済商品 {shippedItemCount} 点</span>}
           </p>
-          <p className="text-2xl font-bold text-gray-900">{formatYen(applyTax(grandTotal + shippedOrderTotal + holidayFeeTotal))}</p>
-          {(shippedOrderTotal > 0 || holidayFeeTotal > 0) && (
-            <div className="text-xs text-gray-400 mt-1 space-y-0.5">
-              {holidayFeeTotal > 0 && (
-                <p>うち休日料金 {formatYen(applyTax(holidayFeeTotal))}</p>
-              )}
-              {shippedOrderTotal > 0 && (
-                <p>うち商品 {formatYen(applyTax(shippedOrderTotal))}</p>
-              )}
-            </div>
+          <p className="text-2xl font-bold text-gray-900">{formatYen(applyTax(grandTotal + shippedOrderTotal))}</p>
+          {shippedOrderTotal > 0 && (
+            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(applyTax(shippedOrderTotal))}</p>
           )}
           {Object.keys(paymentBreakdown).length > 0 && (
             <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
