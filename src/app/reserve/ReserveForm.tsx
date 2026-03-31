@@ -142,7 +142,7 @@ export default function ReserveForm() {
 
   // マスタデータ取得
   useEffect(() => {
-    fetch('/api/plans').then(r => r.json()).then(d => setPlans(d.data ?? []));
+    fetch('/api/plans').then(r => r.json()).then(d => setPlans((d.data ?? []).filter((p: Plan) => p.showInForm !== false)));
     fetch('/api/options').then(r => r.json()).then(d => setOptions((d.data ?? []).filter((o: Option) => o.showInForm !== false)));
   }, []);
 

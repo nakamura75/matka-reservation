@@ -212,6 +212,7 @@ export async function getPlans(): Promise<Plan[]> {
     duration: r.duration,
     description: r.description,
     isActive: r.is_active,
+    showInForm: r.show_in_form ?? true,
   }));
 }
 
