@@ -26,6 +26,7 @@ export interface Plan {
   duration: number;    // 所要時間（分）
   description?: string;
   isActive: boolean;   // 有効
+  showInForm?: boolean; // 顧客予約フォームに表示
 }
 
 // ============================================================
