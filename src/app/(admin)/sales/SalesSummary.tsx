@@ -141,11 +141,11 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
     [holidays]
   );
   const holidayFeeTotal = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates)).length * HOLIDAY_FEE,
+    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length * HOLIDAY_FEE,
     [completedReservations, holidayDates]
   );
   const holidayFeeCount = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates)).length,
+    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length,
     [completedReservations, holidayDates]
   );
 

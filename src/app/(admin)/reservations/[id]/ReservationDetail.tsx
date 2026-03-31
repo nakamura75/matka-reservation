@@ -890,8 +890,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 </select>
               </div>
 
-              {/* 休日料金（土日のみ表示） */}
-              {hasHolidayFee && (
+              {/* 休日料金（土日のみ表示、割引100%時は非表示） */}
+              {hasHolidayFee && discountRate < 100 && (
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">休日料金</p>
@@ -901,12 +901,14 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 </div>
               )}
 
-              {/* オプション（各自選択） */}
-              {currentOptions.map((o) => (
+              {/* オプション（各自選択、割引100%時は¥0表示） */}
+              {currentOptions.map((o) => {
+                const optionAmount = Math.round(o.price * o.quantity * (1 - discountRate / 100));
+                return (
                 <div key={o.id} className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-700">{o.optionName}</p>
-                    <p className="text-xs text-gray-400">{formatCurrency(o.price * o.quantity)}</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(optionAmount)}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
                   </div>
                   <select
                     value={assignment.options?.[o.id] ?? ''}
@@ -924,7 +926,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     ))}
                   </select>
                 </div>
-              ))}
+                );
+              })}
 
               <button
                 onClick={saveAssignment}
