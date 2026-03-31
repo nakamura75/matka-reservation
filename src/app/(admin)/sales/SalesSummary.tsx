@@ -112,28 +112,17 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
     }),
     [orders, reservationDateMap, selectedMonth]
   );
-  const shippedOrderTotal = useMemo(
+  // 商品売上（受注時点で全商品を集計）
+  const orderTotal = useMemo(
     () => monthOrders.reduce((sum, o) => {
-      const raw = o.items.filter((i) => i.status === '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0);
+      const raw = o.items.reduce((s, i) => s + i.productPrice * i.quantity, 0);
       const rate = o.reservationId ? (productDiscountMap[o.reservationId] ?? 0) : 0;
       return sum + Math.round(raw * (1 - rate / 100));
     }, 0),
     [monthOrders, productDiscountMap]
   );
-  const pendingOrderTotal = useMemo(
-    () => monthOrders.reduce((sum, o) => {
-      const raw = o.items.filter((i) => i.status !== '発送済').reduce((s, i) => s + i.productPrice * i.quantity, 0);
-      const rate = o.reservationId ? (productDiscountMap[o.reservationId] ?? 0) : 0;
-      return sum + Math.round(raw * (1 - rate / 100));
-    }, 0),
-    [monthOrders, productDiscountMap]
-  );
-  const shippedItemCount = useMemo(
-    () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status === '発送済').length, 0),
-    [monthOrders]
-  );
-  const pendingItemCount = useMemo(
-    () => monthOrders.reduce((sum, o) => sum + o.items.filter((i) => i.status !== '発送済').length, 0),
+  const orderItemCount = useMemo(
+    () => monthOrders.reduce((sum, o) => sum + o.items.length, 0),
     [monthOrders]
   );
   const holidayDates = useMemo(
@@ -141,11 +130,11 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
     [holidays]
   );
   const holidayFeeTotal = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates)).length * HOLIDAY_FEE,
+    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length * HOLIDAY_FEE,
     [completedReservations, holidayDates]
   );
   const holidayFeeCount = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates)).length,
+    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length,
     [completedReservations, holidayDates]
   );
 
@@ -273,7 +262,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
     return breakdown;
   }, [completedReservations]);
 
-  const hasStaffRows = byStaff.length > 0 || shippedOrderTotal > 0 || holidayFeeTotal > 0;
+  const hasStaffRows = byStaff.length > 0 || orderTotal > 0 || holidayFeeTotal > 0;
 
   return (
     <div className="space-y-4">
@@ -317,11 +306,11 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
           <p className="text-xs text-gray-500 mb-1">確定売上{taxMode === 'excluded' ? '（税抜）' : ''}</p>
           <p className="text-xs text-gray-400 mb-2">
             完了 {completedReservations.length} 件
-            {shippedItemCount > 0 && <span className="ml-2">＋ 発送済商品 {shippedItemCount} 点</span>}
+            {orderItemCount > 0 && <span className="ml-2">＋ 商品 {orderItemCount} 点</span>}
           </p>
-          <p className="text-2xl font-bold text-gray-900">{formatYen(applyTax(grandTotal + shippedOrderTotal))}</p>
-          {shippedOrderTotal > 0 && (
-            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(applyTax(shippedOrderTotal))}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatYen(applyTax(grandTotal + orderTotal))}</p>
+          {orderTotal > 0 && (
+            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(applyTax(orderTotal))}</p>
           )}
           {Object.keys(paymentBreakdown).length > 0 && (
             <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
@@ -339,12 +328,8 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
           <p className="text-xs text-gray-500 mb-1">見込み売上{taxMode === 'excluded' ? '（税抜）' : ''}</p>
           <p className="text-xs text-gray-400 mb-2">
             仮予約・確定 {pendingReservations.length} 件
-            {pendingItemCount > 0 && <span className="ml-2">＋ 商品 {pendingItemCount} 点</span>}
           </p>
-          <p className="text-2xl font-bold text-blue-600">{formatYen(applyTax(pendingTotal + pendingOrderTotal))}</p>
-          {pendingOrderTotal > 0 && (
-            <p className="text-xs text-gray-400 mt-1">うち商品 {formatYen(applyTax(pendingOrderTotal))}</p>
-          )}
+          <p className="text-2xl font-bold text-blue-600">{formatYen(applyTax(pendingTotal))}</p>
         </div>
       </div>
 
@@ -368,7 +353,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
               {!hasStaffRows ? (
                 <tr>
                   <td colSpan={ROLES.length + 2} className="px-5 py-10 text-center text-gray-400">
-                    {selectedMonth} に「完了」の予約・発送済商品がありません
+                    {selectedMonth} に「完了」の予約・商品がありません
                   </td>
                 </tr>
               ) : (
@@ -409,7 +394,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
                     </tr>
                   ))}
                   {/* matka. 行（休日料金・商品売上） */}
-                  {(shippedOrderTotal > 0 || holidayFeeTotal > 0) && (
+                  {(orderTotal > 0 || holidayFeeTotal > 0) && (
                     <tr className="hover:bg-gray-50">
                       <td className="px-5 py-3 font-medium text-gray-800">
                         matka.
@@ -417,8 +402,8 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
                           {holidayFeeCount > 0 && (
                             <div>休日料金 ×{holidayFeeCount}　{formatYen(applyTax(holidayFeeTotal))}</div>
                           )}
-                          {shippedOrderTotal > 0 && (
-                            <div>商品（発送済）　{formatYen(applyTax(shippedOrderTotal))}</div>
+                          {orderTotal > 0 && (
+                            <div>商品　{formatYen(applyTax(orderTotal))}</div>
                           )}
                         </div>
                       </td>
@@ -426,7 +411,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
                         <td key={role} className="px-4 py-3 text-right text-gray-300">—</td>
                       ))}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
-                        {formatYen(applyTax(shippedOrderTotal + holidayFeeTotal))}
+                        {formatYen(applyTax(orderTotal + holidayFeeTotal))}
                       </td>
                     </tr>
                   )}
@@ -444,7 +429,7 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
                   ))}
                   <td className="px-5 py-3 text-right">
                     <div className="font-bold text-brand text-base">
-                      {formatYen(applyTax(staffGrandTotal + shippedOrderTotal + holidayFeeTotal))}
+                      {formatYen(applyTax(staffGrandTotal + orderTotal + holidayFeeTotal))}
                     </div>
                     {Object.keys(paymentBreakdown).length > 0 && (
                       <div className="mt-1 space-y-0.5">
