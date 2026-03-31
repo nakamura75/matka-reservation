@@ -55,7 +55,7 @@ export const STATUS_COLORS: Record<string, string> = {
 export const ORDER_ITEM_STATUSES = ['受注', 'セレクト済', 'レイアウト済', '発注済', '梱包済', '発送済'] as const;
 
 // 割引率の選択肢
-export const DISCOUNT_RATES = [0, 5, 10] as const;
+export const DISCOUNT_RATES = [0, 5, 10, 100] as const;
 
 // 担当割り当て：店舗売上のスタッフID
 export const STORE_STAFF_ID = 'matka.';
