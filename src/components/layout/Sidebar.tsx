@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  CalendarDaysIcon,
   UsersIcon,
   ShoppingBagIcon,
   Cog6ToothIcon,
@@ -15,7 +14,6 @@ import {
 
 const navItems = [
   { href: '/reservations', label: '予約一覧', icon: TableCellsIcon, exact: true },
-  { href: '/reservations/calendar', label: 'カレンダー', icon: CalendarDaysIcon },
   { href: '/reservations/timeline', label: 'タイムライン', icon: ClockIcon },
   { href: '/customers', label: '顧客管理', icon: UsersIcon },
   { href: '/orders', label: '注文管理', icon: ShoppingBagIcon },
