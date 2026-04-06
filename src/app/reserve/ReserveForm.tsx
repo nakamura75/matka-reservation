@@ -31,7 +31,7 @@ const CANCEL_POLICY = `※本予約確定後のキャンセルにつきまして
 // ============================================================
 // ステップインジケーター
 // ============================================================
-const STEPS = ['シーン・日時', 'お客様情報', '撮影情報', 'オプション', '確認・送信'];
+const STEPS = ['シーン・日時', 'お客様情報', '来店人数', 'オプション', '確認・送信'];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -569,12 +569,12 @@ export default function ReserveForm() {
   }
 
   // ============================================================
-  // STEP 3: 撮影情報
+  // STEP 3: 来店人数
   // ============================================================
   function renderStep2() {
     return (
       <div className="space-y-4">
-        <h2 className="text-base font-bold text-gray-900">撮影情報</h2>
+        <h2 className="text-base font-bold text-gray-900">来店人数</h2>
 
         <div>
           <label className="block text-sm text-gray-600 mb-1">お子様 *</label>
