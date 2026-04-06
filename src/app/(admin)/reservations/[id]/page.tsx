@@ -47,12 +47,18 @@ export default async function ReservationDetailPage({
 
   // この予約に紐づく注文を集計
   const productPriceMap = Object.fromEntries(products.map((p) => [p.id, p.price]));
+  const productNameMap = Object.fromEntries(products.map((p) => [p.id, p.name]));
   const linkedOrders = allOrders
     .filter((o) => o.reservationId === reservation.id)
     .map((order) => {
       const items = allOrderItems.filter((i) => i.orderId === order.id);
       const total = items.reduce((sum, i) => sum + (productPriceMap[i.productId] ?? 0) * i.quantity, 0);
-      return { id: order.id, orderDate: order.orderDate, isPaid: order.isPaid, total, itemCount: items.length };
+      const itemDetails = items.map((i) => ({
+        productName: productNameMap[i.productId] ?? '不明な商品',
+        price: productPriceMap[i.productId] ?? 0,
+        quantity: i.quantity,
+      }));
+      return { id: order.id, orderDate: order.orderDate, isPaid: order.isPaid, total, itemCount: items.length, items: itemDetails };
     });
 
   return (

@@ -9,7 +9,8 @@ import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
-type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number };
+type LinkedOrderItem = { productName: string; price: number; quantity: number };
+type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number; items: LinkedOrderItem[] };
 type NewOrderItem = { productId: string; productName: string; price: number; quantity: number };
 
 const NEXT_STATUS: Record<Reservation['status'], Reservation['status'] | null> = {
@@ -139,7 +140,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       const total = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
       setLinkedOrders((prev) => [
         ...prev,
-        { id: orderId, orderDate: new Date().toLocaleDateString('ja-JP'), isPaid: true, total, itemCount: orderItems.length },
+        { id: orderId, orderDate: new Date().toLocaleDateString('ja-JP'), isPaid: true, total, itemCount: orderItems.length, items: orderItems.map((i) => ({ productName: i.productName, price: i.price, quantity: i.quantity })) },
       ]);
       setShowOrderForm(false);
       setOrderItems([]);
@@ -1303,17 +1304,27 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
             {/* 既存の注文リスト */}
             {linkedOrders.length > 0 && (
-              <ul className="space-y-1.5 mb-3">
+              <ul className="space-y-2 mb-3">
                 {linkedOrders.map((order) => (
                   <li key={order.id}>
                     <Link
                       href={`/orders/${order.id}`}
-                      className="flex items-center justify-between text-xs px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50"
+                      className="block text-xs px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50"
                     >
-                      <span className="text-gray-600">{order.orderDate}（{order.itemCount}点）</span>
-                      <div className="flex items-center gap-2">
-                        {order.total > 0 && <span className="text-gray-700">¥{order.total.toLocaleString()}</span>}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-gray-500">{order.orderDate}</span>
+                        <span className="text-gray-700 font-medium">¥{order.total.toLocaleString()}</span>
                       </div>
+                      {order.items.length > 0 && (
+                        <div className="space-y-0.5">
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-gray-600">
+                              <span>{item.productName} ×{item.quantity}</span>
+                              <span>¥{(item.price * item.quantity).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </Link>
                   </li>
                 ))}
