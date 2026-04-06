@@ -70,6 +70,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [chatLineIdInput, setChatLineIdInput] = useState('');
   const [chatLineIdSaving, setChatLineIdSaving] = useState(false);
+  const [resendingLine, setResendingLine] = useState(false);
 
   // 削除
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -355,6 +356,25 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendConfirmLine() {
+    if (!confirm('予約確定LINEを再送信しますか？')) return;
+    setResendingLine(true);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}/resend-confirm`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        alert('LINE送信しました');
+      } else {
+        alert('LINE送信に失敗しました');
+      }
+    } catch {
+      alert('LINE送信に失敗しました');
+    } finally {
+      setResendingLine(false);
     }
   }
 
@@ -1528,6 +1548,16 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             )}
             {nextStatus === '予約済' && status === '保留' && !editDate && (
               <p className="text-xs text-amber-600 text-center">新しい日程を入力してください</p>
+            )}
+            {/* LINE予約確定メッセージ再送 */}
+            {(status === '予約確定' || status === '完了' || status === '見学') && reservation.lineUserId && (
+              <button
+                onClick={handleResendConfirmLine}
+                disabled={resendingLine}
+                className="w-full py-2 text-blue-600 text-sm border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50 transition-colors"
+              >
+                {resendingLine ? '送信中...' : '予約確定LINEを再送信'}
+              </button>
             )}
             {/* 日程変更ボタン: 予約確定・見学のときに表示 */}
             {(status === '予約確定' || status === '見学') && (
