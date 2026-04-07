@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 /** PATCH /api/orders/[id]/items/components - コンポーネントのステータス更新 */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
 ) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

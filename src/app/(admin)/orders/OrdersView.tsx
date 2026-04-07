@@ -17,11 +17,10 @@ type EnrichedItem = OrderItem & {
 
 interface Props {
   orders: EnrichedOrder[];
-  items: EnrichedItem[];
   boardItems: EnrichedItem[];
 }
 
-export default function OrdersView({ orders, items, boardItems }: Props) {
+export default function OrdersView({ orders, boardItems }: Props) {
   const [view, setView] = useState<'list' | 'board'>('board');
 
   return (
