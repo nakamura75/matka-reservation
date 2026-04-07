@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOrderItems, createOrderItem, updateOrderItem, deleteOrderItem, getOrders } from '@/lib/db';
+import { getOrderItems, createOrderItem, updateOrderItem, deleteOrderItem, getOrders, getProducts, createOrderItemComponents } from '@/lib/db';
 import { generateId } from '@/lib/utils';
+import { SET_PRODUCT_COMPONENTS } from '@/lib/constants';
 import type { OrderItem } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -33,6 +34,17 @@ export async function POST(
       note: body.note ?? '',
     };
     await createOrderItem(item);
+
+    // セット商品の場合、コンポーネントを自動生成
+    const products = await getProducts();
+    const product = products.find((p) => p.id === body.productId);
+    if (product) {
+      const components = SET_PRODUCT_COMPONENTS[product.name];
+      if (components) {
+        await createOrderItemComponents(item.id, components);
+      }
+    }
+
     return NextResponse.json({ success: true, data: item });
   } catch (err) {
     console.error('POST /api/orders/[id]/items error:', err);

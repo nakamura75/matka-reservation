@@ -9,6 +9,7 @@ import type {
   ReservationOption,
   Order,
   OrderItem,
+  OrderItemComponent,
   SalesRecord,
   Holiday,
   BlockedSlot,
@@ -599,6 +600,66 @@ export async function updateOrderItem(
 
 export async function deleteOrderItem(id: string): Promise<void> {
   const { error } = await supabase().from('order_items').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ============================================================
+// 注文商品コンポーネント（セット商品の中身）
+// ============================================================
+
+export async function getOrderItemComponents(orderItemId?: string): Promise<OrderItemComponent[]> {
+  let query = supabase().from('order_item_components').select('*').order('sort_order').order('id');
+  if (orderItemId) query = query.eq('order_item_id', orderItemId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    orderItemId: r.order_item_id,
+    name: r.name,
+    quantity: r.quantity,
+    status: r.status as OrderItemComponent['status'],
+    selectedDate: r.selected_date,
+    layoutDate: r.layout_date,
+    orderedDate: r.ordered_date,
+    packedDate: r.packed_date,
+    shippedDate: r.shipped_date,
+    trackingNumber: r.tracking_number,
+    note: r.note,
+    sortOrder: r.sort_order ?? 0,
+  }));
+}
+
+export async function createOrderItemComponents(
+  orderItemId: string,
+  components: { name: string; quantity: number }[]
+): Promise<void> {
+  if (components.length === 0) return;
+  const rows = components.map((c, i) => ({
+    order_item_id: orderItemId,
+    name: c.name,
+    quantity: c.quantity,
+    status: '受注',
+    sort_order: i,
+  }));
+  const { error } = await supabase().from('order_item_components').insert(rows);
+  if (error) throw error;
+}
+
+export async function updateOrderItemComponent(
+  id: string,
+  fields: Partial<Pick<OrderItemComponent, 'status' | 'selectedDate' | 'layoutDate' | 'orderedDate' | 'packedDate' | 'shippedDate' | 'trackingNumber' | 'note'>>
+): Promise<void> {
+  const row: Record<string, unknown> = {};
+  if (fields.status !== undefined) row.status = fields.status;
+  if (fields.selectedDate !== undefined) row.selected_date = fields.selectedDate;
+  if (fields.layoutDate !== undefined) row.layout_date = fields.layoutDate;
+  if (fields.orderedDate !== undefined) row.ordered_date = fields.orderedDate;
+  if (fields.packedDate !== undefined) row.packed_date = fields.packedDate;
+  if (fields.shippedDate !== undefined) row.shipped_date = fields.shippedDate;
+  if (fields.trackingNumber !== undefined) row.tracking_number = fields.trackingNumber;
+  if (fields.note !== undefined) row.note = fields.note;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase().from('order_item_components').update(row).eq('id', id);
   if (error) throw error;
 }
 
