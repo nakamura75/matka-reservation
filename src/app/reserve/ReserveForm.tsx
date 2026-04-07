@@ -365,8 +365,8 @@ export default function ReserveForm() {
       <div className="space-y-6">
         <div>
           <h2 className="text-base font-bold text-gray-900 mb-3">撮影シーンを選択</h2>
-          <p className="text-xs text-gray-500 mb-1">※オプション追加をご希望の場合、9:00~は撮影不可となります。</p>
-          <p className="text-xs text-gray-500 mb-2">※お着付けが必要な場合は、七五三をご選択ください。</p>
+          <p className="text-xs text-red-500 mb-1">※オプション追加をご希望の場合、9:00~は撮影不可となります。</p>
+          <p className="text-xs text-red-500 mb-2">※お着付けが必要な場合は、七五三をご選択ください。</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {SHOOTING_SCENES.map((s) => (
               <button
