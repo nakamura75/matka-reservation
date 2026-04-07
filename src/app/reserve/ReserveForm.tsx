@@ -208,6 +208,10 @@ export default function ReserveForm() {
     setSelectedOptions((prev) => {
       const exists = prev.find((o) => o.optionId === optionId);
       if (exists) return prev.filter((o) => o.optionId !== optionId);
+      // 9:00枠でオプション追加時、警告が見えるよう先頭にスクロール
+      if (!exists && selectedTime === '9:00') {
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+      }
       return [...prev, { optionId, quantity: 1 }];
     });
   }
@@ -687,7 +691,7 @@ export default function ReserveForm() {
         <p className="text-xs text-gray-400">ヘアセット料金はプラン料金に含まれています。複数選択可能です。</p>
         {selectedTime === '9:00' && selectedOptions.length > 0 && (
           <p className="text-sm text-red-600 font-medium bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            9時枠を選択の場合はオプションが追加できません。ステップ1に戻って時間を再選択してください。
+            9時枠を選択の場合はオプションが追加できません。<br />ステップ1に戻って時間を再選択してください。
           </p>
         )}
         <div className="space-y-3">
