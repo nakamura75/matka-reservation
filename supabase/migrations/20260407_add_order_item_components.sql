@@ -1,7 +1,7 @@
 -- セット商品の中身（コンポーネント）を個別に進捗管理するためのテーブル
 CREATE TABLE IF NOT EXISTS order_item_components (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_item_id UUID NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+  order_item_id TEXT NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   quantity INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT '受注',
