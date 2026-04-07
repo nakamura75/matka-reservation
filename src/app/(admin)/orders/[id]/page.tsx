@@ -5,18 +5,20 @@ import {
   getOrderItems,
   getProducts,
   getReservations,
+  getOrderItemComponents,
 } from '@/lib/db';
 import OrderDetail from './OrderDetail';
 
 export const dynamic = 'force-dynamic';
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
-  const [orders, customers, items, products, reservations] = await Promise.all([
+  const [orders, customers, items, products, reservations, allComponents] = await Promise.all([
     getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getOrderItems(params.id).catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getOrderItemComponents().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   const order = orders.find((o) => o.id === params.id);
@@ -35,6 +37,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       productName: product?.name ?? item.productId,
       unitPrice: product?.price ?? 0,
       subtotal: (product?.price ?? 0) * item.quantity,
+      components: allComponents.filter((c) => c.orderItemId === item.id),
     };
   });
 

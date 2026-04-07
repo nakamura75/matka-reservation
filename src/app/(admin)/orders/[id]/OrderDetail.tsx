@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import type { Order, OrderItem, Customer, Reservation, Product } from '@/types';
+import type { Order, OrderItem, OrderItemComponent, Customer, Reservation, Product } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { SET_PRODUCT_COMPONENTS } from '@/lib/constants';
 
-type EnrichedItem = OrderItem & { productName: string; unitPrice: number; subtotal: number };
+type EnrichedItem = OrderItem & { productName: string; unitPrice: number; subtotal: number; components: OrderItemComponent[] };
 
 const ITEM_STATUSES: OrderItem['status'][] = ['受注', 'セレクト済', 'レイアウト済', '発注済', '梱包済', '発送済'];
 const STATUS_COLORS: Record<OrderItem['status'], string> = {
@@ -37,6 +38,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
   const [newProductId, setNewProductId] = useState('');
   const [newQty, setNewQty] = useState(1);
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
+  const [updatingComponent, setUpdatingComponent] = useState<string | null>(null);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
 
   const total = items.reduce((sum, i) => sum + i.subtotal, 0);
@@ -74,6 +76,10 @@ export default function OrderDetail({ order, customer, reservation, items: initi
     });
     const data = await res.json();
     if (data.success) {
+      const compDefs = SET_PRODUCT_COMPONENTS[product.name];
+      const newComponents = compDefs
+        ? compDefs.map((c, i) => ({ id: `temp-${Date.now()}-${i}`, orderItemId: data.data.id, name: c.name, quantity: c.quantity, status: '受注' as const, sortOrder: i }))
+        : [];
       setItems((prev) => [
         ...prev,
         {
@@ -81,6 +87,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
           productName: product.name,
           unitPrice: product.price,
           subtotal: product.price * newQty,
+          components: newComponents,
         },
       ]);
       setNewProductId('');
@@ -109,6 +116,47 @@ export default function OrderDetail({ order, customer, reservation, items: initi
       prev.map((i) => (i.id === item.id ? { ...i, status, ...dateFields } : i))
     );
     setUpdatingItem(null);
+  }
+
+  async function updateComponentStatus(itemId: string, comp: OrderItemComponent, status: OrderItemComponent['status']) {
+    setUpdatingComponent(comp.id);
+    const today = new Date().toLocaleDateString('ja-JP');
+    const dateFields: Record<string, string> = {};
+    if (status === 'セレクト済') dateFields.selectedDate = today;
+    if (status === 'レイアウト済') dateFields.layoutDate = today;
+    if (status === '発注済') dateFields.orderedDate = today;
+    if (status === '梱包済') dateFields.packedDate = today;
+    if (status === '発送済') dateFields.shippedDate = today;
+
+    await fetch(`/api/orders/${order.id}/items/components`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ componentId: comp.id, status, ...dateFields }),
+    });
+
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? { ...i, components: i.components.map((c) => c.id === comp.id ? { ...c, status, ...dateFields } : c) }
+          : i
+      )
+    );
+    setUpdatingComponent(null);
+  }
+
+  async function updateComponentTracking(itemId: string, comp: OrderItemComponent, trackingNumber: string) {
+    await fetch(`/api/orders/${order.id}/items/components`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ componentId: comp.id, trackingNumber }),
+    });
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? { ...i, components: i.components.map((c) => c.id === comp.id ? { ...c, trackingNumber } : c) }
+          : i
+      )
+    );
   }
 
   async function deleteItem(item: EnrichedItem) {
@@ -211,39 +259,47 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                         <p className="text-sm text-gray-500 mt-0.5">
                           {formatCurrency(item.unitPrice)} × {item.quantity} = {formatCurrency(item.subtotal)}
                         </p>
-                        {item.selectedDate && (
-                          <p className="text-xs text-gray-400 mt-1">セレクト日: {item.selectedDate}</p>
-                        )}
-                        {item.layoutDate && (
-                          <p className="text-xs text-gray-400">レイアウト日: {item.layoutDate}</p>
-                        )}
-                        {item.orderedDate && (
-                          <p className="text-xs text-gray-400">発注日: {item.orderedDate}</p>
-                        )}
-                        {item.packedDate && (
-                          <p className="text-xs text-gray-400">梱包日: {item.packedDate}</p>
-                        )}
-                        {item.shippedDate && (
-                          <p className="text-xs text-gray-400">発送日: {item.shippedDate}</p>
-                        )}
-                        {item.status === '発送済' && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs text-gray-400">追跡番号:</span>
-                            <input
-                              type="text"
-                              defaultValue={item.trackingNumber ?? ''}
-                              onBlur={(e) => updateTrackingNumber(item, e.target.value)}
-                              placeholder="追跡番号を入力"
-                              className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
-                            />
-                          </div>
+                        {/* コンポーネントがない場合のみ親アイテムの日付を表示 */}
+                        {item.components.length === 0 && (
+                          <>
+                            {item.selectedDate && (
+                              <p className="text-xs text-gray-400 mt-1">セレクト日: {item.selectedDate}</p>
+                            )}
+                            {item.layoutDate && (
+                              <p className="text-xs text-gray-400">レイアウト日: {item.layoutDate}</p>
+                            )}
+                            {item.orderedDate && (
+                              <p className="text-xs text-gray-400">発注日: {item.orderedDate}</p>
+                            )}
+                            {item.packedDate && (
+                              <p className="text-xs text-gray-400">梱包日: {item.packedDate}</p>
+                            )}
+                            {item.shippedDate && (
+                              <p className="text-xs text-gray-400">発送日: {item.shippedDate}</p>
+                            )}
+                            {item.status === '発送済' && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-xs text-gray-400">追跡番号:</span>
+                                <input
+                                  type="text"
+                                  defaultValue={item.trackingNumber ?? ''}
+                                  onBlur={(e) => updateTrackingNumber(item, e.target.value)}
+                                  placeholder="追跡番号を入力"
+                                  className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>
-                            {item.status}
-                          </span>
+                          {/* コンポーネントがない場合のみ親ステータスを表示 */}
+                          {item.components.length === 0 && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status]}`}>
+                              {item.status}
+                            </span>
+                          )}
                           <button
                             onClick={() => deleteItem(item)}
                             disabled={deletingItem === item.id}
@@ -253,20 +309,83 @@ export default function OrderDetail({ order, customer, reservation, items: initi
                             <TrashIcon className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="flex gap-1 flex-wrap justify-end">
-                          {ITEM_STATUSES.filter((s) => s !== item.status).map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => updateItemStatus(item, s)}
-                              disabled={updatingItem === item.id}
-                              className="text-xs text-gray-500 hover:text-brand border border-gray-200 hover:border-brand/20 rounded px-2 py-0.5 transition-colors disabled:opacity-50"
-                            >
-                              → {s}
-                            </button>
-                          ))}
-                        </div>
+                        {/* コンポーネントがない場合のみ親のステータス変更ボタンを表示 */}
+                        {item.components.length === 0 && (
+                          <div className="flex gap-1 flex-wrap justify-end">
+                            {ITEM_STATUSES.filter((s) => s !== item.status).map((s) => (
+                              <button
+                                key={s}
+                                onClick={() => updateItemStatus(item, s)}
+                                disabled={updatingItem === item.id}
+                                className="text-xs text-gray-500 hover:text-brand border border-gray-200 hover:border-brand/20 rounded px-2 py-0.5 transition-colors disabled:opacity-50"
+                              >
+                                → {s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
+
+                    {/* セット商品のコンポーネント一覧 */}
+                    {item.components.length > 0 && (
+                      <div className="mt-3 ml-4 border-l-2 border-gray-200 pl-4 space-y-3">
+                        {item.components.map((comp) => (
+                          <div key={comp.id} className="bg-gray-50 rounded-lg p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-800">
+                                  {comp.name}
+                                  {comp.quantity > 1 && <span className="text-gray-400 ml-1">×{comp.quantity}</span>}
+                                </p>
+                                {comp.selectedDate && (
+                                  <p className="text-xs text-gray-400 mt-0.5">セレクト日: {comp.selectedDate}</p>
+                                )}
+                                {comp.layoutDate && (
+                                  <p className="text-xs text-gray-400">レイアウト日: {comp.layoutDate}</p>
+                                )}
+                                {comp.orderedDate && (
+                                  <p className="text-xs text-gray-400">発注日: {comp.orderedDate}</p>
+                                )}
+                                {comp.packedDate && (
+                                  <p className="text-xs text-gray-400">梱包日: {comp.packedDate}</p>
+                                )}
+                                {comp.shippedDate && (
+                                  <p className="text-xs text-gray-400">発送日: {comp.shippedDate}</p>
+                                )}
+                                {comp.status === '発送済' && (
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-400">追跡番号:</span>
+                                    <input
+                                      type="text"
+                                      defaultValue={comp.trackingNumber ?? ''}
+                                      onBlur={(e) => updateComponentTracking(item.id, comp, e.target.value)}
+                                      placeholder="追跡番号を入力"
+                                      className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${STATUS_COLORS[comp.status]}`}>
+                                {comp.status}
+                              </span>
+                            </div>
+                            <div className="flex gap-1 flex-wrap mt-2">
+                              {ITEM_STATUSES.filter((s) => s !== comp.status).map((s) => (
+                                <button
+                                  key={s}
+                                  onClick={() => updateComponentStatus(item.id, comp, s)}
+                                  disabled={updatingComponent === comp.id}
+                                  className="text-xs text-gray-500 hover:text-brand border border-gray-200 hover:border-brand/20 rounded px-2 py-0.5 transition-colors disabled:opacity-50"
+                                >
+                                  → {s}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

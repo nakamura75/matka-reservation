@@ -73,3 +73,25 @@ export const PLAN_STAFF_BREAKDOWN: Record<'Discovery' | 'Maternity', {
   Discovery: { photo: 20350, assistant: 20350, hair: 4400, makeup: 4400 },
   Maternity: { photo: 12100, assistant: 12100, hair: 4400, makeup: 4400 },
 };
+
+// セット商品のコンポーネント定義（商品名 → 中身リスト）
+export const SET_PRODUCT_COMPONENTS: Record<string, { name: string; quantity: number }[]> = {
+  'Aセット': [
+    { name: 'フォトアルバム', quantity: 1 },
+    { name: 'フォトフレーム小', quantity: 2 },
+    { name: 'アクリルキーチェーン', quantity: 2 },
+  ],
+  'Bセット': [
+    { name: 'フォトアート', quantity: 2 },
+    { name: 'フォトフレーム小', quantity: 2 },
+    { name: 'アクリルキーチェーン', quantity: 2 },
+  ],
+  'Cセット': [
+    { name: 'フォトマガジン', quantity: 1 },
+    { name: 'フォトフレーム小', quantity: 2 },
+  ],
+  'フレームセット': [
+    { name: 'フォトフレーム小', quantity: 2 },
+    { name: 'フォトフレーム大', quantity: 1 },
+  ],
+};

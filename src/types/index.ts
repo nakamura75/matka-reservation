@@ -167,6 +167,25 @@ export interface OrderItem {
 }
 
 // ============================================================
+// 注文商品コンポーネント（セット商品の中身）
+// ============================================================
+export interface OrderItemComponent {
+  id: string;
+  orderItemId: string;
+  name: string;
+  quantity: number;
+  status: OrderItemStatus;
+  selectedDate?: string;
+  layoutDate?: string;
+  orderedDate?: string;
+  packedDate?: string;
+  shippedDate?: string;
+  trackingNumber?: string;
+  note?: string;
+  sortOrder: number;
+}
+
+// ============================================================
 // 売上明細
 // ============================================================
 export interface SalesRecord {
