@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -40,6 +40,14 @@ export default function OrderDetail({ order, customer, reservation, items: initi
   const [updatingItem, setUpdatingItem] = useState<string | null>(null);
   const [updatingComponent, setUpdatingComponent] = useState<string | null>(null);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = noteRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [note]);
 
   const total = items.reduce((sum, i) => sum + i.subtotal, 0);
   const pDiscountRate = reservation?.productDiscountRate ?? 0;
@@ -428,10 +436,11 @@ export default function OrderDetail({ order, customer, reservation, items: initi
           <section className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">備考</h2>
             <textarea
+              ref={noteRef}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              rows={7}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-y"
+              rows={2}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none overflow-hidden"
               placeholder="スタッフメモ..."
             />
           </section>
