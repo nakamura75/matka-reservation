@@ -982,8 +982,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   <textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    rows={3}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-none"
+                    rows={7}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-y"
                     placeholder="スタッフ向けメモ..."
                   />
                 </div>
