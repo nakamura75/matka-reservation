@@ -20,10 +20,19 @@ function parsePayments(paymentMethod?: string): PaymentEntry[] {
     const parsed = JSON.parse(paymentMethod);
     if (Array.isArray(parsed)) return parsed;
   } catch {
-    // 旧形式（"現金" などの単純文字列）
+    // 旧形式は空配列（旧形式の表示は別途行う）
   }
-  if (paymentMethod) return [{ method: paymentMethod, amount: 0 }];
   return [];
+}
+
+function getOldFormatMethod(paymentMethod?: string): string | null {
+  if (!paymentMethod) return null;
+  try {
+    JSON.parse(paymentMethod);
+    return null;
+  } catch {
+    return paymentMethod;
+  }
 }
 
 function serializePayments(payments: PaymentEntry[]): string {
@@ -168,6 +177,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [paymentStatus, setPaymentStatus] = useState(reservation.paymentStatus);
   const [paymentDate, setPaymentDate] = useState(reservation.paymentDate ?? '');
   const [payments, setPayments] = useState<PaymentEntry[]>(parsePayments(reservation.paymentMethod));
+  const [oldFormatMethod, setOldFormatMethod] = useState<string | null>(getOldFormatMethod(reservation.paymentMethod));
   const [paymentSaving, setPaymentSaving] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [newPayMethod, setNewPayMethod] = useState('現金');
@@ -417,6 +427,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
     const amount = Number(newPayAmount) || 0;
     if (!newPayMethod || amount <= 0) return;
     const updated = [...payments, { method: newPayMethod, amount }];
+    setOldFormatMethod(null);
     setPaymentSaving(true);
     try {
       const newDate = paymentDate || new Date().toLocaleDateString('ja-JP');
@@ -1285,7 +1296,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 <span className="text-gray-400">支払状況</span>
                 {paymentStatus ? (
                   <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
-                    支払済 {paymentDate}
+                    支払済 {oldFormatMethod ? `(${oldFormatMethod}) ` : ''}{paymentDate}
                   </span>
                 ) : (
                   <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
@@ -1293,7 +1304,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   </span>
                 )}
               </div>
-              {/* 支払い明細 */}
+              {/* 新形式の支払い明細 */}
               {payments.length > 0 && (
                 <div className="space-y-1">
                   {payments.map((p, i) => (
