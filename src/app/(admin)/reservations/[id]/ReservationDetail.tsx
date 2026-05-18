@@ -12,6 +12,23 @@ type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrderItem = { productName: string; price: number; quantity: number };
 type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number; items: LinkedOrderItem[] };
 type NewOrderItem = { productId: string; productName: string; price: number; quantity: number };
+type PaymentEntry = { method: string; amount: number };
+
+function parsePayments(paymentMethod?: string): PaymentEntry[] {
+  if (!paymentMethod) return [];
+  try {
+    const parsed = JSON.parse(paymentMethod);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // 旧形式（"現金" などの単純文字列）
+  }
+  if (paymentMethod) return [{ method: paymentMethod, amount: 0 }];
+  return [];
+}
+
+function serializePayments(payments: PaymentEntry[]): string {
+  return JSON.stringify(payments);
+}
 
 const NEXT_STATUS: Record<Reservation['status'], Reservation['status'] | null> = {
   '予約済': '予約確定',
@@ -150,9 +167,11 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   }
   const [paymentStatus, setPaymentStatus] = useState(reservation.paymentStatus);
   const [paymentDate, setPaymentDate] = useState(reservation.paymentDate ?? '');
-  const [paymentMethod, setPaymentMethod] = useState(reservation.paymentMethod ?? '');
+  const [payments, setPayments] = useState<PaymentEntry[]>(parsePayments(reservation.paymentMethod));
   const [paymentSaving, setPaymentSaving] = useState(false);
-  const [showMethodPicker, setShowMethodPicker] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [newPayMethod, setNewPayMethod] = useState('現金');
+  const [newPayAmount, setNewPayAmount] = useState('');
 
   // 予約情報編集
   const [infoEditing, setInfoEditing] = useState(false);
@@ -394,38 +413,50 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
     }
   }
 
-  async function handlePayWithMethod(method: string) {
-    const newDate = new Date().toLocaleDateString('ja-JP');
+  async function addPayment() {
+    const amount = Number(newPayAmount) || 0;
+    if (!newPayMethod || amount <= 0) return;
+    const updated = [...payments, { method: newPayMethod, amount }];
     setPaymentSaving(true);
-    setShowMethodPicker(false);
     try {
+      const newDate = paymentDate || new Date().toLocaleDateString('ja-JP');
       const res = await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus: true, paymentDate: newDate, paymentMethod: method }),
+        body: JSON.stringify({ paymentStatus: true, paymentDate: newDate, paymentMethod: serializePayments(updated) }),
       });
       if (res.ok) {
+        setPayments(updated);
         setPaymentStatus(true);
         setPaymentDate(newDate);
-        setPaymentMethod(method);
+        setNewPayMethod('現金');
+        setNewPayAmount('');
+        setShowPaymentForm(false);
       }
     } finally {
       setPaymentSaving(false);
     }
   }
 
-  async function togglePaymentOff() {
+  async function removePayment(index: number) {
+    const updated = payments.filter((_, i) => i !== index);
     setPaymentSaving(true);
     try {
       const res = await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus: false, paymentDate: '', paymentMethod: '' }),
+        body: JSON.stringify({
+          paymentStatus: updated.length > 0,
+          paymentDate: updated.length > 0 ? paymentDate : '',
+          paymentMethod: updated.length > 0 ? serializePayments(updated) : '',
+        }),
       });
       if (res.ok) {
-        setPaymentStatus(false);
-        setPaymentDate('');
-        setPaymentMethod('');
+        setPayments(updated);
+        if (updated.length === 0) {
+          setPaymentStatus(false);
+          setPaymentDate('');
+        }
       }
     } finally {
       setPaymentSaving(false);
@@ -1253,36 +1284,86 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">支払状況</span>
                 {paymentStatus ? (
-                  <button
-                    onClick={togglePaymentOff}
-                    disabled={paymentSaving}
-                    className="px-3 py-1 rounded-full text-xs font-medium border bg-green-100 text-green-700 border-green-200 hover:bg-green-200 disabled:opacity-50 transition-colors"
-                  >
-                    {paymentSaving ? '...' : `支払済 ${paymentMethod ? `(${paymentMethod})` : ''} ${paymentDate}`}
-                  </button>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                    支払済 {paymentDate}
+                  </span>
                 ) : (
-                  <button
-                    onClick={() => setShowMethodPicker((v) => !v)}
-                    disabled={paymentSaving}
-                    className="px-3 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200 disabled:opacity-50 transition-colors"
-                  >
-                    {paymentSaving ? '...' : '未払い → 支払済にする'}
-                  </button>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
+                    未払い
+                  </span>
                 )}
               </div>
-              {showMethodPicker && !paymentStatus && (
-                <div className="flex gap-2 justify-end">
-                  {['現金', 'カード', '振込'].map((method) => (
-                    <button
-                      key={method}
-                      onClick={() => handlePayWithMethod(method)}
-                      disabled={paymentSaving}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-brand text-brand hover:bg-brand hover:text-white transition-colors disabled:opacity-50"
-                    >
-                      {method}
-                    </button>
+              {/* 支払い明細 */}
+              {payments.length > 0 && (
+                <div className="space-y-1">
+                  {payments.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2">
+                      <span className="text-gray-600">{p.method}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-700 font-medium">¥{p.amount.toLocaleString()}</span>
+                        <button
+                          onClick={() => removePayment(i)}
+                          disabled={paymentSaving}
+                          className="text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                        >
+                          <XMarkIcon className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   ))}
+                  {payments.length > 1 && (
+                    <div className="flex items-center justify-between text-xs px-3 py-1">
+                      <span className="text-gray-400">支払合計</span>
+                      <span className="text-gray-700 font-bold">¥{payments.reduce((s, p) => s + p.amount, 0).toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
+              )}
+              {/* 支払い追加フォーム */}
+              {showPaymentForm ? (
+                <div className="flex gap-2 items-center flex-wrap">
+                  <select
+                    value={newPayMethod}
+                    onChange={(e) => setNewPayMethod(e.target.value)}
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  >
+                    {['現金', 'カード', '振込'].map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">¥</span>
+                    <input
+                      type="number"
+                      value={newPayAmount}
+                      onChange={(e) => setNewPayAmount(e.target.value)}
+                      placeholder="金額"
+                      className="w-24 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                  <button
+                    onClick={addPayment}
+                    disabled={paymentSaving || !newPayAmount}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-brand text-white hover:bg-brand-dark disabled:opacity-50 transition-colors"
+                  >
+                    追加
+                  </button>
+                  <button
+                    onClick={() => setShowPaymentForm(false)}
+                    className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowPaymentForm(true)}
+                  disabled={paymentSaving}
+                  className="flex items-center gap-1 text-xs text-brand hover:text-brand-dark disabled:opacity-50"
+                >
+                  <PlusIcon className="w-3.5 h-3.5" />
+                  支払いを追加
+                </button>
               )}
             </div>
           </section>

@@ -256,8 +256,24 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
   const paymentBreakdown = useMemo(() => {
     const breakdown: Record<string, number> = {};
     for (const r of completedReservations) {
-      const method = r.paymentMethod || '未設定';
-      breakdown[method] = (breakdown[method] ?? 0) + (r.total ?? 0);
+      const pm = r.paymentMethod;
+      let entries: { method: string; amount: number }[] = [];
+      if (pm) {
+        try {
+          const parsed = JSON.parse(pm);
+          if (Array.isArray(parsed)) entries = parsed;
+        } catch {
+          // 旧形式の単純文字列
+        }
+      }
+      if (entries.length > 0) {
+        for (const e of entries) {
+          breakdown[e.method] = (breakdown[e.method] ?? 0) + e.amount;
+        }
+      } else {
+        const method = pm || '未設定';
+        breakdown[method] = (breakdown[method] ?? 0) + (r.total ?? 0);
+      }
     }
     return breakdown;
   }, [completedReservations]);
