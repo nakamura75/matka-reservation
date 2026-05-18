@@ -474,6 +474,16 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
     }
   }
 
+  async function updatePaymentAmount(index: number, amount: number) {
+    const updated = payments.map((p, i) => i === index ? { ...p, amount } : p);
+    setPayments(updated);
+    await fetch(`/api/reservations/${reservation.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentMethod: serializePayments(updated) }),
+    });
+  }
+
   const nextStatus = NEXT_STATUS[status];
 
   return (
@@ -1311,7 +1321,16 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     <div key={i} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2">
                       <span className="text-gray-600">{p.method}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-700 font-medium">¥{p.amount.toLocaleString()}</span>
+                        <span className="text-gray-400">¥</span>
+                        <input
+                          type="number"
+                          defaultValue={p.amount}
+                          onBlur={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            if (val !== p.amount) updatePaymentAmount(i, val);
+                          }}
+                          className="w-20 text-xs text-right text-gray-700 font-medium border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand/30"
+                        />
                         <button
                           onClick={() => removePayment(i)}
                           disabled={paymentSaving}
@@ -1368,7 +1387,13 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 </div>
               ) : (
                 <button
-                  onClick={() => setShowPaymentForm(true)}
+                  onClick={() => {
+                    if (oldFormatMethod && payments.length === 0) {
+                      setPayments([{ method: oldFormatMethod, amount: grandTotal }]);
+                      setOldFormatMethod(null);
+                    }
+                    setShowPaymentForm(true);
+                  }}
                   disabled={paymentSaving}
                   className="flex items-center gap-1 text-xs text-brand hover:text-brand-dark disabled:opacity-50"
                 >
