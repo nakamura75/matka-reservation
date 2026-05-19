@@ -1347,6 +1347,16 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                       <span className="text-gray-700 font-bold">¥{payments.reduce((s, p) => s + p.amount, 0).toLocaleString()}</span>
                     </div>
                   )}
+                  {(() => {
+                    const paidTotal = payments.reduce((s, p) => s + p.amount, 0);
+                    const unpaid = grandTotal - paidTotal;
+                    return unpaid > 0 ? (
+                      <div className="flex items-center justify-between text-xs px-3 py-1.5 bg-red-50 rounded-lg">
+                        <span className="text-red-500 font-medium">未収金</span>
+                        <span className="text-red-600 font-bold">¥{unpaid.toLocaleString()}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               )}
               {/* 支払い追加フォーム */}
