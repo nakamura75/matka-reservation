@@ -102,6 +102,7 @@ export interface Reservation {
   productDiscountRate?: number; // 商品割引率（0 | 5 | 10）
   paymentMethod?: string;  // 支払方法（現金/カード/振込・AC列）
   snsPermission?: string;  // SNS掲載（未/OK/子OK/NG）
+  photoDelivered?: boolean; // 撮影データ送付済み
   checkInTime?: string;    // 入店時間
   checkOutTime?: string;   // 退店時間
   calendarEventId?: string; // GoogleカレンダーイベントID（X列）

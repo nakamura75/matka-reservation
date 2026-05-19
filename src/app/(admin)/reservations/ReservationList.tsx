@@ -23,6 +23,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
+  const [photoUndeliveredOnly, setPhotoUndeliveredOnly] = useState(false);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -42,7 +43,8 @@ export default function ReservationList({ reservations }: { reservations: Reserv
           r.customerName?.includes(search) ||
           r.reservationNumber?.includes(search) ||
           (r.date && r.date.includes(search));
-        return matchesSearch && r.status === activeTab;
+        const matchesPhotoFilter = !photoUndeliveredOnly || !r.photoDelivered;
+        return matchesSearch && r.status === activeTab && matchesPhotoFilter;
       })
       .sort((a, b) => {
         let va: number, vb: number;
@@ -55,7 +57,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
         }
         return sortDir === 'asc' ? va - vb : vb - va;
       });
-  }, [reservations, search, activeTab, sortKey, sortDir]);
+  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -111,6 +113,24 @@ export default function ReservationList({ reservations }: { reservations: Reserv
           </button>
         ))}
       </div>
+
+      {/* 未送付フィルター（完了タブのみ） */}
+      {activeTab === '完了' && (
+        <div className="px-4 py-2 border-b border-cream-dark flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={photoUndeliveredOnly}
+              onChange={(e) => { setPhotoUndeliveredOnly(e.target.checked); setPage(1); }}
+              className="rounded border-gray-300 text-brand focus:ring-brand/30"
+            />
+            撮影データ未送付のみ表示
+          </label>
+          {photoUndeliveredOnly && (
+            <span className="text-xs text-gray-400">（{filtered.length}件）</span>
+          )}
+        </div>
+      )}
 
       {/* テーブル */}
       <div className="overflow-x-auto">
@@ -169,6 +189,11 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                       <span className={`inline-block whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[r.status]}`}>
                         {STATUS_LABEL[r.status]}
                       </span>
+                      {r.status === '完了' && (
+                        <span className={`inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-xs font-medium ${r.photoDelivered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                          {r.photoDelivered ? '送付済' : '未送付'}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
