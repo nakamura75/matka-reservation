@@ -98,6 +98,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [chatLineIdInput, setChatLineIdInput] = useState('');
   const [chatLineIdSaving, setChatLineIdSaving] = useState(false);
   const [resendingLine, setResendingLine] = useState(false);
+  const [photoDelivered, setPhotoDelivered] = useState(reservation.photoDelivered ?? false);
 
   // 削除
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1224,6 +1225,34 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
               </div>
             </div>
           </section>
+
+          {/* データ送付（完了時のみ表示） */}
+          {status === '完了' && (
+            <section className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">データ送付</h2>
+                <button
+                  onClick={async () => {
+                    const next = !photoDelivered;
+                    setPhotoDelivered(next);
+                    await fetch(`/api/reservations/${reservation.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ photoDelivered: next }),
+                    });
+                    router.refresh();
+                  }}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                    photoDelivered
+                      ? 'bg-green-500 text-white border-green-500'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  {photoDelivered ? '送付済' : '未送付'}
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* ④ 料金サマリー（税抜・税込の両方表示） */}
           <section className="bg-white rounded-xl border border-gray-200 p-6">
