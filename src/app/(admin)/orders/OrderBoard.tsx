@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { OrderItem } from '@/types';
 import { ORDER_ITEM_STATUSES } from '@/lib/constants';
@@ -10,7 +11,10 @@ type EnrichedItem = OrderItem & {
   subtotal: number;
   customerName: string;
   orderDate: string;
+  deadline: string;
 };
+
+type SortKey = 'orderDate' | 'deadline';
 
 const STATUS_STYLES: Record<OrderItem['status'], { col: string; badge: string; dot: string }> = {
   '受注':       { col: 'bg-red-50 border-red-200',      badge: 'bg-red-100 text-red-700',      dot: 'bg-red-400' },
@@ -22,49 +26,97 @@ const STATUS_STYLES: Record<OrderItem['status'], { col: string; badge: string; d
 };
 
 export default function OrderBoard({ items }: { items: EnrichedItem[] }) {
-  return (
-    <div className="flex gap-4 overflow-x-auto pb-4 min-h-[60vh]">
-      {ORDER_ITEM_STATUSES.map((status) => {
-        const colItems = items.filter((i) => i.status === status);
-        const style = STATUS_STYLES[status];
-        return (
-          <div key={status} className="flex-shrink-0 w-64">
-            {/* 列ヘッダー */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border border-b-0 ${style.col}`}>
-              <span className={`w-2 h-2 rounded-full ${style.dot}`} />
-              <span className="text-sm font-semibold text-gray-700">{status}</span>
-              <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-medium ${style.badge}`}>
-                {colItems.length}
-              </span>
-            </div>
+  const [sortKey, setSortKey] = useState<SortKey>('orderDate');
 
-            {/* カード一覧 */}
-            <div className={`border rounded-b-xl ${style.col} p-2 space-y-2 min-h-[200px]`}>
-              {colItems.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-6">なし</p>
-              ) : (
-                colItems.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/orders/${item.orderId}`}
-                    className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-brand/40 hover:shadow-sm transition-all"
-                  >
-                    <p className="text-sm font-medium text-gray-900 truncate">{item.productName}</p>
-                    <p className="text-sm text-gray-500 mt-0.5 truncate">{item.customerName}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-xs text-gray-400">{item.orderDate}</span>
-                      <span className="text-xs text-gray-500">×{item.quantity}</span>
-                    </div>
-                    {item.trackingNumber && (
-                      <p className="text-xs text-gray-400 mt-1 truncate">追跡: {item.trackingNumber}</p>
-                    )}
-                  </Link>
-                ))
-              )}
+  const sortedItems = useMemo(() => {
+    const arr = [...items];
+    arr.sort((a, b) => {
+      if (sortKey === 'deadline') {
+        // 納期未設定は末尾、設定済みは納期の早い順
+        const va = a.deadline || '';
+        const vb = b.deadline || '';
+        if (!va && !vb) return 0;
+        if (!va) return 1;
+        if (!vb) return -1;
+        return va.localeCompare(vb);
+      }
+      // 注文日の新しい順
+      return (b.orderDate || '').localeCompare(a.orderDate || '');
+    });
+    return arr;
+  }, [items, sortKey]);
+
+  return (
+    <div>
+      {/* 並び替え */}
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-gray-500">並び替え:</span>
+        <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setSortKey('orderDate')}
+            className={`px-3 py-1.5 text-sm transition-colors ${
+              sortKey === 'orderDate' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            注文日順
+          </button>
+          <button
+            onClick={() => setSortKey('deadline')}
+            className={`px-3 py-1.5 text-sm transition-colors ${
+              sortKey === 'deadline' ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            納期順
+          </button>
+        </div>
+      </div>
+
+      <div className="flex gap-4 overflow-x-auto pb-4 min-h-[60vh]">
+        {ORDER_ITEM_STATUSES.map((status) => {
+          const colItems = sortedItems.filter((i) => i.status === status);
+          const style = STATUS_STYLES[status];
+          return (
+            <div key={status} className="flex-shrink-0 w-64">
+              {/* 列ヘッダー */}
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl border border-b-0 ${style.col}`}>
+                <span className={`w-2 h-2 rounded-full ${style.dot}`} />
+                <span className="text-sm font-semibold text-gray-700">{status}</span>
+                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full font-medium ${style.badge}`}>
+                  {colItems.length}
+                </span>
+              </div>
+
+              {/* カード一覧 */}
+              <div className={`border rounded-b-xl ${style.col} p-2 space-y-2 min-h-[200px]`}>
+                {colItems.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-6">なし</p>
+                ) : (
+                  colItems.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/orders/${item.orderId}`}
+                      className="block bg-white rounded-lg border border-gray-200 p-3 hover:border-brand/40 hover:shadow-sm transition-all"
+                    >
+                      <p className="text-sm font-medium text-gray-900 truncate">{item.productName}</p>
+                      <p className="text-sm text-gray-500 mt-0.5 truncate">{item.customerName}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-400">{item.orderDate}</span>
+                        <span className="text-xs text-gray-500">×{item.quantity}</span>
+                      </div>
+                      <p className={`text-xs mt-1 ${item.deadline ? 'text-gray-500' : 'text-gray-300'}`}>
+                        納期: {item.deadline || '未設定'}
+                      </p>
+                      {item.trackingNumber && (
+                        <p className="text-xs text-gray-400 mt-1 truncate">追跡: {item.trackingNumber}</p>
+                      )}
+                    </Link>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -29,6 +29,7 @@ export default async function OrdersPage() {
       subtotal: (product?.price ?? 0) * item.quantity,
       customerName: order ? (customerMap[order.customerId] ?? order.customerId) : '',
       orderDate: order?.orderDate ?? '',
+      deadline: order?.deadline ?? '',
     };
   });
 
