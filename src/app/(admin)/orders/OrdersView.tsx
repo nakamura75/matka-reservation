@@ -13,6 +13,7 @@ type EnrichedItem = OrderItem & {
   subtotal: number;
   customerName: string;
   orderDate: string;
+  deadline: string;
 };
 
 interface Props {
