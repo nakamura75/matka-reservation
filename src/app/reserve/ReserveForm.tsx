@@ -29,6 +29,55 @@ const CANCEL_POLICY = `※本予約確定後のキャンセルにつきまして
 撮影時間やお日にちの調整をお願いする場合がございます。`;
 
 // ============================================================
+// バリデーション
+// ============================================================
+// 名前/住所: 全角または半角の意味のある文字列を想定。trim後の長さで判定。
+function validateName(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null; // 空欄は別途必須チェックで扱う
+  if (t.length < 2) return '2文字以上で入力してください';
+  return null;
+}
+function validateFurigana(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  if (t.length < 2) return '2文字以上で入力してください';
+  // ひらがな/カタカナ（半角・全角）、長音、スペースのみ許容
+  if (!/^[぀-ゟ゠-ヿ｡-ﾟ ー　\s]+$/.test(t)) {
+    return 'カタカナまたはひらがなで入力してください';
+  }
+  return null;
+}
+function validatePhone(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  // 数字とハイフン（半角/全角）以外があればNG
+  if (!/^[\d\-－ー\s]+$/.test(t)) return '半角数字とハイフンで入力してください';
+  const digits = t.replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 11) return '電話番号は10〜11桁で入力してください';
+  return null;
+}
+function validateEmail(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null; // 任意項目
+  // シンプルなメール形式: 1文字以上@1文字以上.2文字以上
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t)) return 'メールアドレスの形式が正しくありません';
+  return null;
+}
+function validateZip(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  if (!/^\d{3}-?\d{4}$/.test(t)) return '郵便番号は7桁（例: 123-4567）で入力してください';
+  return null;
+}
+function validateAddress(v: string): string | null {
+  const t = v.trim();
+  if (!t) return null;
+  if (t.length < 5) return '住所を正しく入力してください';
+  return null;
+}
+
+// ============================================================
 // ステップインジケーター
 // ============================================================
 const STEPS = ['シーン・日時', 'お客様情報', '来店人数', 'オプション', '確認・送信'];
@@ -547,17 +596,26 @@ export default function ReserveForm() {
   // STEP 2: お客様情報
   // ============================================================
   function renderStep1() {
+    const fields: {
+      label: string;
+      value: string;
+      onChange: (v: string) => void;
+      type: string;
+      placeholder: string;
+      error: string | null;
+    }[] = [
+      { label: 'お名前 *',       value: name,     onChange: setName,     type: 'text',  placeholder: '山田 花子',           error: validateName(name) },
+      { label: 'フリガナ *',     value: furigana, onChange: setFurigana, type: 'text',  placeholder: 'ヤマダ ハナコ',       error: validateFurigana(furigana) },
+      { label: '電話番号 *',     value: phone,    onChange: setPhone,    type: 'tel',   placeholder: '090-0000-0000',       error: validatePhone(phone) },
+      { label: 'メールアドレス', value: email,    onChange: setEmail,    type: 'email', placeholder: 'example@email.com',   error: validateEmail(email) },
+      { label: '郵便番号 *',     value: zip,      onChange: setZip,      type: 'text',  placeholder: '123-4567',            error: validateZip(zip) },
+      { label: '住所 *',         value: address,  onChange: setAddress,  type: 'text',  placeholder: '東京都渋谷区...',     error: validateAddress(address) },
+    ];
+
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">お客様情報</h2>
-        {[
-          { label: 'お名前 *', value: name, onChange: setName, type: 'text', placeholder: '山田 花子' },
-          { label: 'フリガナ *', value: furigana, onChange: setFurigana, type: 'text', placeholder: 'ヤマダ ハナコ' },
-          { label: '電話番号 *', value: phone, onChange: setPhone, type: 'tel', placeholder: '090-0000-0000' },
-          { label: 'メールアドレス', value: email, onChange: setEmail, type: 'email', placeholder: 'example@email.com' },
-          { label: '郵便番号 *', value: zip, onChange: setZip, type: 'text', placeholder: '123-4567' },
-          { label: '住所 *', value: address, onChange: setAddress, type: 'text', placeholder: '東京都渋谷区...' },
-        ].map(({ label, value, onChange, type, placeholder }) => (
+        {fields.map(({ label, value, onChange, type, placeholder, error }) => (
           <div key={label}>
             <label className="block text-sm text-gray-600 mb-1">{label}</label>
             <input
@@ -565,8 +623,11 @@ export default function ReserveForm() {
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
-              className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
+              className={`w-full text-sm border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand ${
+                error ? 'border-red-400 bg-red-50/30' : 'border-gray-400'
+              }`}
             />
+            {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
           </div>
         ))}
       </div>
@@ -940,7 +1001,17 @@ export default function ReserveForm() {
         if (!scene || !selectedDate || !selectedTime) return false;
         if (scene === 'その他' && !otherSceneNote.trim()) return false; // ① その他は入力必須
         return true;
-      case 1: return !!(name && furigana && phone && zip && address);
+      case 1: {
+        // 必須項目すべて入力 + 形式エラーがないこと（メールは任意項目だが入力時は形式チェック）
+        if (!(name && furigana && phone && zip && address)) return false;
+        if (validateName(name)) return false;
+        if (validateFurigana(furigana)) return false;
+        if (validatePhone(phone)) return false;
+        if (validateEmail(email)) return false;
+        if (validateZip(zip)) return false;
+        if (validateAddress(address)) return false;
+        return true;
+      }
       case 2: {
         if (!childrenCount || !adultCount) return false;
         const n = parseInt(childrenCount) || 0;
