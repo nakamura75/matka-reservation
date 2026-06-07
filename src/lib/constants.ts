@@ -16,6 +16,13 @@ export const ALL_TIME_SLOTS = ['9:00', '12:00', '15:00'] as const;
 // 七五三は9:00不可
 export const SHICHIGOSAN_TIME_SLOTS = ['12:00', '15:00'] as const;
 
+// 見学予約は30分刻みで自由に選択可能（9:00〜17:00）
+export const VISIT_TIME_SLOTS = [
+  '9:00', '9:30', '10:00', '10:30', '11:00', '11:30',
+  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+  '15:00', '15:30', '16:00', '16:30', '17:00',
+] as const;
+
 // 撮影シーン
 export const SHOOTING_SCENES = ['七五三', 'マタニティ', 'バースデー', 'ベビー', 'その他'] as const;
 
