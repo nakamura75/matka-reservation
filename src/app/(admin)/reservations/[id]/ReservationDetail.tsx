@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option, Holiday } from '@/types';
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
-import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES } from '@/lib/constants';
+import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrderItem = { productName: string; price: number; quantity: number };
@@ -602,7 +602,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     onChange={(e) => setEditTimeSlot(e.target.value as Reservation['timeSlot'])}
                     className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                   >
-                    {(['9:00', '12:00', '15:00'] as const).map((t) => (
+                    {(isVisit ? VISIT_TIME_SLOTS : ALL_TIME_SLOTS).map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
@@ -1694,7 +1694,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     onChange={(e) => setEditTimeSlot(e.target.value as Reservation['timeSlot'])}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                   >
-                    {(['9:00', '12:00', '15:00'] as const).map((t) => (
+                    {(isVisit ? VISIT_TIME_SLOTS : ALL_TIME_SLOTS).map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>

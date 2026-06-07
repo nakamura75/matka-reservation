@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Plan, Option, Customer } from '@/types';
-import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
+import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, VISIT_TIME_SLOTS, SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
 import { isWeekend, formatCurrency } from '@/lib/utils';
 
 interface Props {
@@ -326,7 +326,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
                 disabled={isDateBlocked}
               >
                 <option value="">選択...</option>
-                {['9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'].map((t) => {
+                {VISIT_TIME_SLOTS.map((t) => {
                   const slotBlocked = dateBlockedSlots.includes(t);
                   return (
                     <option key={t} value={t} disabled={slotBlocked}>
