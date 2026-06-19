@@ -34,6 +34,7 @@ import {
   createReservationOption,
   createCustomer,
   checkSlotConflict,
+  checkVisitSlotConflict,
   getPlans,
   getOptions,
   getCustomers,
@@ -125,6 +126,12 @@ export async function POST(req: NextRequest) {
       const conflict = await checkSlotConflict(body.date, body.timeSlot);
       if (conflict) {
         return NextResponse.json({ error: 'この日時はすでに予約が入っています。別の日時をお選びください。' }, { status: 409 });
+      }
+    } else if (body.date && body.timeSlot) {
+      // 見学枠の重複防止: 見学1件=1時間占有。前後60分に既存の見学があれば不可（撮影枠とは独立）
+      const visitConflict = await checkVisitSlotConflict(body.date, body.timeSlot);
+      if (visitConflict) {
+        return NextResponse.json({ error: 'この時間帯はすでに見学予約が入っています（前後1時間は重複できません）。別の時間をお選びください。' }, { status: 409 });
       }
     }
 

@@ -238,7 +238,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
         setInfoEditing(false);
         router.refresh();
       } else {
-        alert('保存に失敗しました');
+        const err = await res.json().catch(() => ({}));
+        alert(err.error ?? '保存に失敗しました');
       }
     } finally {
       setInfoSaving(false);

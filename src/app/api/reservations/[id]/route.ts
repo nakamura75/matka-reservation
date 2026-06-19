@@ -7,6 +7,7 @@ import {
   deleteReservation,
   getPlans,
   getOptions,
+  checkVisitSlotConflict,
 } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage } from '@/lib/line';
 import type { ReservationStatus } from '@/types';
@@ -112,6 +113,19 @@ export async function PATCH(
   if (body.planId !== undefined) updates.planId = body.planId;
   if (body.snsPermission !== undefined) updates.snsPermission = body.snsPermission;
   if (body.photoDelivered !== undefined) updates.photoDelivered = body.photoDelivered;
+
+  // 見学の日時を変更する場合、他の見学との重複を防止（見学1件=1時間占有・撮影枠とは独立）
+  const effectiveStatus = (body.status ?? reservation.status) as ReservationStatus;
+  if (effectiveStatus === '見学' && (body.date !== undefined || body.timeSlot !== undefined)) {
+    const effectiveDate = body.date ?? reservation.date;
+    const effectiveTime = body.timeSlot ?? reservation.timeSlot;
+    if (effectiveDate && effectiveTime) {
+      const visitConflict = await checkVisitSlotConflict(effectiveDate, effectiveTime, reservation.id);
+      if (visitConflict) {
+        return NextResponse.json({ error: 'この時間帯はすでに見学予約が入っています（前後1時間は重複できません）。別の時間をお選びください。' }, { status: 409 });
+      }
+    }
+  }
 
   if (Object.keys(updates).length > 0) {
     try {

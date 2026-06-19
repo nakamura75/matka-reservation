@@ -1,4 +1,5 @@
 import { createAdminClient } from './supabase/admin';
+import { VISIT_DURATION_MIN } from './constants';
 import type {
   Customer,
   Plan,
@@ -353,6 +354,40 @@ export async function getReservationById(id: string): Promise<Reservation | null
     throw error;
   }
   return dbToReservation(data);
+}
+
+/** "H:MM" / "HH:MM" を分に変換 */
+function hhmmToMin(t: string): number {
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** 指定日の有効な見学（status=見学、キャンセルは含まない）の開始時刻一覧を返す */
+export async function getActiveVisitTimes(date: string, excludeId?: string): Promise<string[]> {
+  let query = supabase()
+    .from('reservations')
+    .select('id, time_slot')
+    .eq('date', date)
+    .eq('status', '見学');
+  if (excludeId) query = query.neq('id', excludeId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? [])
+    .map((r) => (r.time_slot as string | null) ?? '')
+    .filter((t) => t.length > 0);
+}
+
+/**
+ * 見学枠の重複チェック（見学どうしのみ。撮影枠とは独立）。
+ * 見学1件は VISIT_DURATION_MIN（=1時間）スタッフを占有するため、
+ * 既存の見学と開始時刻が60分未満しか離れていなければ重複(true)。
+ * キャンセルされた見学は status が「見学」でなくなるため自動的に空き扱いになる。
+ */
+export async function checkVisitSlotConflict(date: string, startTime: string, excludeId?: string): Promise<boolean> {
+  if (!date || !startTime) return false;
+  const times = await getActiveVisitTimes(date, excludeId);
+  const target = hhmmToMin(startTime);
+  return times.some((t) => Math.abs(hhmmToMin(t) - target) < VISIT_DURATION_MIN);
 }
 
 /** 同日同時間に既存予約（キャンセル・見学以外）があるか確認 */

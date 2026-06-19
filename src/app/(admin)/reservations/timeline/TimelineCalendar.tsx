@@ -260,7 +260,7 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
 
       {/* 凡例 */}
       <div className="flex flex-wrap gap-4 px-6 py-2 border-b border-gray-50 text-xs text-gray-500">
-        {Object.entries(STATUS_DOT).map(([status, dot]) => (
+        {Object.entries(STATUS_DOT).filter(([status]) => status !== 'キャンセル').map(([status, dot]) => (
           <span key={status} className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
             {STATUS_LABEL[status as Reservation['status']]}

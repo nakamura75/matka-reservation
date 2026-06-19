@@ -23,6 +23,10 @@ export const VISIT_TIME_SLOTS = [
   '15:00', '15:30', '16:00', '16:30', '17:00',
 ] as const;
 
+// 見学1件が占有する時間（分）。同一スタッフ前提のため、前後この範囲には他の見学を入れられない
+// （撮影スタッフとは別人のため、撮影枠は見学の占有判定に含めない）
+export const VISIT_DURATION_MIN = 60;
+
 // 撮影シーン
 export const SHOOTING_SCENES = ['七五三', 'マタニティ', 'バースデー', 'ベビー', 'その他'] as const;
 

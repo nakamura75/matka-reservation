@@ -20,10 +20,13 @@ export default async function TimelinePage() {
   ]);
 
   const customerMap = Object.fromEntries(customers.map((c) => [c.id, c.name]));
-  const enriched = reservations.map((r) => ({
-    ...r,
-    customerName: customerMap[r.customerId] ?? r.customerId,
-  }));
+  // キャンセルはタイムラインに表示しない（枠を解放する）。データ自体は削除しない
+  const enriched = reservations
+    .filter((r) => r.status !== 'キャンセル')
+    .map((r) => ({
+      ...r,
+      customerName: customerMap[r.customerId] ?? r.customerId,
+    }));
 
   // 終日ブロック日: holidays(closed/temporary) + blocked_slots(time_slot=null)
   const blockedDates = new Map<string, string>();
