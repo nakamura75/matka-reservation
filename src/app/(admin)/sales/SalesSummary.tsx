@@ -48,7 +48,28 @@ function taxExcluded(amount: number): number {
 
 type TaxMode = 'included' | 'excluded';
 
-export default function SalesSummary({ reservations, staff, orders, holidays, reservationOptions, optionPriceMap }: Props) {
+export default function SalesSummary({ reservations: allReservations, staff, orders: allOrders, holidays, reservationOptions, optionPriceMap }: Props) {
+  const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
+  const isLoc = shootTab === 'location';
+
+  // 撮影区分で絞り込み（以降の集計はこの絞り込み済みデータに対して行う）
+  const shootTypeByRes = useMemo(() => {
+    const m: Record<string, 'studio' | 'location'> = {};
+    for (const r of allReservations) m[r.id] = r.shootType === 'location' ? 'location' : 'studio';
+    return m;
+  }, [allReservations]);
+  const reservations = useMemo(
+    () => allReservations.filter((r) => (isLoc ? r.shootType === 'location' : r.shootType !== 'location')),
+    [allReservations, isLoc],
+  );
+  const orders = useMemo(
+    () => allOrders.filter((o) => {
+      const st = (o.reservationId && shootTypeByRes[o.reservationId]) ? shootTypeByRes[o.reservationId] : 'studio';
+      return isLoc ? st === 'location' : st !== 'location';
+    }),
+    [allOrders, shootTypeByRes, isLoc],
+  );
+
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const router = useRouter();
@@ -282,6 +303,24 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
 
   return (
     <div className="space-y-4">
+      {/* スタジオ / ロケ 切替 */}
+      <div className={`flex rounded-xl border overflow-hidden ${isLoc ? 'border-emerald-200' : 'border-gray-200'}`}>
+        {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
+          const active = shootTab === key;
+          const locTab = key === 'location';
+          return (
+            <button
+              key={key}
+              onClick={() => setShootTab(key)}
+              className={`flex-1 px-5 py-2.5 text-sm font-bold transition-colors
+                ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 月選択 & 税切り替え */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 flex-wrap">
         <label className="text-sm text-gray-600 font-medium">対象月</label>

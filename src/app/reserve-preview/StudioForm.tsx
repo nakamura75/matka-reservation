@@ -303,36 +303,52 @@ export default function StudioForm() {
     if (!agreed) { setError('キャンセルポリシーへの同意が必要です'); return; }
     setSubmitting(true);
     setError('');
-    // ============================================================
-    // 【プレビュー専用】本番DBには一切保存しません。
-    // 送信内容はコンソールに出力するだけで、/api/reservations は呼びません。
-    // ============================================================
+    // 実際に /api/reservations へ送信して保存する。
+    // ローカルは開発DB(.env.local)に接続しているため、保存先は開発DB（本番には影響しない）。
     try {
-      const previewPayload = {
-        scene,
-        otherSceneNote: scene === 'その他' ? otherSceneNote : '',
-        planId,
-        date: selectedDate,
-        timeSlot: selectedTime,
-        customerName: name,
-        furigana,
-        zipCode: zip,
-        address,
-        phone,
-        email,
-        childrenCount: Number(childrenCount) || 0,
-        adultCount,
-        childrenDetails,
-        selectedOptions,
-        phoneCallPreference,
-        phoneCallTopics,
-        note,
-      };
-      console.log('[reserve-preview] 送信内容（プレビューのため保存しません）:', previewPayload);
-      // 送信中の見た目を再現するための擬似待機
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      setReservationNumber('PREVIEW-0000（プレビュー・保存なし）');
-      setSubmitted(true);
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scene,
+          otherSceneNote: scene === 'その他' ? otherSceneNote : '',
+          planId,
+          date: selectedDate,
+          timeSlot: selectedTime,
+          customerName: name,
+          furigana,
+          zipCode: zip,
+          address,
+          phone,
+          email,
+          peopleCount: `お子様${childrenCount}名・大人の方${adultCount === '5以上' ? '5名以上' : adultCount + '名'}`,
+          childrenCount: Number(childrenCount) || 0,
+          adultCount,
+          childrenDetail: childrenDetails.length > 0
+            ? childrenDetails.map((c, i) =>
+                `${i + 1}人目: ${c.name}（${c.furigana}）（${c.gender}）${c.birthday} / ${c.clothingSize}`
+              ).join('\n')
+            : '',
+          selectedOptions,
+          phoneCallPreference: phoneCallPreference === '希望する' && phoneCallTopics.length > 0
+            ? `希望する（${phoneCallTopics.join('、')}）`
+            : phoneCallPreference,
+          note,
+          cancelPolicyAgreed: true,
+          lineUserId,
+          lineName,
+          _hp: honeypot,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReservationNumber(data.data.reservationNumber as string);
+        setSubmitted(true);
+      } else {
+        setError(data.error ?? '送信に失敗しました');
+      }
+    } catch {
+      setError('ネットワークエラーが発生しました');
     } finally {
       setSubmitting(false);
     }

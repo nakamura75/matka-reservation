@@ -7,7 +7,9 @@ import type { Reservation, ReservationStatus } from '@/types';
 import { formatDate, stripSeconds } from '@/lib/utils';
 import { STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
 
-const TAB_ORDER: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
+// スタジオは従来通り全ステータス、ロケは 仮予約/予約確定/完了/キャンセル のみ（見学・保留なし）
+const STUDIO_TABS: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
+const LOCATION_TABS: ReservationStatus[] = ['予約済', '予約確定', '完了', 'キャンセル'];
 
 // 「完了」「キャンセル」のカウントは非表示
 const TABS_WITH_COUNT = new Set<ReservationStatus>(['予約済', '予約確定', '見学', '保留']);
@@ -19,11 +21,22 @@ type SortDir = 'asc' | 'desc';
 
 export default function ReservationList({ reservations }: { reservations: Reservation[] }) {
   const [search, setSearch] = useState('');
+  const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
   const [activeTab, setActiveTab] = useState<ReservationStatus>('予約済');
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [photoUndeliveredOnly, setPhotoUndeliveredOnly] = useState(false);
+
+  const isLoc = shootTab === 'location';
+  const TAB_ORDER = isLoc ? LOCATION_TABS : STUDIO_TABS;
+
+  function switchShoot(t: 'studio' | 'location') {
+    setShootTab(t);
+    setActiveTab('予約済');
+    setPhotoUndeliveredOnly(false);
+    setPage(1);
+  }
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -44,7 +57,8 @@ export default function ReservationList({ reservations }: { reservations: Reserv
           r.reservationNumber?.includes(search) ||
           (r.date && r.date.includes(search));
         const matchesPhotoFilter = !photoUndeliveredOnly || !r.photoDelivered;
-        return matchesSearch && r.status === activeTab && matchesPhotoFilter;
+        const matchesShoot = isLoc ? r.shootType === 'location' : r.shootType !== 'location';
+        return matchesSearch && matchesShoot && r.status === activeTab && matchesPhotoFilter;
       })
       .sort((a, b) => {
         let va: number, vb: number;
@@ -57,7 +71,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
         }
         return sortDir === 'asc' ? va - vb : vb - va;
       });
-  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly]);
+  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly, isLoc]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -66,10 +80,12 @@ export default function ReservationList({ reservations }: { reservations: Reserv
   const countByStatus = useMemo(() => {
     const counts: Partial<Record<ReservationStatus, number>> = {};
     for (const r of reservations) {
+      const inShoot = isLoc ? r.shootType === 'location' : r.shootType !== 'location';
+      if (!inShoot) continue;
       counts[r.status] = (counts[r.status] ?? 0) + 1;
     }
     return counts;
-  }, [reservations]);
+  }, [reservations, isLoc]);
 
   function SortIcon({ column }: { column: SortKey }) {
     if (sortKey !== column) return <ChevronUpIcon className="w-3 h-3 text-gray-300 ml-1 inline" />;
@@ -79,7 +95,27 @@ export default function ReservationList({ reservations }: { reservations: Reserv
   }
 
   return (
-    <div className="bg-white rounded-xl border border-cream-dark overflow-hidden">
+    <div className={`bg-white rounded-xl border overflow-hidden ${isLoc ? 'border-emerald-200' : 'border-cream-dark'}`}>
+      {/* スタジオ / ロケ 切替 */}
+      <div className="flex border-b border-cream-dark">
+        {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
+          const active = shootTab === key;
+          const locTab = key === 'location';
+          return (
+            <button
+              key={key}
+              onClick={() => switchShoot(key)}
+              className={`flex-1 px-5 py-3 text-sm font-bold transition-colors
+                ${active
+                  ? locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white'
+                  : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 検索バー */}
       <div className="p-4 border-b border-cream-dark">
         <input
@@ -99,7 +135,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
             onClick={() => { setActiveTab(status); setPage(1); }}
             className={`flex-1 min-w-max px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors
               ${activeTab === status
-                ? 'border-b-2 border-brand text-brand bg-cream/40'
+                ? isLoc ? 'border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50' : 'border-b-2 border-brand text-brand bg-cream/40'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
           >

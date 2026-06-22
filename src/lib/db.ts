@@ -88,6 +88,7 @@ function dbToReservation(r: Record<string, unknown>): Reservation {
     adultCount: r.adult_count as string | undefined,
     familyNote: r.family_note as string | undefined,
     status: effectiveStatus as Reservation['status'],
+    shootType: ((r.shoot_type as string) ?? 'studio') as 'studio' | 'location',
     referencePhoto: r.reference_photo as string | undefined,
     note: r.note as string | undefined,
     createdAt: r.created_at as string | undefined,
@@ -127,6 +128,7 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
   if (r.adultCount !== undefined) m.adult_count = r.adultCount;
   if (r.familyNote !== undefined) m.family_note = r.familyNote;
   if (r.status !== undefined) m.status = r.status;
+  if (r.shootType !== undefined) m.shoot_type = r.shootType;
   if (r.referencePhoto !== undefined) m.reference_photo = r.referencePhoto;
   if (r.note !== undefined) m.note = r.note;
   if (r.createdAt !== undefined) m.created_at = r.createdAt;

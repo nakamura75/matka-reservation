@@ -6,7 +6,7 @@ import OrderList from './OrderList';
 import OrderBoard from './OrderBoard';
 import type { Order, OrderItem } from '@/types';
 
-type EnrichedOrder = Order & { customerName: string };
+type EnrichedOrder = Order & { customerName: string; shootType: 'studio' | 'location' };
 type EnrichedItem = OrderItem & {
   productName: string;
   unitPrice: number;
@@ -14,6 +14,7 @@ type EnrichedItem = OrderItem & {
   customerName: string;
   orderDate: string;
   deadline: string;
+  shootType: 'studio' | 'location';
 };
 
 interface Props {
@@ -23,9 +24,32 @@ interface Props {
 
 export default function OrdersView({ orders, boardItems }: Props) {
   const [view, setView] = useState<'list' | 'board'>('board');
+  const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
+  const isLoc = shootTab === 'location';
+
+  const filteredOrders = orders.filter((o) => (isLoc ? o.shootType === 'location' : o.shootType !== 'location'));
+  const filteredBoardItems = boardItems.filter((i) => (isLoc ? i.shootType === 'location' : i.shootType !== 'location'));
 
   return (
     <div>
+      {/* スタジオ / ロケ 切替 */}
+      <div className={`flex rounded-xl border overflow-hidden mb-4 ${isLoc ? 'border-emerald-200' : 'border-gray-200'}`}>
+        {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
+          const active = shootTab === key;
+          const locTab = key === 'location';
+          return (
+            <button
+              key={key}
+              onClick={() => setShootTab(key)}
+              className={`flex-1 px-5 py-2.5 text-sm font-bold transition-colors
+                ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* 表示切り替え */}
       <div className="flex justify-end mb-4">
         <div className="flex border border-gray-200 rounded-lg overflow-hidden">
@@ -51,9 +75,9 @@ export default function OrdersView({ orders, boardItems }: Props) {
       </div>
 
       {view === 'list' ? (
-        <OrderList orders={orders} />
+        <OrderList orders={filteredOrders} />
       ) : (
-        <OrderBoard items={boardItems} />
+        <OrderBoard items={filteredBoardItems} />
       )}
     </div>
   );

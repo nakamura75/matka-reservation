@@ -85,6 +85,7 @@ export interface Reservation {
   adultCount?: string;     // 大人人数
   familyNote?: string;     // 構成メモ
   status: ReservationStatus; // ステータス
+  shootType?: 'studio' | 'location'; // 撮影区分（スタジオ / ロケーション）。既存はstudio
   referencePhoto?: string; // 参考写真
   note?: string;           // 備考（スタッフメモ）
   customerNote?: string;   // お客様備考（フォーム入力）

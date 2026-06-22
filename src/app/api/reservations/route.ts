@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'リクエストが多すぎます。しばらく待ってから再度お試しください。' }, { status: 429 });
     }
 
-    const body: ReservationFormData & { isVisit?: boolean; existingCustomerId?: string; _hp?: string } = await req.json();
+    const body: ReservationFormData & { isVisit?: boolean; shootType?: string; existingCustomerId?: string; _hp?: string } = await req.json();
 
     // Honeypotチェック: 値が入っていたらBotと判定
     if (body._hp) {
@@ -87,6 +87,10 @@ export async function POST(req: NextRequest) {
     }
 
     const isVisit = body.isVisit === true;
+    const shootType: 'studio' | 'location' = body.shootType === 'location' ? 'location' : 'studio';
+    const isLocation = shootType === 'location';
+    // ロケ本番はプラン未確定で受け付ける（プラン必須はスタジオ撮影のみ）
+    const needsPlan = !isVisit && !isLocation;
 
     // --- 入力バリデーション（見学以外） ---
     if (!isVisit) {
@@ -96,7 +100,7 @@ export async function POST(req: NextRequest) {
       if (!body.timeSlot) {
         return NextResponse.json({ error: '時間帯が指定されていません' }, { status: 400 });
       }
-      if (!body.planId || !body.customerName || !body.phone) {
+      if ((needsPlan && !body.planId) || !body.customerName || !body.phone) {
         return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
       }
       // 日付が過去でないか確認
@@ -114,20 +118,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // プラン情報取得（見学の場合はスキップ）
+    // プラン情報取得（見学・ロケ本番はスキップ）
     const plans = await getPlans();
-    const plan = isVisit ? null : plans.find((p) => p.id === body.planId);
-    if (!isVisit && !plan) {
+    const plan = needsPlan ? plans.find((p) => p.id === body.planId) : null;
+    if (needsPlan && !plan) {
       return NextResponse.json({ error: 'プランが見つかりません' }, { status: 400 });
     }
 
     // --- 二重予約防止: 予約作成直前にスロットの空きを再確認 ---
-    if (!isVisit) {
+    if (!isVisit && !isLocation) {
+      // スタジオ撮影の重複チェック（ロケ本番は会場・スタッフが別のため対象外）
       const conflict = await checkSlotConflict(body.date, body.timeSlot);
       if (conflict) {
         return NextResponse.json({ error: 'この日時はすでに予約が入っています。別の日時をお選びください。' }, { status: 409 });
       }
-    } else if (body.date && body.timeSlot) {
+    } else if (isVisit && body.date && body.timeSlot) {
       // 見学枠の重複防止: 見学1件=1時間占有。前後60分に既存の見学があれば不可（撮影枠とは独立）
       const visitConflict = await checkVisitSlotConflict(body.date, body.timeSlot);
       if (visitConflict) {
@@ -174,6 +179,7 @@ export async function POST(req: NextRequest) {
       adultCount: body.adultCount,
       familyNote: body.childrenDetail,
       status: (isVisit ? '見学' : '予約済') as import('@/types').ReservationStatus,
+      shootType,
       customerNote: body.note,
       otherSceneNote: body.otherSceneNote,
       createdAt: new Date().toISOString(),
@@ -195,8 +201,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（見学はスキップ）
-    if (!isVisit && body.lineUserId) {
+    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（見学・ロケ本番はスキップ）
+    if (!isVisit && !isLocation && body.lineUserId) {
       const allOptions = await getOptions().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; });
       const optionsWithInfo = body.selectedOptions.map((sel) => {
         const opt = allOptions.find((o) => o.id === sel.optionId);
