@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
 import OrderList from './OrderList';
 import OrderBoard from './OrderBoard';
 import type { Order, OrderItem } from '@/types';
+import { useShootBg } from '@/components/layout/ShootBgContext';
 
 type EnrichedOrder = Order & { customerName: string; shootType: 'studio' | 'location' };
 type EnrichedItem = OrderItem & {
@@ -26,28 +27,39 @@ export default function OrdersView({ orders, boardItems }: Props) {
   const [view, setView] = useState<'list' | 'board'>('board');
   const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
   const isLoc = shootTab === 'location';
+  const setMainBg = useShootBg();
+  useEffect(() => {
+    setMainBg(isLoc ? 'bg-emerald-50/60' : null);
+    return () => setMainBg(null);
+  }, [isLoc, setMainBg]);
 
   const filteredOrders = orders.filter((o) => (isLoc ? o.shootType === 'location' : o.shootType !== 'location'));
   const filteredBoardItems = boardItems.filter((i) => (isLoc ? i.shootType === 'location' : i.shootType !== 'location'));
 
   return (
     <div>
-      {/* スタジオ / ロケ 切替 */}
-      <div className={`flex rounded-xl border overflow-hidden mb-4 ${isLoc ? 'border-emerald-200' : 'border-gray-200'}`}>
-        {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
-          const active = shootTab === key;
-          const locTab = key === 'location';
-          return (
-            <button
-              key={key}
-              onClick={() => setShootTab(key)}
-              className={`flex-1 px-5 py-2.5 text-sm font-bold transition-colors
-                ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">注文管理</h1>
+        <span className="text-sm text-gray-400">{orders.length}件</span>
+      </div>
+      {/* スタジオ / ロケ 切替（コンパクト） */}
+      <div className="mb-4">
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+          {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
+            const active = shootTab === key;
+            const locTab = key === 'location';
+            return (
+              <button
+                key={key}
+                onClick={() => setShootTab(key)}
+                className={`px-4 py-1.5 font-medium transition-colors ${key === 'studio' ? 'border-r border-gray-200' : ''}
+                  ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 表示切り替え */}

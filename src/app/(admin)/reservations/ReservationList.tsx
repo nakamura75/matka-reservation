@@ -19,9 +19,12 @@ const PAGE_SIZE = 20;
 type SortKey = 'date' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
-export default function ReservationList({ reservations }: { reservations: Reservation[] }) {
+export default function ReservationList({ reservations, shootTab, setShootTab }: {
+  reservations: Reservation[];
+  shootTab: 'studio' | 'location';
+  setShootTab: (t: 'studio' | 'location') => void;
+}) {
   const [search, setSearch] = useState('');
-  const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
   const [activeTab, setActiveTab] = useState<ReservationStatus>('予約済');
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -95,25 +98,25 @@ export default function ReservationList({ reservations }: { reservations: Reserv
   }
 
   return (
-    <div className={`bg-white rounded-xl border overflow-hidden ${isLoc ? 'border-emerald-200' : 'border-cream-dark'}`}>
-      {/* スタジオ / ロケ 切替 */}
-      <div className="flex border-b border-cream-dark">
-        {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
-          const active = shootTab === key;
-          const locTab = key === 'location';
-          return (
-            <button
-              key={key}
-              onClick={() => switchShoot(key)}
-              className={`flex-1 px-5 py-3 text-sm font-bold transition-colors
-                ${active
-                  ? locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white'
-                  : 'text-gray-500 hover:bg-gray-50'}`}
-            >
-              {label}
-            </button>
-          );
-        })}
+    <div className={`rounded-xl border overflow-hidden bg-white ${isLoc ? 'border-emerald-200' : 'border-cream-dark'}`}>
+      {/* スタジオ / ロケ 切替（コンパクト） */}
+      <div className="p-3 border-b border-cream-dark">
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+          {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
+            const active = shootTab === key;
+            const locTab = key === 'location';
+            return (
+              <button
+                key={key}
+                onClick={() => switchShoot(key)}
+                className={`px-4 py-1.5 font-medium transition-colors ${key === 'studio' ? 'border-r border-gray-200' : ''}
+                  ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 検索バー */}
@@ -171,7 +174,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
       {/* テーブル */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm table-fixed">
-          <thead className="bg-cream text-gray-500 text-xs uppercase tracking-wide">
+          <thead className={`text-gray-500 text-xs uppercase tracking-wide ${isLoc ? 'bg-emerald-50/60' : 'bg-cream'}`}>
             <tr>
               <th className="px-4 py-3 text-left w-[15%]">予約番号</th>
               <th className="px-4 py-3 text-left w-[16%] cursor-pointer select-none" onClick={() => handleSort('date')}>

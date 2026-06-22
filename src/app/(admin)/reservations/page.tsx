@@ -1,5 +1,5 @@
 import { getReservations, getCustomers, getPlans } from '@/lib/db';
-import ReservationList from './ReservationList';
+import ReservationsClient from './ReservationsClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,18 +19,5 @@ export default async function ReservationsPage() {
     planName: planMap[r.planId],
   }));
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">予約管理</h1>
-        <a
-          href="/reservations/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark transition-colors"
-        >
-          + 新規予約
-        </a>
-      </div>
-      <ReservationList reservations={enriched} />
-    </div>
-  );
+  return <ReservationsClient reservations={enriched} />;
 }
