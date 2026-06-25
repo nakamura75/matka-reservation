@@ -116,6 +116,8 @@ export default function ReserveForm() {
   const [submitted, setSubmitted] = useState(false);
   const [reservationNumber, setReservationNumber] = useState('');
   const [isInLine, setIsInLine] = useState(false);
+  // LIFF 判定状態: checking=初期化中 / in-line=LINE内 / outside=LINE外（予約不可・誘導画面）
+  const [liffState, setLiffState] = useState<'checking' | 'in-line' | 'outside'>('checking');
   const [lineUserId, setLineUserId] = useState('');
   const [lineName, setLineName] = useState('');
 
@@ -179,14 +181,24 @@ export default function ReserveForm() {
         .then(() => {
           if (liff.default.isInClient()) {
             setIsInLine(true);
+            setLiffState('in-line');
             liff.default.getProfile().then((profile) => {
               setLineUserId(profile.userId);
               setLineName(profile.displayName);
             }).catch((e) => console.error('[LIFF] getProfile失敗:', e));
+          } else {
+            // LINEアプリ外（PCブラウザ等）からのアクセス → 予約不可・誘導画面へ
+            setLiffState('outside');
           }
         })
-        .catch((e) => console.error('[LIFF] init失敗:', e));
-    }).catch((e) => console.error('[LIFF] SDK読み込み失敗:', e));
+        .catch((e) => {
+          console.error('[LIFF] init失敗:', e);
+          setLiffState('outside');
+        });
+    }).catch((e) => {
+      console.error('[LIFF] SDK読み込み失敗:', e);
+      setLiffState('outside');
+    });
   }, []);
 
   // マスタデータ取得
@@ -405,6 +417,61 @@ export default function ReserveForm() {
               ✅ LINEで予約確認メッセージをお送りしました
             </p>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // LIFF 判定中のローディング
+  // ============================================================
+  if (liffState === 'checking') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-20 text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-brand border-t-transparent rounded-full mx-auto mb-4" />
+        <p className="text-sm text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // LINEアプリ外からのアクセス → 予約はLINE内のみ（誘導画面）
+  // ============================================================
+  if (liffState === 'outside') {
+    const liffUrl = LIFF_ID ? `https://liff.line.me/${LIFF_ID}` : '';
+    const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_ID)}`;
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8">
+          <div className="w-16 h-16 rounded-full bg-[#06C755]/10 flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">💬</span>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">ご予約はLINEから</h2>
+          <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+            ご予約には公式LINEの友だち登録が必要です。<br />
+            下のボタンからLINEアプリで予約フォームを開いてください。
+          </p>
+          {liffUrl ? (
+            <a
+              href={liffUrl}
+              className="block w-full text-center py-3 bg-[#06C755] text-white text-sm font-bold rounded-xl hover:bg-[#05a847] transition-colors mb-4"
+            >
+              LINEで予約をはじめる
+            </a>
+          ) : (
+            <a
+              href={addFriendUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center py-3 bg-[#06C755] text-white text-sm font-bold rounded-xl hover:bg-[#05a847] transition-colors mb-4"
+            >
+              公式LINEを友だち追加する
+            </a>
+          )}
+          <p className="text-xs text-gray-400 leading-relaxed">
+            ※スマートフォンにLINEアプリがインストールされている必要があります。<br />
+            PCからはご予約いただけません。
+          </p>
         </div>
       </div>
     );
