@@ -36,6 +36,7 @@ export const SCENE_PLAN_MAP: Record<string, 'Discovery' | 'Maternity'> = {
   'バースデー': 'Discovery',
   'ベビー': 'Discovery',
   'その他': 'Discovery',
+  'キャンペーン': 'Discovery', // 七五三9時枠キャンペーン（通常Discovery料金を流用）
   'マタニティ': 'Maternity',
 };
 

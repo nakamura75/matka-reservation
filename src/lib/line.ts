@@ -1,4 +1,5 @@
 import type { Reservation } from '@/types';
+import { getActiveCampaign, isCampaignScene } from './campaign';
 
 const LINE_API_BASE = 'https://api.line.me/v2/bot';
 
@@ -191,6 +192,16 @@ export function buildTentativeMessage(
     margin: 'md',
   } as Record<string, unknown>);
 
+  // キャンペーン予約は仮予約メッセージにも撮影に関する注意事項を表示
+  if (isCampaignScene(reservation.scene)) {
+    const campaignNotes = getActiveCampaign()?.lineNoticeLines ?? [];
+    if (campaignNotes.length > 0) {
+      bodyContents.push(separator());
+      bodyContents.push(textComponent('⚠️ 撮影に関する注意事項', { weight: 'bold', size: 'xs', color: '#FF6B35', margin: 'md' }));
+      bodyContents.push(...campaignNotes.map((note) => textComponent(`・${note}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })));
+    }
+  }
+
   bodyContents.push(separator());
   bodyContents.push({
     type: 'box',
@@ -228,6 +239,10 @@ export function buildTentativeMessage(
 // ============================================================
 
 function getSceneNotes(scene: Reservation['scene']): string[] {
+  if (isCampaignScene(scene)) {
+    // キャンペーンの注意事項（仮予約・予約確定・リマインドの「⚠️撮影に関する注意事項」に表示）
+    return getActiveCampaign()?.lineNoticeLines ?? [];
+  }
   if (scene === '七五三') {
     return [
       '当日はヘアセット後にお着付けとなりますので、お子様は前開きのお洋服をご着用いただきますようお願いいたします。',
