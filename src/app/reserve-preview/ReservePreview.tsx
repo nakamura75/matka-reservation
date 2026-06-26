@@ -1,12 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, CameraIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, CameraIcon } from '@heroicons/react/24/outline';
 import StudioForm from './StudioForm';
 import LocationForm from './LocationForm';
 import { LIFF_ID, LINE_OA_ID } from '@/lib/constants';
 
 type Mode = '' | 'studio' | 'location';
+
+// 木のアイコン（輪郭線のみ・塗りなし。雲形の樹冠＋中央を貫く一本線の幹＋
+// 左右対称2段の45°枝。線の太さ均一1.5、枝先は角（丸めない）。ピクトグラム）
+function TreeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* 丸く高さのある雲形の樹冠（下部中央に浅いくぼみ＝幹の出口） */}
+      <path d="M4 14.5 a3.5 3.5 0 0 1 0.4 -6.6 a2.7 2.7 0 0 1 3.6 -2.2 a4 4 0 0 1 8 0 a2.7 2.7 0 0 1 3.6 2.2 a3.5 3.5 0 0 1 0.4 6.6 C19 16.5 16.5 17.5 14 16.8 C13 16.5 11 16.5 10 16.8 C7.5 17.5 5 16.5 4 14.5 Z" />
+      {/* 幹（中央を垂直に貫く一本線・下に少し突き抜け）＋ 樹冠内の左右対称2段45°枝（枝先は角） */}
+      <path d="M12 8 V22 M12 12 L8.8 8.8 M12 12 L15.2 8.8 M12 15 L8.8 11.8 M12 15 L15.2 11.8" />
+    </svg>
+  );
+}
 
 export default function ReservePreview() {
   const [mode, setMode] = useState<Mode>('');
@@ -147,12 +168,12 @@ export default function ReservePreview() {
             <button
               type="button"
               onClick={() => setMode('studio')}
-              className="group relative w-full overflow-hidden flex items-center gap-4 rounded-3xl border-2 border-brand/30 bg-brand-light p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand transition-all"
+              className="group relative w-full overflow-hidden flex items-center gap-4 rounded-3xl border-2 border-[#E8552B]/30 bg-brand-light p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-brand transition-all"
             >
-              {/* 装飾シェイプ */}
-              <CameraIcon className="absolute -right-3 -bottom-4 w-24 h-24 text-brand/10 group-hover:rotate-12 transition-transform duration-300 pointer-events-none" />
-              <span className="absolute right-6 top-4 w-2.5 h-2.5 rounded-full bg-brand/20 group-hover:scale-150 transition-transform" />
-              <span className="absolute right-11 top-7 w-1.5 h-1.5 rounded-full bg-brand/15" />
+              {/* 装飾シェイプ（透明度を効かせるため hex 指定） */}
+              <CameraIcon strokeWidth={1.5} className="absolute -right-3 -bottom-4 w-24 h-24 text-[#E8552B]/10 group-hover:rotate-12 transition-transform duration-300 pointer-events-none" />
+              <span className="absolute right-6 top-4 w-2.5 h-2.5 rounded-full bg-[#E8552B]/20 group-hover:scale-150 transition-transform" />
+              <span className="absolute right-11 top-7 w-1.5 h-1.5 rounded-full bg-[#E8552B]/15" />
 
               <span className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-brand text-white flex-shrink-0 shadow-sm group-hover:scale-110 group-hover:-rotate-6 transition-transform">
                 <CameraIcon className="w-7 h-7" />
@@ -171,12 +192,12 @@ export default function ReservePreview() {
               className="group relative w-full overflow-hidden flex items-center gap-4 rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-5 text-left shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-600 transition-all"
             >
               {/* 装飾シェイプ */}
-              <TruckIcon className="absolute -right-3 -bottom-4 w-24 h-24 text-emerald-600/10 group-hover:translate-x-1 transition-transform duration-300 pointer-events-none" />
+              <TreeIcon className="absolute -right-3 -bottom-4 w-24 h-24 text-emerald-600/10 group-hover:translate-x-1 transition-transform duration-300 pointer-events-none" />
               <span className="absolute right-6 top-4 w-2.5 h-2.5 rounded-full bg-emerald-500/25 group-hover:scale-150 transition-transform" />
               <span className="absolute right-11 top-7 w-1.5 h-1.5 rounded-full bg-emerald-500/15" />
 
               <span className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-700 text-white flex-shrink-0 shadow-sm group-hover:scale-110 group-hover:-rotate-6 transition-transform">
-                <TruckIcon className="w-7 h-7" />
+                <TreeIcon className="w-7 h-7" />
               </span>
               <div className="relative flex-1 min-w-0">
                 <span className="block text-base font-bold text-gray-900">ロケーション撮影</span>

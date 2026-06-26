@@ -264,21 +264,21 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
           const r = block.reservation;
           const lane = laneMap.get(block.id);
           const tot = lane?.totalLanes ?? 1;
-          const li = lane?.laneIndex ?? 0;
           const overlap = tot > 1;
-          // レーン分割（横並び）はやめ、少しずらして重ねるカスケード表示
-          const offset = li * 6; // px
+          // 重なっても幅・位置は通常の枠と同じ（横/縦のずらしはしない）。
+          // 前面/背面は重なり順だけで制御：開始が遅い枠ほど前面、同じ開始なら短い枠を前面に。
+          const z = 100 + Math.round(block.top) * 4 - Math.round(block.height);
           return (
             <Link
               key={block.id}
               href={`/reservations/${r.id}`}
               className={`absolute rounded border text-[10px] leading-tight overflow-hidden hover:opacity-90 transition-opacity px-1 py-0.5 ${blockBg(r)} ${overlap ? 'shadow-md ring-1 ring-white' : ''}`}
-              style={{ top: `${block.top + li * 3}px`, height: `${block.height}px`, left: `${offset}px`, right: '2px', zIndex: 20 + li }}
+              style={{ top: `${block.top}px`, height: `${block.height}px`, left: '0.5px', right: '2px', zIndex: z }}
               title={`${r.checkInTime ?? r.timeSlot}〜${r.checkOutTime ?? ''} ${r.customerName ?? ''}${overlap ? `（この時間帯に${tot}件重複）` : ''}`}
             >
-              <div className="flex items-center gap-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${blockDot(r)}`} />
-                <span className="font-medium truncate">{r.customerName ?? ''}</span>
+              <div className="flex items-start gap-0.5">
+                <span className={`w-1.5 h-1.5 mt-0.5 rounded-full flex-shrink-0 ${blockDot(r)}`} />
+                <span className="font-medium break-all whitespace-normal leading-[1.15]">{r.customerName ?? ''}</span>
               </div>
               {block.height >= 34 && <p className="text-[9px] opacity-70 truncate">{r.checkInTime ?? r.timeSlot}</p>}
             </Link>
