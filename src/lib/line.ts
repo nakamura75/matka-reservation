@@ -377,6 +377,91 @@ export function buildConfirmMessage(
   };
 }
 
+// ============================================================
+// ロケ予約確定メッセージ（Flex Message・振込先案内）
+// ※ 振込先はプレースホルダ。確定文面に差し替えてください。
+// ============================================================
+
+export function buildLocationConfirmMessage(
+  reservation: Reservation,
+  options: { name: string; price: number; quantity: number }[],
+  total: number
+): LineMessage {
+  const shootDate = (reservation.date ?? '').replace(/-/g, '/');
+  const visitDate = (reservation.visitDate ?? '').replace(/-/g, '/');
+
+  const optionItems = options.map((o) => ({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      textComponent(`${o.name} ×${o.quantity}`, { size: 'xs', flex: 3 }),
+      textComponent(`¥${(o.price * o.quantity).toLocaleString()}`, { size: 'xs', align: 'end', flex: 2 }),
+    ],
+    margin: 'xs',
+  }));
+
+  const bodyContents: Record<string, unknown>[] = [
+    labelValue('📆 撮影日', `${shootDate}  ${reservation.timeSlot ?? ''}`),
+    labelValue('🏛 見学日', visitDate ? `${visitDate}  16:30` : '—'),
+    labelValue('🛡 キャンセル保険', reservation.cancelInsurance || '—'),
+  ];
+
+  if (options.length > 0) {
+    bodyContents.push(separator());
+    bodyContents.push(textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }));
+    bodyContents.push(...optionItems);
+  }
+
+  bodyContents.push(separator());
+  bodyContents.push({
+    type: 'box',
+    layout: 'horizontal',
+    contents: [
+      textComponent('合計（税込）', { weight: 'bold', flex: 3 }),
+      textComponent(`¥${total.toLocaleString()}`, { weight: 'bold', color: BRAND_GREEN, size: 'lg', align: 'end', flex: 2 }),
+    ],
+    margin: 'md',
+  } as Record<string, unknown>);
+
+  // 振込先（プレースホルダ）
+  bodyContents.push(
+    separator(),
+    {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        textComponent('🏦 お振込先', { weight: 'bold', size: 'xs', color: BRAND_GREEN }),
+        textComponent('【ここに振込先を記載】', { size: 'xs', color: DARK_TEXT, margin: 'sm' }),
+        textComponent('○○銀行 ○○支店（普通）0000000', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+        textComponent('口座名義：カ）○○○○', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+        textComponent('※ お振込は撮影日の2週間前までにお願いいたします。', { size: 'xxs', color: '#FF6B35', margin: 'sm' }),
+      ],
+      backgroundColor: '#EBF7ED',
+      cornerRadius: '8px',
+      paddingAll: '12px',
+      margin: 'md',
+    } as Record<string, unknown>,
+    separator(),
+    textComponent('当日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
+  );
+
+  return {
+    type: 'flex',
+    altText: `✅ ロケ撮影のご予約が確定しました（${shootDate}）`,
+    contents: {
+      type: 'bubble',
+      header: headerBox('✅ ご予約が確定しました', BRAND_GREEN),
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: bodyContents,
+        paddingAll: '16px',
+      },
+      footer: confirmFooter(),
+    },
+  };
+}
+
 /** 確定LINE用フッター（電話・メール・住所） */
 function confirmFooter() {
   return {

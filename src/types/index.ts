@@ -27,6 +27,7 @@ export interface Plan {
   description?: string;
   isActive: boolean;   // 有効
   showInForm?: boolean; // 顧客予約フォームに表示
+  shootType?: 'studio' | 'location'; // 撮影区分（モード別）
 }
 
 // ============================================================
@@ -40,6 +41,7 @@ export interface Option {
   isActive: boolean;   // 有効
   externalCode?: string; // 外部コード（Square連携用）
   showInForm?: boolean;  // 予約フォームに表示
+  shootType?: 'studio' | 'location'; // 撮影区分（モード別）
 }
 
 // ============================================================
@@ -50,6 +52,7 @@ export interface Staff {
   name: string;        // スタッフ名
   isActive?: string;   // 有効
   role?: string;       // 担当（フォトグラファー | ヘアメイク）
+  shootType?: 'studio' | 'location'; // 撮影区分（モード別）
 }
 
 // ============================================================
@@ -86,6 +89,8 @@ export interface Reservation {
   familyNote?: string;     // 構成メモ
   status: ReservationStatus; // ステータス
   shootType?: 'studio' | 'location'; // 撮影区分（スタジオ / ロケーション）。既存はstudio
+  visitDate?: string;      // 見学日（ロケ・YYYY-MM-DD）
+  cancelInsurance?: string; // キャンセル保険（ロケ・'加入する' | '加入しない'）
   referencePhoto?: string; // 参考写真
   note?: string;           // 備考（スタッフメモ）
   customerNote?: string;   // お客様備考（フォーム入力）
@@ -213,6 +218,7 @@ export interface Product {
   description?: string;  // 説明
   isActive: boolean;     // 有効
   sortOrder?: number;    // 表示順
+  shootType?: 'studio' | 'location'; // 撮影区分（モード別）
 }
 
 // ============================================================
@@ -242,6 +248,9 @@ export interface ReservationFormData {
   phoneCallPreference?: string;
   note?: string;
   cancelPolicyAgreed: boolean;
+  // ロケ専用
+  visitDate?: string;        // 見学日（YYYY-MM-DD）
+  cancelInsurance?: string;  // キャンセル保険（'加入する' | '加入しない'）
   // LIFF
   lineUserId?: string;
   lineName?: string;

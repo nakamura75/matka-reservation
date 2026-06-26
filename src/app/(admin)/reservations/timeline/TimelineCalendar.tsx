@@ -341,9 +341,13 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
         {Object.entries(STATUS_DOT).filter(([status]) => status !== 'キャンセル').map(([status, dot]) => (
           <span key={status} className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
-            {STATUS_LABEL[status as Reservation['status']]}
+            {status === '見学' ? '見学（スタジオ）' : STATUS_LABEL[status as Reservation['status']]}
           </span>
         ))}
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          見学（ロケ）
+        </span>
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded bg-gray-200" />
           休業日
@@ -421,8 +425,8 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                         <div key={hour} className="absolute w-full border-t border-gray-100 pointer-events-none" style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT}px` }} />
                       ))}
 
-                      {/* 3小列 */}
-                      {!isBlocked && (
+                      {/* 3小列（休業日でも予約があれば表示する） */}
+                      {(!isBlocked || dayReservations.length > 0) && (
                         <div className="grid grid-cols-3 h-full">
                           {renderSubColumn(studio, blockedEntries)}
                           {renderSubColumn(location)}
@@ -430,13 +434,19 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                         </div>
                       )}
 
-                      {/* 終日ブロック表示 */}
-                      {isBlocked && (
+                      {/* 終日ブロック表示（予約が無い休業日のみ中央表示） */}
+                      {isBlocked && dayReservations.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center z-10">
                           <div className="bg-gray-200/60 rounded-lg px-3 py-2 text-center">
                             <p className="text-xs font-medium text-gray-500">予約不可</p>
                             {blockedDateMap.get(dateStr) && <p className="text-[10px] text-gray-400 mt-0.5">{blockedDateMap.get(dateStr)}</p>}
                           </div>
+                        </div>
+                      )}
+                      {/* 予約がある休業日は上部に休業ラベルを小さく表示 */}
+                      {isBlocked && dayReservations.length > 0 && (
+                        <div className="absolute top-0.5 left-0.5 z-10 bg-gray-200/70 rounded px-1.5 py-0.5 pointer-events-none">
+                          <p className="text-[9px] font-medium text-gray-500">休業日{blockedDateMap.get(dateStr) ? `（${blockedDateMap.get(dateStr)}）` : ''}</p>
                         </div>
                       )}
 
@@ -515,10 +525,13 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                     {isBlocked && <span className="text-[10px] text-red-500 font-medium">休</span>}
                     {isHoliday && !isBlocked && <span className="text-[10px] text-green-600 font-medium">祝</span>}
                   </div>
-                  {isBlocked ? (
+                  {isBlocked && dayReservations.length === 0 ? (
                     <p className="text-[10px] text-gray-400 mt-1 text-center">予約不可{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
                   ) : (
                     <div className="space-y-0.5 mt-0.5">
+                      {isBlocked && (
+                        <p className="text-[10px] text-gray-400 truncate">休業日{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
+                      )}
                       {calItems.slice(0, 5).map((item, idx) =>
                         item.kind === 'blocked' ? (
                           <p key={`b-${idx}`} className="text-[10px] text-red-400 truncate">
@@ -532,10 +545,10 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                               ${item.r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
                                 item.r.status === '完了' ? 'bg-green-50 text-green-700' :
                                 item.r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                                item.r.status === '見学' ? 'bg-purple-50 text-purple-700' :
+                                item.r.status === '見学' ? (item.r.shootType === 'location' ? 'bg-emerald-50 text-emerald-700' : 'bg-purple-50 text-purple-700') :
                                 'bg-yellow-50 text-yellow-700'}`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[item.r.status]}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${blockDot(item.r)}`} />
                             <span className="truncate">
                               {item.r.timeSlot} {item.r.customerName ?? ''}
                             </span>

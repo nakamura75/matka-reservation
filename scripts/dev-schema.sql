@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS "options" (
   "external_code" text,
   "sort_order" integer,
   "show_in_form" boolean,
+  "shoot_type" text NOT NULL DEFAULT 'studio',
   PRIMARY KEY ("id")
 );
 
@@ -104,6 +105,7 @@ CREATE TABLE IF NOT EXISTS "plans" (
   "description" text,
   "is_active" boolean NOT NULL,
   "show_in_form" boolean,
+  "shoot_type" text NOT NULL DEFAULT 'studio',
   PRIMARY KEY ("id")
 );
 
@@ -115,6 +117,7 @@ CREATE TABLE IF NOT EXISTS "products" (
   "description" text,
   "is_active" boolean NOT NULL,
   "sort_order" integer,
+  "shoot_type" text NOT NULL DEFAULT 'studio',
   PRIMARY KEY ("id")
 );
 
@@ -182,6 +185,7 @@ CREATE TABLE IF NOT EXISTS "staff" (
   "name" text NOT NULL,
   "is_active" text,
   "role" text,
+  "shoot_type" text NOT NULL DEFAULT 'studio',
   PRIMARY KEY ("id")
 );
 

@@ -3,20 +3,24 @@
 import { useState, useEffect } from 'react';
 import { TruckIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
+import type { Option } from '@/types';
+import { formatCurrency, isWeekend } from '@/lib/utils';
+import { LIFF_ID, LINE_OA_ID } from '@/lib/constants';
 
 // ============================================================
-// 定数（ダミー：7月の金・日を本番撮影日に。月8日想定）
+// 定数
 // ============================================================
-const SHOOT_DATES = [
-  '2026-07-03', '2026-07-05', '2026-07-10', '2026-07-12',
-  '2026-07-17', '2026-07-19', '2026-07-24', '2026-07-26', '2026-07-31',
-];
 const SHOOT_TIMES = [
   { value: '9:10', label: '午前の部　9:10〜12:00' },
   { value: '13:00', label: '午後の部　13:00〜16:00' },
 ];
 const VISIT_TIME = '16:30';        // 見学はWEB予約だと16:30固定
 const VISIT_LEAD_DAYS = 8;          // 本番日は見学日の8日後以降
+
+// ベーシックプラン料金（平日77,000円 / 休日は+5,500円）。休日判定は本番撮影日の土日で自動判定。
+const BASIC_PLAN_WEEKDAY = 77000;
+const HOLIDAY_SURCHARGE = 5500;
+const CANCEL_INSURANCE = 5500;
 
 // ============================================================
 // 日付ヘルパー
@@ -46,7 +50,7 @@ function validateEmail(v: string): string | null { const t = v.trim(); if (!t) r
 function validateZip(v: string): string | null { const t = v.trim(); if (!t) return null; if (!/^\d{3}-?\d{4}$/.test(t)) return '郵便番号は7桁（例: 123-4567）で入力してください'; return null; }
 function validateAddress(v: string): string | null { const t = v.trim(); if (!t) return null; if (t.length < 5) return '住所を正しく入力してください'; return null; }
 
-const STEPS = ['日程', 'お客様情報', '来店人数', '確認・送信'];
+const STEPS = ['日程', 'お客様情報', '来店人数', 'オプション', '確認・送信'];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -74,15 +78,24 @@ export default function LocationForm() {
   const [error, setError] = useState('');
   const [reservationNumber, setReservationNumber] = useState('');
 
+  // LIFF 判定状態: checking=初期化中 / in-line=LINE内 / outside=LINE外（予約不可・誘導画面）
+  const [liffState, setLiffState] = useState<'checking' | 'in-line' | 'outside'>('checking');
+  const [lineUserId, setLineUserId] = useState('');
+  const [lineName, setLineName] = useState('');
+
   const [today] = useState(() => fmt(new Date()));
 
   // 本番撮影日
   const [shootDate, setShootDate] = useState('');
   const [shootTime, setShootTime] = useState('');
-  // カレンダー表示月（初期は最初の撮影日の月）
+  // 撮影可能日（設定で登録された日）／見学NG日／本番の予約済み枠（date|timeSlot）
+  const [shootDays, setShootDays] = useState<string[]>([]);
+  const [visitNgDates, setVisitNgDates] = useState<Set<string>>(new Set());
+  const [bookedShoots, setBookedShoots] = useState<Set<string>>(new Set());
+  // カレンダー表示月（初期は今月。撮影可能日が読み込めたら最も近い日へ移動）
   const [calYM, setCalYM] = useState(() => {
-    const [y, m] = SHOOT_DATES[0].split('-').map(Number);
-    return { year: y, month: m - 1 };
+    const t = new Date();
+    return { year: t.getFullYear(), month: t.getMonth() };
   });
   // 見学カレンダーの表示月（初期は今月）
   const [visitCalYM, setVisitCalYM] = useState(() => {
@@ -111,9 +124,126 @@ export default function LocationForm() {
   const [adultCount, setAdultCount] = useState('');
   const [childrenDetails, setChildrenDetails] = useState<{ name: string; furigana: string; gender: string; birthday: string; clothingSize: string }[]>([]);
 
+  // オプション（子供向けのみ）
+  const [options, setOptions] = useState<Option[]>([]);
+  const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; quantity: number }[]>([]);
+  // ロケのプランID（予約に正規の項目として保存するため設定から取得）
+  const [locationPlanId, setLocationPlanId] = useState('');
+
+  // お電話の希望
+  const [phoneCallPreference, setPhoneCallPreference] = useState('');
+
   // 確認
   const [insurance, setInsurance] = useState<'' | '加入する' | '加入しない'>('');
   const [acknowledged, setAcknowledged] = useState(false);
+
+  // LIFF初期化：LINE内なら userId を自動連携、LINE外なら誘導画面へ
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // 開発環境(localhost)・?preview=1 ではLINE外でもフォームを表示（ダミー入力・PC確認用）。
+    // 本番はLIFF_ID設定済みでLINE内限定。
+    const isPreview = new URLSearchParams(window.location.search).has('preview');
+    const isDev = process.env.NODE_ENV === 'development';
+    if (isPreview || isDev) {
+      setLiffState('in-line');
+      return;
+    }
+    const liffId = LIFF_ID;
+    if (!liffId) {
+      // LIFF未設定（PCプレビュー等）は予約不可・誘導画面
+      console.warn('[LIFF] LIFF_ID が未設定です');
+      setLiffState('outside');
+      return;
+    }
+    import('@line/liff').then((liff) => {
+      liff.default.init({ liffId })
+        .then(() => {
+          if (liff.default.isInClient()) {
+            setLiffState('in-line');
+            liff.default.getProfile().then((profile) => {
+              setLineUserId(profile.userId);
+              setLineName(profile.displayName);
+            }).catch((e) => console.error('[LIFF] getProfile失敗:', e));
+          } else {
+            // LINEアプリ外（PCブラウザ等）からのアクセス → 予約不可・誘導画面へ
+            setLiffState('outside');
+          }
+        })
+        .catch((e) => {
+          console.error('[LIFF] init失敗:', e);
+          setLiffState('outside');
+        });
+    }).catch((e) => {
+      console.error('[LIFF] SDK読み込み失敗:', e);
+      setLiffState('outside');
+    });
+  }, []);
+
+  // オプション・プラン取得（ロケ用を設定から取得）
+  useEffect(() => {
+    fetch('/api/options?mode=location')
+      .then((r) => r.json())
+      .then((d) => setOptions((d.data ?? []).filter((o: Option) => o.showInForm !== false)))
+      .catch(() => {});
+    fetch('/api/plans?mode=location')
+      .then((r) => r.json())
+      .then((d) => setLocationPlanId(d.data?.[0]?.id ?? ''))
+      .catch(() => {});
+  }, []);
+
+  // 撮影可能日・見学NG日・予約済み枠を取得（設定/予約から）
+  useEffect(() => {
+    // 撮影日は「見学を1週間以上前に済ませる」必要があるため、最短でも今日+リードタイム以降のみ
+    const minShootDate = addDays(today, VISIT_LEAD_DAYS);
+    fetch('/api/location/shoot-days')
+      .then((r) => r.json())
+      .then((d) => {
+        const days: string[] = (d.data ?? []).filter((x: string) => x >= minShootDate);
+        setShootDays(days);
+        // 直近の撮影可能日の月へカレンダーを移動
+        const next = days.slice().sort()[0];
+        if (next) {
+          const [y, m] = next.split('-').map(Number);
+          setCalYM({ year: y, month: m - 1 });
+        }
+      })
+      .catch(() => {});
+    fetch('/api/location/visit-ng')
+      .then((r) => r.json())
+      .then((d) => setVisitNgDates(new Set(d.data ?? [])))
+      .catch(() => {});
+    fetch('/api/location/booked-shoots')
+      .then((r) => r.json())
+      .then((d) => setBookedShoots(new Set((d.data ?? []).map((s: { date: string; timeSlot: string }) => `${s.date}|${s.timeSlot}`))))
+      .catch(() => {});
+  }, [today]);
+
+  // 選択中の時間帯が予約済みになったら選択解除
+  useEffect(() => {
+    if (shootDate && shootTime && bookedShoots.has(`${shootDate}|${shootTime}`)) setShootTime('');
+  }, [shootDate, shootTime, bookedShoots]);
+
+  function toggleOption(optionId: string) {
+    setSelectedOptions((prev) => {
+      const exists = prev.find((o) => o.optionId === optionId);
+      if (exists) return prev.filter((o) => o.optionId !== optionId);
+      return [...prev, { optionId, quantity: 1 }];
+    });
+  }
+  function setOptionQty(optionId: string, quantity: number) {
+    setSelectedOptions((prev) => prev.map((o) => (o.optionId === optionId ? { ...o, quantity: Math.max(1, quantity) } : o)));
+  }
+  const optionTotal = selectedOptions.reduce((sum, so) => {
+    const opt = options.find((o) => o.id === so.optionId);
+    return sum + (opt ? opt.price * so.quantity : 0);
+  }, 0);
+
+  // 本番撮影日の土日で平日/休日を自動判定し、ベーシックプラン料金を算出
+  const isHolidayShoot = shootDate ? isWeekend(shootDate) : false;
+  const planLabel = `ベーシックプラン（${isHolidayShoot ? '休日' : '平日'}）`;
+  const planPrice = BASIC_PLAN_WEEKDAY + (isHolidayShoot ? HOLIDAY_SURCHARGE : 0);
+  const insuranceFee = insurance === '加入する' ? CANCEL_INSURANCE : 0;
+  const grandTotal = planPrice + optionTotal + insuranceFee;
 
   // 本番日の8日前まで（見学日の最大値）
   const maxVisitDate = shootDate ? addDays(shootDate, -VISIT_LEAD_DAYS) : '';
@@ -169,17 +299,16 @@ export default function LocationForm() {
     setChildrenDetails((prev) => { const next = [...prev]; next[i] = { ...next[i], [field]: value }; return next; });
   }
 
-  const visitValid = visitDate && visitDate >= today && (!maxVisitDate || visitDate <= maxVisitDate) && visitStatus === 'free';
+  const visitValid = visitDate && visitDate >= today && (!maxVisitDate || visitDate <= maxVisitDate) && visitStatus === 'free' && !visitNgDates.has(visitDate);
   const scheduleValid = shootDate && shootTime && visitValid;
-  const customerValid = name.trim() && furigana.trim() && phone.trim() && zip.trim() && address.trim()
+  const customerValid = name.trim() && furigana.trim() && phone.trim() && zip.trim() && address.trim() && phoneCallPreference
     && !validateName(name) && !validateFurigana(furigana) && !validatePhone(phone) && !validateZip(zip) && !validateAddress(address) && !validateEmail(email);
   const peopleValid = childrenCount !== '' && adultCount !== '';
-  const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid);
+  const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid) || step === 3;
 
   async function handleSubmit() {
     setSubmitting(true);
     setError('');
-    const shootLabel = SHOOT_TIMES.find((t) => t.value === shootTime)?.label ?? shootTime;
     const childrenDetail = childrenDetails.length > 0
       ? childrenDetails.map((c, i) => `${i + 1}人目: ${c.name}（${c.furigana}）（${c.gender}）${c.birthday} / ${c.clothingSize}`).join('\n')
       : '';
@@ -197,24 +326,28 @@ export default function LocationForm() {
       childrenCount: Number(childrenCount) || 0,
       adultCount,
       childrenDetail,
-      selectedOptions: [],
+      selectedOptions,
+      phoneCallPreference,
       cancelPolicyAgreed: true,
+      lineUserId,
+      lineName,
     };
     const headers = { 'Content-Type': 'application/json' };
     // ローカルは開発DB。見学(16:30)＋本番撮影の2件を作成（どちらも shoot_type=location）。
+    // プラン/オプション/見学日/保険はそれぞれの正規項目に保存し、備考には詰め込まない。
     try {
-      // ① 見学（16:30・重複チェックあり）
+      // ① 見学（16:30・重複チェックあり）。見学レコードにも見学日を持たせる
       const visitRes = await fetch('/api/reservations', {
         method: 'POST', headers,
-        body: JSON.stringify({ ...base, isVisit: true, date: visitDate, timeSlot: VISIT_TIME, note: `【ロケ見学】本番: ${jpDate(shootDate)} ${shootLabel}` }),
+        body: JSON.stringify({ ...base, isVisit: true, date: visitDate, timeSlot: VISIT_TIME, visitDate, note: '' }),
       });
       const visitData = await visitRes.json();
       if (!visitData.success) { setError(visitData.error ?? '見学枠の登録に失敗しました'); return; }
 
-      // ② 本番撮影（仮予約）
+      // ② 本番撮影（仮予約）：プランは正規項目(planId)、見学日/保険も専用項目に
       const shootRes = await fetch('/api/reservations', {
         method: 'POST', headers,
-        body: JSON.stringify({ ...base, isVisit: false, date: shootDate, timeSlot: shootTime, note: `【ロケ本番】見学: ${jpDate(visitDate)} ${VISIT_TIME} / キャンセル保険: ${insurance}` }),
+        body: JSON.stringify({ ...base, isVisit: false, planId: locationPlanId, date: shootDate, timeSlot: shootTime, visitDate, cancelInsurance: insurance, note: '' }),
       });
       const shootData = await shootRes.json();
       if (!shootData.success) { setError(shootData.error ?? '本番予約の登録に失敗しました'); return; }
@@ -236,15 +369,75 @@ export default function LocationForm() {
       <div className="max-w-lg mx-auto px-4 py-12 text-center">
         <div className="bg-white rounded-2xl border border-gray-200 p-8">
           <CheckCircleIcon className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="font-bold text-emerald-800 mb-1">ロケーション撮影のお申し込みを受け付けました</h2>
-          <p className="text-sm text-gray-500 mb-4">担当者よりご連絡いたします。</p>
+          <h2 className="font-bold mb-1" style={{ color: '#e53935', fontSize: '14px' }}>仮予約を受け付けました</h2>
+          <p className="font-bold mb-2" style={{ color: '#e53935', fontSize: '20px' }}>※まだ予約は確定しておりません</p>
+          <p className="text-sm text-gray-500 mb-6">
+            担当者より見学・お振込のご案内をLINEにてご連絡いたします。
+          </p>
           {reservationNumber && (
-            <div className="bg-emerald-50 rounded-xl p-4 inline-block">
+            <div className="bg-emerald-50 rounded-xl p-4 mb-6">
               <p className="text-xs text-gray-500 mb-1">予約番号</p>
-              <p className="font-bold text-emerald-800">{reservationNumber}</p>
+              <p className="font-bold text-emerald-800 tracking-wide" style={{ fontSize: '13px' }}>{reservationNumber}</p>
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-4">（開発DBに保存されました・本番には影響しません）</p>
+          <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl p-3">
+            ✅ ご予約内容をLINEアカウントと連携しました
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // LIFF 判定中のローディング
+  // ============================================================
+  if (liffState === 'checking') {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-20 text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+        <p className="text-sm text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // LINEアプリ外からのアクセス → 予約はLINE内のみ（誘導画面）
+  // ============================================================
+  if (liffState === 'outside') {
+    const liffUrl = LIFF_ID ? `https://liff.line.me/${LIFF_ID}` : '';
+    const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_ID)}`;
+    return (
+      <div className="max-w-lg mx-auto px-4 py-12 text-center">
+        <div className="bg-white rounded-2xl border border-gray-200 p-8">
+          <div className="w-16 h-16 rounded-full bg-[#06C755]/10 flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">💬</span>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">ご予約はLINEから</h2>
+          <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+            ご予約には公式LINEの友だち登録が必要です。<br />
+            下のボタンからLINEアプリで予約フォームを開いてください。
+          </p>
+          {liffUrl ? (
+            <a
+              href={liffUrl}
+              className="block w-full text-center py-3 bg-[#06C755] text-white text-sm font-bold rounded-xl hover:bg-[#05a847] transition-colors mb-4"
+            >
+              LINEで予約をはじめる
+            </a>
+          ) : (
+            <a
+              href={addFriendUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center py-3 bg-[#06C755] text-white text-sm font-bold rounded-xl hover:bg-[#05a847] transition-colors mb-4"
+            >
+              公式LINEを友だち追加する
+            </a>
+          )}
+          <p className="text-xs text-gray-400 leading-relaxed">
+            ※スマートフォンにLINEアプリがインストールされている必要があります。<br />
+            PCからはご予約いただけません。
+          </p>
         </div>
       </div>
     );
@@ -303,7 +496,7 @@ export default function LocationForm() {
   }
 
   function renderSchedule() {
-    const shootSet = new Set(SHOOT_DATES);
+    const shootSet = new Set(shootDays);
     const shootSummary = shootDate ? `${jpDate(shootDate)}${shootTime ? ` ${shootTime}〜` : ''}` : '未選択';
     const visitSummary = visitDate ? `${jpDate(visitDate)} ${VISIT_TIME}` : '未選択';
     return (
@@ -327,16 +520,21 @@ export default function LocationForm() {
         {scheduleTab === 'shoot' ? (
           <div className="space-y-3">
             <p className="text-xs text-gray-500">カレンダーから撮影日（緑の日）と時間帯をお選びください。</p>
-            {calendarGrid(calYM, setCalYM, (d) => shootSet.has(d), shootDate, setShootDate)}
-            <div className="flex gap-2">
-              {SHOOT_TIMES.map((t) => (
-                <button key={t.value} type="button" onClick={() => setShootTime(t.value)}
-                  className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
-                    ${shootTime === t.value ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-700 hover:border-emerald-200'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            {calendarGrid(calYM, setCalYM, (d) => shootSet.has(d) && SHOOT_TIMES.some((t) => !bookedShoots.has(`${d}|${t.value}`)), shootDate, setShootDate)}
+            {shootDate && (() => {
+              const avail = SHOOT_TIMES.filter((t) => !bookedShoots.has(`${shootDate}|${t.value}`));
+              return (
+                <div className="flex gap-2">
+                  {avail.map((t) => (
+                    <button key={t.value} type="button" onClick={() => setShootTime(t.value)}
+                      className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
+                        ${shootTime === t.value ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-700 hover:border-emerald-200'}`}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             {shootDate && shootTime && (
               <button type="button" onClick={() => setScheduleTab('visit')}
                 className="w-full py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800">
@@ -359,13 +557,32 @@ export default function LocationForm() {
                 {calendarGrid(
                   visitCalYM,
                   setVisitCalYM,
-                  (d) => d >= today && (!maxVisitDate || d <= maxVisitDate) && !takenVisitDates.has(d),
+                  (d) => d >= today && (!maxVisitDate || d <= maxVisitDate) && !takenVisitDates.has(d) && !visitNgDates.has(d),
                   visitDate,
                   setVisitDate,
                 )}
                 {visitDate && <p className="text-xs text-emerald-700 font-medium">見学：{jpDate(visitDate)} {VISIT_TIME}</p>}
                 {visitStatus === 'checking' && <p className="text-xs text-gray-400">空き状況を確認中...</p>}
                 {visitStatus === 'taken' && <p className="text-xs text-red-600">この日の見学（{VISIT_TIME}）は既に予約が入っています。別の日をお選びください。</p>}
+
+                {/* 金額表記（本番撮影日の平日/休日で自動算出） */}
+                {scheduleValid && (
+                  <div className="mt-4 space-y-3">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
+                        <p className="text-sm font-medium text-gray-800">{planLabel}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          基本77,000円{isHolidayShoot && ` ＋ 休日料金${formatCurrency(HOLIDAY_SURCHARGE)}`}
+                        </p>
+                      </div>
+                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(planPrice)}</p>
+                    </div>
+                    <div className="text-xs text-red-600 space-y-1 leading-relaxed">
+                      <p>※ 上記はベーシックプランの料金です。オプションは次のステップでお選びいただけます。</p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -394,6 +611,18 @@ export default function LocationForm() {
             {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
           </div>
         ))}
+
+        {/* お電話の希望 */}
+        <div>
+          <label className="block text-sm text-gray-600 mb-2">仮予約後のお電話について <span className="text-red-500">*</span></label>
+          <p className="text-xs text-gray-400 mb-2">担当者からのお電話をご希望されますか？ご要望・ご不明点がある方は「希望する」をお選びください。</p>
+          <div className="flex gap-3">
+            {['希望する', '希望しない'].map((opt) => (
+              <button key={opt} type="button" onClick={() => setPhoneCallPreference(opt)}
+                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${phoneCallPreference === opt ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{opt}</button>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -402,21 +631,23 @@ export default function LocationForm() {
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">来店人数</h2>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">お子様 *</label>
-          <select value={childrenCount} onChange={(e) => handleChildrenCountChange(e.target.value)}
-            className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600">
-            <option value="">選択...</option>
-            {['0', '1', '2', '3', '4', '5'].map((v) => (<option key={v} value={v}>{v}名</option>))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">大人の方 *</label>
-          <select value={adultCount} onChange={(e) => setAdultCount(e.target.value)}
-            className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600">
-            <option value="">選択...</option>
-            {['0', '1', '2', '3', '4', '5以上'].map((v) => (<option key={v} value={v}>{v === '5以上' ? '5名以上' : `${v}名`}</option>))}
-          </select>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">お子様 *</label>
+            <select value={childrenCount} onChange={(e) => handleChildrenCountChange(e.target.value)}
+              className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+              <option value="">選択...</option>
+              {['1', '2', '3', '4', '5'].map((v) => (<option key={v} value={v}>{v}名</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">大人の方 *</label>
+            <select value={adultCount} onChange={(e) => setAdultCount(e.target.value)}
+              className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+              <option value="">選択...</option>
+              {['0', '1', '2', '3', '4', '5以上'].map((v) => (<option key={v} value={v}>{v === '5以上' ? '5名以上' : `${v}名`}</option>))}
+            </select>
+          </div>
         </div>
         {childrenDetails.map((child, i) => (
           <div key={i} className="border border-emerald-300 rounded-xl p-4 space-y-3 bg-emerald-50/50">
@@ -444,6 +675,52 @@ export default function LocationForm() {
     );
   }
 
+  function renderOptions() {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-base font-bold text-gray-900">オプション選択</h2>
+        <p className="text-xs text-gray-400">お子様向けの着付け・ヘアセットをお選びいただけます（任意・複数選択可）。</p>
+        {options.length === 0 ? (
+          <p className="text-sm text-gray-400">選択可能なオプションはありません。</p>
+        ) : (
+          <div className="space-y-3">
+            {options.map((opt) => {
+              const selected = selectedOptions.find((so) => so.optionId === opt.id);
+              return (
+                <div key={opt.id} onClick={() => toggleOption(opt.id)}
+                  className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors
+                    ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-200 hover:border-emerald-200'}`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
+                    ${selected ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'}`}>
+                    {selected && <span className="text-white text-xs">✓</span>}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{opt.name}</p>
+                    {opt.description && (
+                      <p className={`text-xs mt-0.5 ${opt.description.startsWith('※') ? 'text-red-500' : 'text-gray-400'}`}>{opt.description}</p>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 flex-shrink-0">{formatCurrency(opt.price)}</p>
+                  {selected && (
+                    <input type="number" min={1} value={selected.quantity}
+                      onChange={(e) => { e.stopPropagation(); setOptionQty(opt.id, Number(e.target.value)); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-14 text-center text-sm border border-emerald-600 rounded-lg px-2 py-1" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {optionTotal > 0 && (
+          <div className="flex justify-between text-sm font-semibold text-emerald-800 border-t border-gray-100 pt-3">
+            <span>オプション小計</span><span>{formatCurrency(optionTotal)}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function renderConfirm() {
     const shootLabel = SHOOT_TIMES.find((t) => t.value === shootTime)?.label ?? shootTime;
     return (
@@ -457,6 +734,24 @@ export default function LocationForm() {
           {email && <div className="flex justify-between"><span className="text-gray-500">メール</span><span className="text-gray-800">{email}</span></div>}
           <div className="flex justify-between"><span className="text-gray-500">住所</span><span className="text-gray-800 text-right">{zip} {address}</span></div>
           <div className="flex justify-between"><span className="text-gray-500">来店人数</span><span className="text-gray-800">お子様{childrenCount || 0}名・大人{adultCount === '5以上' ? '5名以上' : `${adultCount || 0}名`}</span></div>
+          <div className="flex justify-between pt-2 border-t border-gray-200"><span className="text-gray-500">{planLabel}</span><span className="text-gray-800">{formatCurrency(planPrice)}</span></div>
+          {selectedOptions.length > 0 && (
+            <div className="space-y-1">
+              {selectedOptions.map((so) => {
+                const opt = options.find((o) => o.id === so.optionId);
+                if (!opt) return null;
+                return (
+                  <div key={so.optionId} className="flex justify-between text-gray-500">
+                    <span>　{opt.name} ×{so.quantity}</span><span>{formatCurrency(opt.price * so.quantity)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {insuranceFee > 0 && (
+            <div className="flex justify-between text-gray-500"><span>　キャンセル保険</span><span>{formatCurrency(insuranceFee)}</span></div>
+          )}
+          <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>合計（税込）</span><span className="text-emerald-700">{formatCurrency(grandTotal)}</span></div>
         </div>
 
         {/* キャンセル保険 */}
@@ -510,7 +805,7 @@ export default function LocationForm() {
     );
   }
 
-  const renderers = [renderSchedule, renderCustomer, renderPeople, renderConfirm];
+  const renderers = [renderSchedule, renderCustomer, renderPeople, renderOptions, renderConfirm];
 
   return (
     <div className="max-w-lg mx-auto px-4 py-4">

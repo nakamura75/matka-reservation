@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { Reservation, ReservationStatus } from '@/types';
 import { formatDate, stripSeconds } from '@/lib/utils';
 import { STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
+import type { ShootMode } from '@/lib/mode';
 
 // スタジオは従来通り全ステータス、ロケは 仮予約/予約確定/完了/キャンセル のみ（見学・保留なし）
 const STUDIO_TABS: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
@@ -19,10 +20,9 @@ const PAGE_SIZE = 20;
 type SortKey = 'date' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
-export default function ReservationList({ reservations, shootTab, setShootTab }: {
+export default function ReservationList({ reservations, mode }: {
   reservations: Reservation[];
-  shootTab: 'studio' | 'location';
-  setShootTab: (t: 'studio' | 'location') => void;
+  mode: ShootMode;
 }) {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<ReservationStatus>('予約済');
@@ -31,15 +31,18 @@ export default function ReservationList({ reservations, shootTab, setShootTab }:
   const [page, setPage] = useState(1);
   const [photoUndeliveredOnly, setPhotoUndeliveredOnly] = useState(false);
 
-  const isLoc = shootTab === 'location';
+  const isLoc = mode === 'location';
   const TAB_ORDER = isLoc ? LOCATION_TABS : STUDIO_TABS;
 
-  function switchShoot(t: 'studio' | 'location') {
-    setShootTab(t);
-    setActiveTab('予約済');
-    setPhotoUndeliveredOnly(false);
-    setPage(1);
-  }
+  // モード切替で現在のタブが無効になったら先頭タブへ戻す
+  useEffect(() => {
+    if (!TAB_ORDER.includes(activeTab)) {
+      setActiveTab('予約済');
+      setPhotoUndeliveredOnly(false);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -99,26 +102,6 @@ export default function ReservationList({ reservations, shootTab, setShootTab }:
 
   return (
     <div className={`rounded-xl border overflow-hidden bg-white ${isLoc ? 'border-emerald-200' : 'border-cream-dark'}`}>
-      {/* スタジオ / ロケ 切替（コンパクト） */}
-      <div className="p-3 border-b border-cream-dark">
-        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs">
-          {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
-            const active = shootTab === key;
-            const locTab = key === 'location';
-            return (
-              <button
-                key={key}
-                onClick={() => switchShoot(key)}
-                className={`px-4 py-1.5 font-medium transition-colors ${key === 'studio' ? 'border-r border-gray-200' : ''}
-                  ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* 検索バー */}
       <div className="p-4 border-b border-cream-dark">
         <input
@@ -182,7 +165,7 @@ export default function ReservationList({ reservations, shootTab, setShootTab }:
               </th>
               <th className="px-4 py-3 text-left w-[8%]">時間</th>
               <th className="px-4 py-3 text-left w-[14%]">顧客名</th>
-              <th className="px-4 py-3 text-left w-[15%]">シーン</th>
+              {!isLoc && <th className="px-4 py-3 text-left w-[15%]">シーン</th>}
               <th className="px-4 py-3 text-left w-[12%]">ステータス</th>
               <th className="px-4 py-3 text-left w-[12%] cursor-pointer select-none" onClick={() => handleSort('createdAt')}>
                 登録日<SortIcon column="createdAt" />
@@ -192,7 +175,7 @@ export default function ReservationList({ reservations, shootTab, setShootTab }:
           <tbody className="divide-y divide-gray-100">
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={isLoc ? 6 : 7} className="px-4 py-10 text-center text-gray-400">
                   予約が見つかりません
                 </td>
               </tr>
@@ -210,7 +193,7 @@ export default function ReservationList({ reservations, shootTab, setShootTab }:
                   <td className="px-4 py-3 text-gray-700">{r.date ? formatDate(r.date) : <span className="text-gray-400">未定</span>}</td>
                   <td className="px-4 py-3 text-gray-700">{r.timeSlot ? stripSeconds(r.timeSlot) : <span className="text-gray-400">未定</span>}</td>
                   <td className="px-4 py-3 text-gray-700">{r.customerName || r.customerId}</td>
-                  <td className="px-4 py-3 text-gray-500">{r.scene}</td>
+                  {!isLoc && <td className="px-4 py-3 text-gray-500">{r.scene}</td>}
                   <td className="px-4 py-3">
                     <div className="flex flex-row flex-nowrap items-center gap-1.5">
                       {r.pdfUrl && (

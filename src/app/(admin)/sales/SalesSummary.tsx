@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { useShootBg } from '@/components/layout/ShootBgContext';
+import { useMode } from '@/components/layout/ModeProvider';
 import type { Reservation, Staff, Order, OrderItem, Holiday, ReservationOption } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
 import { isWeekend } from '@/lib/utils';
@@ -50,13 +50,8 @@ function taxExcluded(amount: number): number {
 type TaxMode = 'included' | 'excluded';
 
 export default function SalesSummary({ reservations: allReservations, staff, orders: allOrders, holidays, reservationOptions, optionPriceMap }: Props) {
-  const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
-  const isLoc = shootTab === 'location';
-  const setMainBg = useShootBg();
-  useEffect(() => {
-    setMainBg(isLoc ? 'bg-emerald-50/60' : null);
-    return () => setMainBg(null);
-  }, [isLoc, setMainBg]);
+  const mode = useMode();
+  const isLoc = mode === 'location';
 
   // 撮影区分で絞り込み（以降の集計はこの絞り込み済みデータに対して行う）
   const shootTypeByRes = useMemo(() => {
@@ -156,13 +151,14 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
     () => new Set(holidays.filter((h) => h.type === 'holiday').map((h) => h.date)),
     [holidays]
   );
+  // ロケは休日料金を total に含めているためここでは加算しない
   const holidayFeeTotal = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length * HOLIDAY_FEE,
-    [completedReservations, holidayDates]
+    () => isLoc ? 0 : completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length * HOLIDAY_FEE,
+    [completedReservations, holidayDates, isLoc]
   );
   const holidayFeeCount = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length,
-    [completedReservations, holidayDates]
+    () => isLoc ? 0 : completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length,
+    [completedReservations, holidayDates, isLoc]
   );
 
   // 単価別の件数を記録する型
@@ -310,25 +306,6 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-gray-900">売上集計</h1>
-      {/* スタジオ / ロケ 切替（コンパクト） */}
-      <div>
-        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-xs">
-          {([['studio', 'スタジオ'], ['location', 'ロケーション']] as const).map(([key, label]) => {
-            const active = shootTab === key;
-            const locTab = key === 'location';
-            return (
-              <button
-                key={key}
-                onClick={() => setShootTab(key)}
-                className={`px-4 py-1.5 font-medium transition-colors ${key === 'studio' ? 'border-r border-gray-200' : ''}
-                  ${active ? (locTab ? 'bg-emerald-600 text-white' : 'bg-brand text-white') : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* 月選択 & 税切り替え */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 flex-wrap">

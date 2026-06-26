@@ -20,18 +20,21 @@ export default async function ReservationDetailPage({
 }: {
   params: { id: string };
 }) {
-  const [reservation, plans, options, staff, allOrders, allOrderItems, products, holidays] = await Promise.all([
-    getReservationById(params.id),
-    getPlans(),
-    getOptions(), // マスターオプション一覧（予約オプション選択肢＆enrichに使用）
+  const reservation = await getReservationById(params.id);
+  if (!reservation) notFound();
+
+  // 予約の撮影区分に合わせてプラン/オプションを取得（ロケ予約ではロケのオプションのみ）
+  const mode = reservation.shootType === 'location' ? 'location' : 'studio';
+
+  const [plans, options, staff, allOrders, allOrderItems, products, holidays] = await Promise.all([
+    getPlans(mode),
+    getOptions(mode), // マスターオプション一覧（予約オプション選択肢＆enrichに使用）
     getStaff(),
     getOrders().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getOrderItems().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getProducts().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getHolidays().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
-
-  if (!reservation) notFound();
 
   const [customer, reservationOptions] = await Promise.all([
     getCustomerById(reservation.customerId),

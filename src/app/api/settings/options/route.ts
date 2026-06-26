@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getOptions, createOption, updateOption } from '@/lib/db';
 import { generateId } from '@/lib/utils';
+import { getMode } from '@/lib/mode.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const options = await getOptions();
+  const options = await getOptions(getMode() ?? 'studio');
   return NextResponse.json({ success: true, data: options });
 }
 
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
       description: body.description ?? '',
       isActive: body.isActive ?? true,
       externalCode: body.externalCode ?? '',
+      shootType: getMode() ?? 'studio',
     };
     await createOption(option);
     return NextResponse.json({ success: true, data: option });

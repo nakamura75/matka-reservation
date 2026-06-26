@@ -180,6 +180,8 @@ export async function POST(req: NextRequest) {
       familyNote: body.childrenDetail,
       status: (isVisit ? '見学' : '予約済') as import('@/types').ReservationStatus,
       shootType,
+      visitDate: body.visitDate,
+      cancelInsurance: body.cancelInsurance,
       customerNote: body.note,
       otherSceneNote: body.otherSceneNote,
       createdAt: new Date().toISOString(),

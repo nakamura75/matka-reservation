@@ -10,9 +10,9 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         brand: {
-          DEFAULT: '#E8552B',
-          light: '#FDF0EB',
-          dark: '#D04420',
+          DEFAULT: 'var(--brand)',
+          light: 'var(--brand-light)',
+          dark: 'var(--brand-dark)',
         },
         'brand-green': {
           DEFAULT: '#4CBF68',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getProducts, createProduct, updateProduct, updateProductSortOrders } from '@/lib/db';
 import { generateId } from '@/lib/utils';
+import { getMode } from '@/lib/mode.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const products = await getProducts();
+  const products = await getProducts(getMode() ?? 'studio');
   return NextResponse.json({ success: true, data: products });
 }
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       price: Number(body.price),
       description: body.description ?? '',
       isActive: body.isActive ?? true,
+      shootType: getMode() ?? 'studio',
     };
     await createProduct(product);
     return NextResponse.json({ success: true, data: product });

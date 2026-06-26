@@ -1,18 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import type { Reservation } from '@/types';
 import ReservationList from './ReservationList';
-import { useShootBg } from '@/components/layout/ShootBgContext';
+import { useMode } from '@/components/layout/ModeProvider';
 
 export default function ReservationsClient({ reservations }: { reservations: Reservation[] }) {
-  const [shootTab, setShootTab] = useState<'studio' | 'location'>('studio');
-  const isLoc = shootTab === 'location';
-  const setMainBg = useShootBg();
-  useEffect(() => {
-    setMainBg(isLoc ? 'bg-emerald-50/60' : null);
-    return () => setMainBg(null);
-  }, [isLoc, setMainBg]);
+  const mode = useMode();
+  const isLoc = mode === 'location';
 
   return (
     <div>
@@ -25,7 +19,7 @@ export default function ReservationsClient({ reservations }: { reservations: Res
           + 新規予約
         </a>
       </div>
-      <ReservationList reservations={reservations} shootTab={shootTab} setShootTab={setShootTab} />
+      <ReservationList reservations={reservations} mode={mode} />
     </div>
   );
 }

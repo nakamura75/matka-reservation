@@ -89,6 +89,8 @@ function dbToReservation(r: Record<string, unknown>): Reservation {
     familyNote: r.family_note as string | undefined,
     status: effectiveStatus as Reservation['status'],
     shootType: ((r.shoot_type as string) ?? 'studio') as 'studio' | 'location',
+    visitDate: r.visit_date as string | undefined,
+    cancelInsurance: r.cancel_insurance as string | undefined,
     referencePhoto: r.reference_photo as string | undefined,
     note: r.note as string | undefined,
     createdAt: r.created_at as string | undefined,
@@ -129,6 +131,8 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
   if (r.familyNote !== undefined) m.family_note = r.familyNote;
   if (r.status !== undefined) m.status = r.status;
   if (r.shootType !== undefined) m.shoot_type = r.shootType;
+  if (r.visitDate !== undefined) m.visit_date = r.visitDate;
+  if (r.cancelInsurance !== undefined) m.cancel_insurance = r.cancelInsurance;
   if (r.referencePhoto !== undefined) m.reference_photo = r.referencePhoto;
   if (r.note !== undefined) m.note = r.note;
   if (r.createdAt !== undefined) m.created_at = r.createdAt;
@@ -205,11 +209,10 @@ export async function deleteCustomer(id: string): Promise<void> {
 // プラン
 // ============================================================
 
-export async function getPlans(): Promise<Plan[]> {
-  const { data, error } = await supabase()
-    .from('plans')
-    .select('*')
-    .order('id');
+export async function getPlans(mode?: 'studio' | 'location'): Promise<Plan[]> {
+  let query = supabase().from('plans').select('*').order('id');
+  if (mode) query = query.eq('shoot_type', mode);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((r) => ({
     id: r.id,
@@ -219,6 +222,7 @@ export async function getPlans(): Promise<Plan[]> {
     description: r.description,
     isActive: r.is_active,
     showInForm: r.show_in_form ?? true,
+    shootType: (r.shoot_type ?? 'studio') as 'studio' | 'location',
   }));
 }
 
@@ -230,6 +234,7 @@ export async function createPlan(data: Plan): Promise<void> {
     duration: data.duration,
     description: data.description ?? '',
     is_active: data.isActive,
+    shoot_type: data.shootType ?? 'studio',
   });
   if (error) throw error;
 }
@@ -249,12 +254,14 @@ export async function updatePlan(data: Plan): Promise<void> {
 // オプション
 // ============================================================
 
-export async function getOptions(): Promise<Option[]> {
-  const { data, error } = await supabase()
+export async function getOptions(mode?: 'studio' | 'location'): Promise<Option[]> {
+  let query = supabase()
     .from('options')
     .select('*')
     .order('sort_order', { ascending: true })
     .order('id');
+  if (mode) query = query.eq('shoot_type', mode);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((r) => ({
     id: r.id,
@@ -264,6 +271,7 @@ export async function getOptions(): Promise<Option[]> {
     isActive: r.is_active,
     externalCode: r.external_code,
     showInForm: r.show_in_form ?? true,
+    shootType: (r.shoot_type ?? 'studio') as 'studio' | 'location',
   }));
 }
 
@@ -276,6 +284,7 @@ export async function createOption(data: Option): Promise<void> {
     is_active: data.isActive,
     external_code: data.externalCode ?? '',
     show_in_form: data.showInForm ?? true,
+    shoot_type: data.shootType ?? 'studio',
   });
   if (error) throw error;
 }
@@ -296,17 +305,17 @@ export async function updateOption(data: Option): Promise<void> {
 // スタッフ
 // ============================================================
 
-export async function getStaff(): Promise<Staff[]> {
-  const { data, error } = await supabase()
-    .from('staff')
-    .select('*')
-    .order('id');
+export async function getStaff(mode?: 'studio' | 'location'): Promise<Staff[]> {
+  let query = supabase().from('staff').select('*').order('id');
+  if (mode) query = query.eq('shoot_type', mode);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((r) => ({
     id: r.id,
     name: r.name,
     isActive: r.is_active,
     role: r.role,
+    shootType: (r.shoot_type ?? 'studio') as 'studio' | 'location',
   }));
 }
 
@@ -316,6 +325,7 @@ export async function createStaff(data: Staff): Promise<void> {
     name: data.name,
     is_active: data.isActive ?? 'TRUE',
     role: data.role ?? '',
+    shoot_type: data.shootType ?? 'studio',
   });
   if (error) throw error;
 }
@@ -706,12 +716,14 @@ export async function updateOrderItemComponent(
 // 商品
 // ============================================================
 
-export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase()
+export async function getProducts(mode?: 'studio' | 'location'): Promise<Product[]> {
+  let query = supabase()
     .from('products')
     .select('*')
     .order('sort_order', { ascending: true })
     .order('id');
+  if (mode) query = query.eq('shoot_type', mode);
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []).map((r) => ({
     id: r.id,
@@ -721,6 +733,7 @@ export async function getProducts(): Promise<Product[]> {
     description: r.description,
     isActive: r.is_active,
     sortOrder: r.sort_order ?? 0,
+    shootType: (r.shoot_type ?? 'studio') as 'studio' | 'location',
   }));
 }
 
@@ -733,6 +746,7 @@ export async function createProduct(data: Product): Promise<void> {
     description: data.description ?? '',
     is_active: data.isActive,
     sort_order: data.sortOrder ?? 0,
+    shoot_type: data.shootType ?? 'studio',
   });
   if (error) throw error;
 }
@@ -829,4 +843,50 @@ export async function createBlockedSlot(slot: { id: string; date: string; time_s
 export async function deleteBlockedSlot(id: string): Promise<void> {
   const { error } = await supabase().from('blocked_slots').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ============================================================
+// ロケ稼働日（撮影可能日 / 見学NG日）
+// ============================================================
+
+export async function getLocationShootDays(): Promise<string[]> {
+  const { data, error } = await supabase().from('location_shoot_days').select('date').order('date');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.date as string);
+}
+
+export async function addLocationShootDay(date: string): Promise<void> {
+  const { error } = await supabase().from('location_shoot_days').upsert({ date }, { onConflict: 'date' });
+  if (error) throw error;
+}
+
+export async function removeLocationShootDay(date: string): Promise<void> {
+  const { error } = await supabase().from('location_shoot_days').delete().eq('date', date);
+  if (error) throw error;
+}
+
+export async function getLocationVisitBlockedDates(): Promise<string[]> {
+  const { data, error } = await supabase().from('location_visit_blocked_dates').select('date').order('date');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.date as string);
+}
+
+export async function addLocationVisitBlockedDate(date: string): Promise<void> {
+  const { error } = await supabase().from('location_visit_blocked_dates').upsert({ date }, { onConflict: 'date' });
+  if (error) throw error;
+}
+
+export async function removeLocationVisitBlockedDate(date: string): Promise<void> {
+  const { error } = await supabase().from('location_visit_blocked_dates').delete().eq('date', date);
+  if (error) throw error;
+}
+
+export async function getLocationBookedShoots(): Promise<{ date: string; timeSlot: string }[]> {
+  const { data, error } = await supabase()
+    .from('reservations')
+    .select('date,time_slot')
+    .eq('shoot_type', 'location')
+    .not('status', 'in', '("キャンセル","見学")');
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ date: r.date as string, timeSlot: r.time_slot as string }));
 }

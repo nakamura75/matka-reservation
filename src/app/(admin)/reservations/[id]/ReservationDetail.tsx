@@ -198,6 +198,9 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [editPhonePreference, setEditPhonePreference] = useState(reservation.phonePreference ?? '');
   const [editPlanId, setEditPlanId] = useState(reservation.planId ?? '');
   const [currentPlan, setCurrentPlan] = useState(plan);
+  // ロケ専用
+  const [editVisitDate, setEditVisitDate] = useState(reservation.visitDate ?? '');
+  const [editCancelInsurance, setEditCancelInsurance] = useState(reservation.cancelInsurance ?? '');
 
   function cancelInfoEdit() {
     setEditDate(reservation.date ?? '');
@@ -210,6 +213,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
     setEditCustomerNote(reservation.customerNote ?? '');
     setEditPhonePreference(reservation.phonePreference ?? '');
     setEditPlanId(reservation.planId ?? '');
+    setEditVisitDate(reservation.visitDate ?? '');
+    setEditCancelInsurance(reservation.cancelInsurance ?? '');
     setInfoEditing(false);
   }
 
@@ -230,6 +235,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
           customerNote: editCustomerNote,
           phonePreference: editPhonePreference,
           planId: editPlanId,
+          ...(isLocation ? { visitDate: editVisitDate, cancelInsurance: editCancelInsurance } : {}),
         }),
       });
       if (res.ok) {
@@ -323,6 +329,13 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
   // 撮影合計（プラン＋オプション）※見学は料金0
   const isVisit = status === '見学';
+  const isLocation = reservation.shootType === 'location'; // ロケ予約（撮影シーンなし・見学日/保険あり・来店時間不要）
+  // ロケ：振込期限＝撮影日の2週間前。期限超過かつ未払いなら警告表示
+  const transferDeadline = (isLocation && reservation.date)
+    ? (() => { const d = new Date(reservation.date + 'T00:00:00'); d.setDate(d.getDate() - 14); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()
+    : '';
+  const overdueUnpaid = isLocation && !paymentStatus && !!transferDeadline
+    && (() => { const t = new Date(); const ts = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; return ts > transferDeadline; })();
   const optionTotal = isVisit ? 0 : currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = isVisit ? 0 : (currentPlan?.price ?? 0);
   const computedTotal = planPrice + optionTotal;
@@ -476,6 +489,25 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
     }
   }
 
+  // ロケ：振込の支払済/未払いを切り替え（金額明細は使わない）
+  async function setLocationPaid(paid: boolean) {
+    setPaymentSaving(true);
+    try {
+      const newDate = paid ? (paymentDate || new Date().toLocaleDateString('ja-JP')) : '';
+      const res = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: paid, paymentDate: newDate, paymentMethod: paid ? '振込' : '' }),
+      });
+      if (res.ok) {
+        setPaymentStatus(paid);
+        setPaymentDate(newDate);
+      }
+    } finally {
+      setPaymentSaving(false);
+    }
+  }
+
   async function updatePaymentAmount(index: number, amount: number) {
     const updated = payments.map((p, i) => i === index ? { ...p, amount } : p);
     setPayments(updated);
@@ -608,6 +640,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     ))}
                   </select>
                 </div>
+                {!isLocation && (
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">撮影シーン</label>
                   <select
@@ -621,6 +654,32 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     ))}
                   </select>
                 </div>
+                )}
+                {isLocation && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">見学日</label>
+                    <input
+                      type="date"
+                      value={editVisitDate}
+                      onChange={(e) => setEditVisitDate(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                )}
+                {isLocation && (
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">キャンセル保険</label>
+                    <select
+                      value={editCancelInsurance}
+                      onChange={(e) => setEditCancelInsurance(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    >
+                      <option value="">—</option>
+                      <option value="加入する">加入する</option>
+                      <option value="加入しない">加入しない</option>
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">プラン</label>
                   <select
@@ -634,7 +693,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     ))}
                   </select>
                 </div>
-                {(editScene === 'その他' || editOtherSceneNote) && (
+                {!isLocation && (editScene === 'その他' || editOtherSceneNote) && (
                   <div className="col-span-2">
                     <label className="block text-xs text-gray-400 mb-1">希望の撮影シーン（その他）</label>
                     <input
@@ -645,24 +704,26 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     />
                   </div>
                 )}
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">お子様人数</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editChildrenCount}
-                    onChange={(e) => setEditChildrenCount(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">大人人数</label>
-                  <input
-                    type="text"
-                    value={editAdultCount}
-                    onChange={(e) => setEditAdultCount(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                  />
+                <div className="col-span-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">お子様人数</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editChildrenCount}
+                      onChange={(e) => setEditChildrenCount(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">大人人数</label>
+                    <input
+                      type="text"
+                      value={editAdultCount}
+                      onChange={(e) => setEditAdultCount(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    />
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs text-gray-400 mb-1">家族構成メモ（生年月日など）</label>
@@ -702,15 +763,30 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   <dt className="text-gray-400">時間帯</dt>
                   <dd className="font-medium text-gray-900 mt-0.5">{stripSeconds(reservation.timeSlot)}</dd>
                 </div>
-                <div>
-                  <dt className="text-gray-400">撮影シーン</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.scene ?? '—'}</dd>
-                </div>
-                {reservation.otherSceneNote && (
-                  <div className="col-span-2">
-                    <dt className="text-gray-400">希望の撮影シーン（その他）</dt>
-                    <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.otherSceneNote}</dd>
-                  </div>
+                {isLocation ? (
+                  <>
+                    <div>
+                      <dt className="text-gray-400">見学日</dt>
+                      <dd className="font-medium text-gray-900 mt-0.5">{reservation.visitDate ? formatDate(reservation.visitDate) : '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-gray-400">キャンセル保険</dt>
+                      <dd className="font-medium text-gray-900 mt-0.5">{reservation.cancelInsurance || '—'}</dd>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <dt className="text-gray-400">撮影シーン</dt>
+                      <dd className="font-medium text-gray-900 mt-0.5">{reservation.scene ?? '—'}</dd>
+                    </div>
+                    {reservation.otherSceneNote && (
+                      <div className="col-span-2">
+                        <dt className="text-gray-400">希望の撮影シーン（その他）</dt>
+                        <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">{reservation.otherSceneNote}</dd>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div>
                   <dt className="text-gray-400">プラン</dt>
@@ -718,13 +794,15 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     {currentPlan?.name ?? reservation.planId}
                   </dd>
                 </div>
-                <div>
-                  <dt className="text-gray-400">お子様人数</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.childrenCount ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-gray-400">大人人数</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{reservation.adultCount ?? '—'}</dd>
+                <div className="col-span-2 grid grid-cols-2 gap-x-6">
+                  <div>
+                    <dt className="text-gray-400">お子様人数</dt>
+                    <dd className="font-medium text-gray-900 mt-0.5">{reservation.childrenCount ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-400">大人人数</dt>
+                    <dd className="font-medium text-gray-900 mt-0.5">{reservation.adultCount ?? '—'}</dd>
+                  </div>
                 </div>
                 {reservation.familyNote && (
                   <div className="col-span-2">
@@ -1344,7 +1422,40 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   </span>
                 )}
               </div>
-              {/* 新形式の支払い明細 */}
+
+              {/* ロケ：振込期限＋入金トグル（金額明細は使わない） */}
+              {isLocation && (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">振込期限</span>
+                    <span className={`font-medium ${overdueUnpaid ? 'text-red-600' : 'text-gray-800'}`}>
+                      {transferDeadline ? `${formatDate(transferDeadline)}まで` : '—'}
+                    </span>
+                  </div>
+                  {overdueUnpaid && (
+                    <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 font-medium">
+                      ⚠ 振込期限を過ぎていますが未入金です
+                    </div>
+                  )}
+                  <div className="pt-1">
+                    {paymentStatus ? (
+                      <button onClick={() => setLocationPaid(false)} disabled={paymentSaving}
+                        className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors">
+                        未払いに戻す
+                      </button>
+                    ) : (
+                      <button onClick={() => setLocationPaid(true)} disabled={paymentSaving}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                        入金済みにする
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* 新形式の支払い明細（スタジオのみ） */}
+              {!isLocation && (
+              <>
               {payments.length > 0 && (
                 <div className="space-y-1">
                   {payments.map((p, i) => (
@@ -1440,6 +1551,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                   <PlusIcon className="w-3.5 h-3.5" />
                   支払いを追加
                 </button>
+              )}
+              </>
               )}
             </div>
           </section>
@@ -1607,8 +1720,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 )}
               </div>
             )}
-            {/* 予約確定への遷移時のみ来店・終了時間を入力 */}
-            {nextStatus === '予約確定' && (
+            {/* 予約確定への遷移時のみ来店・終了時間を入力（ロケは不要） */}
+            {nextStatus === '予約確定' && !isLocation && (
               <div className="space-y-2 pb-1">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">来店時間</label>
@@ -1705,13 +1818,13 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             {nextStatus && (
               <button
                 onClick={() => changeStatus(nextStatus)}
-                disabled={loading || (nextStatus === '予約確定' && (!checkInTime || !checkOutTime)) || (nextStatus === '予約済' && status === '保留' && !editDate)}
+                disabled={loading || (nextStatus === '予約確定' && !isLocation && (!checkInTime || !checkOutTime)) || (nextStatus === '予約済' && status === '保留' && !editDate)}
                 className="w-full py-2.5 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? '処理中...' : NEXT_STATUS_LABEL_MAP[nextStatus]}
               </button>
             )}
-            {nextStatus === '予約確定' && (!checkInTime || !checkOutTime) && (
+            {nextStatus === '予約確定' && !isLocation && (!checkInTime || !checkOutTime) && (
               <p className="text-xs text-amber-600 text-center">来店時間・終了時間を入力してください</p>
             )}
             {nextStatus === '予約済' && status === '保留' && !editDate && (
@@ -1727,8 +1840,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 {resendingLine ? '送信中...' : '予約確定LINEを再送信'}
               </button>
             )}
-            {/* 日程変更ボタン: 予約確定・見学のときに表示 */}
-            {(status === '予約確定' || status === '見学') && (
+            {/* 日程変更ボタン: 予約確定・見学のときに表示（ロケは延期なしのため非表示） */}
+            {!isLocation && (status === '予約確定' || status === '見学') && (
               <button
                 onClick={handleScheduleChange}
                 disabled={loading}
@@ -1748,9 +1861,9 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 キャンセルにする
               </button>
             )}
-            {status === '予約済' && reservation.lineUserId && checkInTime && checkOutTime && (
+            {status === '予約済' && reservation.lineUserId && (isLocation || (checkInTime && checkOutTime)) && (
               <p className="text-xs text-blue-500 text-center">
-                ※ 予約確定にすると LINE に通知が送信されます
+                ※ 予約確定にすると{isLocation ? '振込案内の' : ''} LINE に通知が送信されます
               </p>
             )}
           </section>
