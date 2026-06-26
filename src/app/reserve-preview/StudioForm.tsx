@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
-import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID, LINE_OA_ID } from '@/lib/constants';
+import { SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
 import { formatCurrency, formatDate, isWeekend } from '@/lib/utils';
 
 // ============================================================
@@ -110,14 +110,10 @@ function StepIndicator({ current }: { current: number }) {
 // ============================================================
 // メインコンポーネント
 // ============================================================
-export default function StudioForm() {
+export default function StudioForm({ lineUserId = '', lineName = '' }: { lineUserId?: string; lineName?: string }) {
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [reservationNumber, setReservationNumber] = useState('');
-  // LIFF 判定状態: checking=初期化中 / in-line=LINE内 / outside=LINE外（予約不可・誘導画面）
-  const [liffState, setLiffState] = useState<'checking' | 'in-line' | 'outside'>('checking');
-  const [lineUserId, setLineUserId] = useState('');
-  const [lineName, setLineName] = useState('');
 
   // マスタデータ
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -164,48 +160,6 @@ export default function StudioForm() {
 
   // Honeypot（Bot対策）— 人間には見えない入力欄
   const [honeypot, setHoneypot] = useState('');
-
-  // LIFF初期化：LINE内なら userId を自動連携、LINE外なら誘導画面へ
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    // 開発環境(localhost)・?preview=1 ではLINE外でもフォームを表示（ダミー入力・PC確認用）。
-    // 本番はLIFF_ID設定済みでLINE内限定。
-    const isPreview = new URLSearchParams(window.location.search).has('preview');
-    const isDev = process.env.NODE_ENV === 'development';
-    if (isPreview || isDev) {
-      setLiffState('in-line');
-      return;
-    }
-    const liffId = LIFF_ID;
-    if (!liffId) {
-      // LIFF未設定（PCプレビュー等）は予約不可・誘導画面
-      console.warn('[LIFF] LIFF_ID が未設定です');
-      setLiffState('outside');
-      return;
-    }
-    import('@line/liff').then((liff) => {
-      liff.default.init({ liffId })
-        .then(() => {
-          if (liff.default.isInClient()) {
-            setLiffState('in-line');
-            liff.default.getProfile().then((profile) => {
-              setLineUserId(profile.userId);
-              setLineName(profile.displayName);
-            }).catch((e) => console.error('[LIFF] getProfile失敗:', e));
-          } else {
-            // LINEアプリ外（PCブラウザ等）からのアクセス → 予約不可・誘導画面へ
-            setLiffState('outside');
-          }
-        })
-        .catch((e) => {
-          console.error('[LIFF] init失敗:', e);
-          setLiffState('outside');
-        });
-    }).catch((e) => {
-      console.error('[LIFF] SDK読み込み失敗:', e);
-      setLiffState('outside');
-    });
-  }, []);
 
   // マスタデータ取得
   useEffect(() => {
@@ -391,61 +345,6 @@ export default function StudioForm() {
           </div>
           <p className="text-sm text-green-600 bg-green-50 rounded-xl p-3">
             ✅ LINEで予約確認メッセージをお送りしました
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================
-  // LIFF 判定中のローディング
-  // ============================================================
-  if (liffState === 'checking') {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <div className="animate-spin w-8 h-8 border-2 border-brand border-t-transparent rounded-full mx-auto mb-4" />
-        <p className="text-sm text-gray-500">読み込み中...</p>
-      </div>
-    );
-  }
-
-  // ============================================================
-  // LINEアプリ外からのアクセス → 予約はLINE内のみ（誘導画面）
-  // ============================================================
-  if (liffState === 'outside') {
-    const liffUrl = LIFF_ID ? `https://liff.line.me/${LIFF_ID}` : '';
-    const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_ID)}`;
-    return (
-      <div className="max-w-lg mx-auto px-4 py-12 text-center">
-        <div className="bg-white rounded-2xl border border-gray-200 p-8">
-          <div className="w-16 h-16 rounded-full bg-[#06C755]/10 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">💬</span>
-          </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">ご予約はLINEから</h2>
-          <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-            ご予約には公式LINEの友だち登録が必要です。<br />
-            下のボタンからLINEアプリで予約フォームを開いてください。
-          </p>
-          {liffUrl ? (
-            <a
-              href={liffUrl}
-              className="block w-full text-center py-3 bg-[#06C755] text-white text-sm font-bold rounded-xl hover:bg-[#05a847] transition-colors mb-4"
-            >
-              LINEで予約をはじめる
-            </a>
-          ) : (
-            <a
-              href={addFriendUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center py-3 bg-[#06C755] text-white text-sm font-bold rounded-xl hover:bg-[#05a847] transition-colors mb-4"
-            >
-              公式LINEを友だち追加する
-            </a>
-          )}
-          <p className="text-xs text-gray-400 leading-relaxed">
-            ※スマートフォンにLINEアプリがインストールされている必要があります。<br />
-            PCからはご予約いただけません。
           </p>
         </div>
       </div>
@@ -706,7 +605,7 @@ export default function StudioForm() {
             className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">選択...</option>
-            {['0', '1', '2', '3', '4', '5以上'].map((v) => (
+            {['1', '2', '3', '4', '5以上'].map((v) => (
               <option key={v} value={v}>{v === '5以上' ? '5名以上' : `${v}名`}</option>
             ))}
           </select>
