@@ -39,6 +39,7 @@ import {
   getCustomers,
 } from '@/lib/db';
 import { sendLinePush, buildTentativeMessage } from '@/lib/line';
+import { getActiveCampaign, isCampaignScene } from '@/lib/campaign';
 import { generateId, generateReservationNumber } from '@/lib/utils';
 import type { ReservationFormData, Reservation } from '@/types';
 
@@ -110,6 +111,16 @@ export async function POST(req: NextRequest) {
       maxDate.setDate(maxDate.getDate() + 90);
       if (requestedDate > maxDate) {
         return NextResponse.json({ error: '予約は90日先までです' }, { status: 400 });
+      }
+      // キャンペーン予約はサーバ側でも「期間内＆許可枠のみ」を強制（フォーム迂回POST対策）
+      if (isCampaignScene(body.scene)) {
+        const campaign = getActiveCampaign(body.date);
+        if (!campaign) {
+          return NextResponse.json({ error: 'キャンペーン期間外のため予約できません' }, { status: 400 });
+        }
+        if (!campaign.allowedTimeSlots.includes(body.timeSlot)) {
+          return NextResponse.json({ error: 'キャンペーンは指定の時間枠のみ予約可能です' }, { status: 400 });
+        }
       }
     }
 

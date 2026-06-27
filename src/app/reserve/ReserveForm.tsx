@@ -6,6 +6,7 @@ import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 import { SHOOTING_SCENES, SCENE_PLAN_MAP, LIFF_ID, LINE_OA_ID } from '@/lib/constants';
+import { getActiveCampaign, isCampaignScene, isCampaignEnabled, CAMPAIGN_OPTION_CODES } from '@/lib/campaign';
 import { formatCurrency, formatDate, isWeekend } from '@/lib/utils';
 
 // ============================================================
@@ -159,6 +160,7 @@ export default function ReserveForm() {
   const [phoneCallTopics, setPhoneCallTopics] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [agreed, setAgreed] = useState(false);
+  const [campaignAgreed, setCampaignAgreed] = useState(false); // キャンペーン注意事項への同意
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -230,6 +232,8 @@ export default function ReserveForm() {
     setOtherSceneNote('');
     setSelectedDate('');
     setSelectedTime('');
+    setCampaignAgreed(false);
+    setSelectedOptions([]); // シーン変更でオプション選択をリセット（キャンペーンは対象オプションが異なるため）
     const t = new Date();
     setCalendarYM({ year: t.getFullYear(), month: t.getMonth() });
     const planType = SCENE_PLAN_MAP[s];
@@ -421,7 +425,7 @@ export default function ReserveForm() {
           <p className="text-xs text-red-500 mb-1">※オプション追加をご希望の場合、9:00~は撮影不可となります。</p>
           <p className="text-xs text-red-500 mb-2">※お着付けが必要な場合は、七五三をご選択ください。</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {SHOOTING_SCENES.map((s) => (
+            {[...SHOOTING_SCENES, ...(isCampaignEnabled() ? (['キャンペーン'] as const) : [])].map((s) => (
               <button
                 key={s}
                 type="button"
@@ -588,6 +592,43 @@ export default function ReserveForm() {
             )}
           </div>
         )}
+
+        {/* キャンペーン：日時選択後に内容＋注意事項（同意必須）を表示 */}
+        {isCampaignScene(scene) && selectedTime && (() => {
+          const campaign = getActiveCampaign(selectedDate);
+          if (!campaign) return null;
+          return (
+            <div className="space-y-4">
+              {/* ① 赤字注記 */}
+              <div className="text-xs text-red-600 space-y-1 leading-relaxed">
+                {campaign.redNotes.map((n, i) => <p key={i}>{n}</p>)}
+              </div>
+              {/* ② キャンペーン内容 */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="text-sm font-bold text-amber-800 mb-2">キャンペーン内容</p>
+                <div className="text-xs text-gray-700 space-y-1 leading-relaxed">
+                  {campaign.contentLines.map((l, i) => <p key={i}>{l}</p>)}
+                </div>
+              </div>
+              {/* ③ 注意事項＋同意 */}
+              <div className="border border-gray-200 rounded-xl p-4">
+                <p className="text-sm font-semibold text-gray-800 mb-2">注意事項</p>
+                <ul className="text-xs text-gray-600 list-disc pl-4 space-y-1 leading-relaxed">
+                  {campaign.formNoticeLines.map((l, i) => <li key={i}>{l}</li>)}
+                </ul>
+                <label className="flex items-start gap-2 mt-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={campaignAgreed}
+                    onChange={(e) => setCampaignAgreed(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-brand"
+                  />
+                  <span className="text-sm text-gray-700">上記の注意事項に同意する <span className="text-red-500">*</span></span>
+                </label>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -750,13 +791,17 @@ export default function ReserveForm() {
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">オプション選択</h2>
         <p className="text-xs text-gray-400">ヘアセット料金はプラン料金に含まれています。複数選択可能です。</p>
-        {selectedTime === '9:00' && selectedOptions.length > 0 && (
+        {/* キャンペーンは9時＋着付け必須のためガードを抑止 */}
+        {selectedTime === '9:00' && selectedOptions.length > 0 && !isCampaignScene(scene) && (
           <p className="text-sm text-red-600 font-medium bg-red-50 border border-red-200 rounded-lg px-4 py-3">
             9時枠を選択の場合はオプションが追加できません。<br />ステップ1に戻って時間を再選択してください。
           </p>
         )}
         <div className="space-y-3">
-          {options.map((opt) => {
+          {(isCampaignScene(scene)
+            ? options.filter((o) => o.externalCode && (CAMPAIGN_OPTION_CODES as readonly string[]).includes(o.externalCode))
+            : options
+          ).map((opt) => {
             const selected = selectedOptions.find((so) => so.optionId === opt.id);
             return (
               <div
@@ -1000,6 +1045,7 @@ export default function ReserveForm() {
       case 0:
         if (!scene || !selectedDate || !selectedTime) return false;
         if (scene === 'その他' && !otherSceneNote.trim()) return false; // ① その他は入力必須
+        if (isCampaignScene(scene) && !campaignAgreed) return false; // キャンペーンは注意事項同意必須
         return true;
       case 1: {
         // 必須項目すべて入力 + 形式エラーがないこと（メールは任意項目だが入力時は形式チェック）

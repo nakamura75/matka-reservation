@@ -68,7 +68,7 @@ export interface StaffAssignment {
 // ============================================================
 export type ReservationStatus = '予約済' | '予約確定' | '見学' | '保留' | '完了' | 'キャンセル';
 export type TimeSlot = '9:00' | '12:00' | '15:00';
-export type ShootingScene = '七五三' | 'マタニティ' | 'バースデー' | 'ベビー' | 'その他';
+export type ShootingScene = '七五三' | 'マタニティ' | 'バースデー' | 'ベビー' | 'その他' | 'キャンペーン';
 
 export interface Reservation {
   id: string;              // ID予約
