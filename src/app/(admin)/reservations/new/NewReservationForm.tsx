@@ -374,7 +374,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
               type="number"
               value={adultCount}
               onChange={(e) => setAdultCount(e.target.value)}
-              min={0}
+              min={1}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
             />
           </div>
