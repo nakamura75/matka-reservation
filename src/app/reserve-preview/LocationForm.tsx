@@ -131,6 +131,11 @@ export default function LocationForm({ lineUserId = '', lineName = '' }: { lineU
   const [insurance, setInsurance] = useState<'' | '加入する' | '加入しない'>('');
   const [acknowledged, setAcknowledged] = useState(false);
 
+  // ステップ切替時は必ずページ先頭から表示する（確認ページ等が中盤から始まるのを防ぐ）
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step]);
+
   // オプション・プラン取得（ロケ用を設定から取得）
   useEffect(() => {
     fetch('/api/options?mode=location')
