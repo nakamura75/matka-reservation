@@ -583,11 +583,14 @@ export default function ReserveForm() {
                   </div>
                   <p className="text-xl font-bold text-brand">{formatCurrency(selectedPlan.price)}</p>
                 </div>
-                <div className="text-xs text-red-600 space-y-1 leading-relaxed">
-                  <p>※ {selectedTime}は撮影開始時刻の目安です。お支度時間が別途必要となります。</p>
-                  <p>※ 所要時間は約3時間です。<br />　来店時刻・所要時間は撮影シーンによって変更になります。</p>
-                  <p>※ 来店いただく確定時刻は予約確定LINEに記載します。</p>
-                </div>
+                {/* 通常撮影の注意事項（キャンペーンは独自の注記を別途表示するため非表示） */}
+                {!isCampaignScene(scene) && (
+                  <div className="text-xs text-red-600 space-y-1 leading-relaxed">
+                    <p>※ {selectedTime}は撮影開始時刻の目安です。お支度時間が別途必要となります。</p>
+                    <p>※ 所要時間は約3時間です。<br />　来店時刻・所要時間は撮影シーンによって変更になります。</p>
+                    <p>※ 来店いただく確定時刻は予約確定LINEに記載します。</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
