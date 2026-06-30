@@ -664,7 +664,7 @@ export default function ReserveForm() {
             className="w-full text-sm border border-gray-400 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand"
           >
             <option value="">選択...</option>
-            {['0', '1', '2', '3', '4', '5以上'].map((v) => (
+            {['1', '2', '3', '4', '5以上'].map((v) => (
               <option key={v} value={v}>{v === '5以上' ? '5名以上' : `${v}名`}</option>
             ))}
           </select>
