@@ -98,17 +98,18 @@ export async function POST(req: NextRequest) {
       if (!body.planId || !body.customerName || !body.phone) {
         return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
       }
-      // 日付が過去でないか確認
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const requestedDate = new Date(body.date);
-      if (requestedDate < today) {
+      // 日付の範囲チェックは JST 基準の YYYY-MM-DD 文字列比較で行う。
+      // （サーバーはUTC稼働のため new Date() ベースだと境界がJSTと最大1日ズレ、
+      //   空き枠カレンダー[JST]では選べる90日目ちょうどの日を弾く不具合が出る。
+      //   空き枠生成 lib/slots.ts と同じJST基準に揃える）
+      const jstDateStr = (ms: number) => new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const nowMs = Date.now();
+      const todayJST = jstDateStr(nowMs);                          // JSTの今日
+      const maxJST = jstDateStr(nowMs + 90 * 24 * 60 * 60 * 1000); // JSTの90日後（カレンダーの最終日と一致）
+      if (body.date < todayJST) {
         return NextResponse.json({ error: '過去の日付には予約できません' }, { status: 400 });
       }
-      // 90日以内か確認
-      const maxDate = new Date(today);
-      maxDate.setDate(maxDate.getDate() + 90);
-      if (requestedDate > maxDate) {
+      if (body.date > maxJST) {
         return NextResponse.json({ error: '予約は90日先までです' }, { status: 400 });
       }
     }
