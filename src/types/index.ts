@@ -13,6 +13,7 @@ export interface Customer {
   lineUserId?: string;    // LINE UserID（LIFF）
   chatLineUserId?: string; // LINE ChatUserID（Messaging API・AB列）
   note?: string;          // 備考
+  shootType?: 'studio' | 'location' | 'both'; // 利用区分（スタジオ/ロケ/両方）
   createdAt?: string;  // 登録日
 }
 

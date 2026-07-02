@@ -33,6 +33,7 @@ import {
   createReservation,
   createReservationOption,
   createCustomer,
+  updateCustomer,
   checkSlotConflict,
   checkVisitSlotConflict,
   getPlans,
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest) {
     const reservationNumber = generateReservationNumber(body.date);
 
     if (!customer) {
-      // 新規顧客登録
+      // 新規顧客登録（予約の入口＝撮影区分をそのまま顧客の利用区分に）
       const customerId = generateId();
       customer = {
         id: customerId,
@@ -171,9 +172,16 @@ export async function POST(req: NextRequest) {
         zipCode: body.zipCode,
         address: body.address,
         lineName: body.lineName,
+        shootType, // 'studio' | 'location'
         createdAt: now,
       };
       await createCustomer(customer);
+    } else {
+      // 既存顧客が別モードで予約したら「両方」に更新（見学のみでも利用実績として扱う）
+      const current = customer.shootType ?? 'studio';
+      if (current !== 'both' && current !== shootType) {
+        await updateCustomer({ ...customer, shootType: 'both' });
+      }
     }
 
     // 予約作成

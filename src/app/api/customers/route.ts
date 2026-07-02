@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       address: body.address ?? '',
       lineName: body.lineName ?? '',
       note: body.note ?? '',
+      shootType: (body.shootType === 'location' || body.shootType === 'both') ? body.shootType : 'studio',
       createdAt: new Date().toLocaleDateString('ja-JP'),
     };
     await createCustomer(customer);
