@@ -41,6 +41,7 @@ function dbToCustomer(r: Record<string, unknown>): Customer {
     lineUserId: r.line_user_id as string | undefined,
     chatLineUserId: r.chat_line_user_id as string | undefined,
     note: r.note as string | undefined,
+    shootType: ((r.shoot_type as string) ?? 'studio') as 'studio' | 'location' | 'both',
     createdAt: r.created_at as string | undefined,
   };
 }
@@ -58,6 +59,7 @@ function customerToDb(c: Partial<Customer>): Record<string, unknown> {
   if (c.lineUserId !== undefined) m.line_user_id = c.lineUserId;
   if (c.chatLineUserId !== undefined) m.chat_line_user_id = c.chatLineUserId;
   if (c.note !== undefined) m.note = c.note;
+  if (c.shootType !== undefined) m.shoot_type = c.shootType;
   if (c.createdAt !== undefined) m.created_at = c.createdAt;
   return m;
 }

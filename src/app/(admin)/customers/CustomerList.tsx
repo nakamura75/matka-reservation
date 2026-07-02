@@ -15,11 +15,65 @@ type CustomerWithCount = Customer & {
 
 const PAGE_SIZE = 50;
 
+// 利用区分ラベル
+const SHOOT_TYPE_LABEL: Record<string, string> = { studio: 'スタジオ', location: 'ロケ', both: '両方' };
+const SHOOT_TYPE_BADGE: Record<string, string> = {
+  studio: 'bg-[#E8552B]/10 text-[#E8552B]',
+  location: 'bg-emerald-100 text-emerald-700',
+  both: 'bg-indigo-100 text-indigo-700',
+};
+
 export default function CustomerList({ customers }: { customers: CustomerWithCount[] }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [mergingId, setMergingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+
+  // 区分の更新中ID
+  const [savingTypeId, setSavingTypeId] = useState<string | null>(null);
+
+  // 顧客追加フォーム
+  const [showAdd, setShowAdd] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: '', furigana: '', phone: '', email: '', zipCode: '', address: '', shootType: 'studio',
+  });
+
+  async function handleChangeShootType(id: string, shootType: string) {
+    setSavingTypeId(id);
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shootType }),
+      });
+      if (res.ok) router.refresh();
+      else alert('区分の更新に失敗しました');
+    } finally {
+      setSavingTypeId(null);
+    }
+  }
+
+  async function handleAddCustomer() {
+    if (!addForm.name || !addForm.phone) { alert('氏名と電話番号は必須です'); return; }
+    setAdding(true);
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addForm),
+      });
+      if (res.ok) {
+        setShowAdd(false);
+        setAddForm({ name: '', furigana: '', phone: '', email: '', zipCode: '', address: '', shootType: 'studio' });
+        router.refresh();
+      } else {
+        alert('顧客の追加に失敗しました');
+      }
+    } finally {
+      setAdding(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     if (!search) return customers;
@@ -67,7 +121,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="p-4 border-b border-gray-100 flex gap-3">
+      <div className="p-4 border-b border-gray-100 flex gap-3 items-center">
         <input
           type="text"
           placeholder="氏名・フリガナ・電話番号・メールで検索..."
@@ -75,14 +129,61 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
-        <span className="text-sm text-gray-400 self-center">{filtered.length}件</span>
+        <span className="text-sm text-gray-400">{filtered.length}件</span>
+        <button
+          onClick={() => setShowAdd((v) => !v)}
+          className="shrink-0 text-sm px-3 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark transition-colors"
+        >
+          {showAdd ? '閉じる' : '＋ 顧客を追加'}
+        </button>
       </div>
+
+      {/* 顧客追加フォーム */}
+      {showAdd && (
+        <div className="p-4 border-b border-gray-100 bg-gray-50/60 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <input type="text" placeholder="氏名 *" value={addForm.name}
+              onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            <input type="text" placeholder="フリガナ" value={addForm.furigana}
+              onChange={(e) => setAddForm({ ...addForm, furigana: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            <input type="tel" placeholder="電話番号 *" value={addForm.phone}
+              onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            <input type="email" placeholder="メールアドレス" value={addForm.email}
+              onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            <input type="text" placeholder="郵便番号" value={addForm.zipCode}
+              onChange={(e) => setAddForm({ ...addForm, zipCode: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+            <input type="text" placeholder="住所" value={addForm.address}
+              onChange={(e) => setAddForm({ ...addForm, address: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30" />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-500">利用区分</label>
+            <select value={addForm.shootType}
+              onChange={(e) => setAddForm({ ...addForm, shootType: e.target.value })}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30">
+              <option value="studio">スタジオ</option>
+              <option value="location">ロケ</option>
+              <option value="both">両方</option>
+            </select>
+            <button onClick={handleAddCustomer} disabled={adding}
+              className="ml-auto text-sm px-4 py-2 bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50 transition-colors">
+              {adding ? '追加中...' : '登録する'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
             <tr>
               <th className="px-4 py-3 text-left">氏名</th>
+              <th className="px-4 py-3 text-left">区分</th>
               <th className="px-4 py-3 text-left">フリガナ</th>
               <th className="px-4 py-3 text-left">電話番号</th>
               <th className="px-4 py-3 text-left">メール</th>
@@ -94,7 +195,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
           <tbody className="divide-y divide-gray-100">
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
                   顧客が見つかりません
                 </td>
               </tr>
@@ -129,6 +230,18 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                         </>
                       )}
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={c.shootType ?? 'studio'}
+                      disabled={savingTypeId === c.id}
+                      onChange={(e) => handleChangeShootType(c.id, e.target.value)}
+                      className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-50 ${SHOOT_TYPE_BADGE[c.shootType ?? 'studio']}`}
+                    >
+                      <option value="studio">{SHOOT_TYPE_LABEL.studio}</option>
+                      <option value="location">{SHOOT_TYPE_LABEL.location}</option>
+                      <option value="both">{SHOOT_TYPE_LABEL.both}</option>
+                    </select>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{c.furigana ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>
