@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Plan, Option, Customer } from '@/types';
 import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, VISIT_TIME_SLOTS, SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
@@ -92,6 +92,25 @@ export default function NewReservationForm({ plans, options, customers, blockedD
 
   const isDateBlocked = date ? blockedDateSet.has(date) : false;
   const dateBlockedSlots = date ? (blockedTimeSlots[date] ?? []) : [];
+
+  // 見学モードのとき、その日にすでに埋まっている見学枠を取得（1件=1時間占有）
+  const [visitOccupiedSlots, setVisitOccupiedSlots] = useState<string[]>([]);
+  useEffect(() => {
+    if (!isVisit || !date || isDateBlocked) {
+      setVisitOccupiedSlots([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/slots/visit?date=${date}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.success) setVisitOccupiedSlots(d.data.occupiedSlots ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setVisitOccupiedSlots([]);
+      });
+    return () => { cancelled = true; };
+  }, [isVisit, date, isDateBlocked]);
 
   function handleChildrenCountChange(val: string) {
     setChildrenCount(val);
@@ -238,7 +257,7 @@ export default function NewReservationForm({ plans, options, customers, blockedD
         </div>
         {isVisit && (
           <span className="text-sm text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
-            カレンダーに紫色で表示・枠ブロックなし
+            紫色で表示・撮影枠とは別管理（見学どうしは前後1時間重複不可）
           </span>
         )}
       </div>
@@ -328,9 +347,10 @@ export default function NewReservationForm({ plans, options, customers, blockedD
                 <option value="">選択...</option>
                 {VISIT_TIME_SLOTS.map((t) => {
                   const slotBlocked = dateBlockedSlots.includes(t);
+                  const slotTaken = visitOccupiedSlots.includes(t);
                   return (
-                    <option key={t} value={t} disabled={slotBlocked}>
-                      {t}{slotBlocked ? '（休業中）' : ''}
+                    <option key={t} value={t} disabled={slotBlocked || slotTaken}>
+                      {t}{slotBlocked ? '（休業中）' : slotTaken ? '（見学済）' : ''}
                     </option>
                   );
                 })}

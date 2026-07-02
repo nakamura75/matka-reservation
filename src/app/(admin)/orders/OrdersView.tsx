@@ -5,8 +5,9 @@ import { Squares2X2Icon, ListBulletIcon } from '@heroicons/react/24/outline';
 import OrderList from './OrderList';
 import OrderBoard from './OrderBoard';
 import type { Order, OrderItem } from '@/types';
+import { useMode } from '@/components/layout/ModeProvider';
 
-type EnrichedOrder = Order & { customerName: string };
+type EnrichedOrder = Order & { customerName: string; shootType: 'studio' | 'location' };
 type EnrichedItem = OrderItem & {
   productName: string;
   unitPrice: number;
@@ -14,6 +15,7 @@ type EnrichedItem = OrderItem & {
   customerName: string;
   orderDate: string;
   deadline: string;
+  shootType: 'studio' | 'location';
 };
 
 interface Props {
@@ -23,9 +25,19 @@ interface Props {
 
 export default function OrdersView({ orders, boardItems }: Props) {
   const [view, setView] = useState<'list' | 'board'>('board');
+  const mode = useMode();
+  const isLoc = mode === 'location';
+
+  const filteredOrders = orders.filter((o) => (isLoc ? o.shootType === 'location' : o.shootType !== 'location'));
+  const filteredBoardItems = boardItems.filter((i) => (isLoc ? i.shootType === 'location' : i.shootType !== 'location'));
 
   return (
     <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">注文管理</h1>
+        <span className="text-sm text-gray-400">{filteredOrders.length}件</span>
+      </div>
+
       {/* 表示切り替え */}
       <div className="flex justify-end mb-4">
         <div className="flex border border-gray-200 rounded-lg overflow-hidden">
@@ -51,9 +63,9 @@ export default function OrdersView({ orders, boardItems }: Props) {
       </div>
 
       {view === 'list' ? (
-        <OrderList orders={orders} />
+        <OrderList orders={filteredOrders} />
       ) : (
-        <OrderBoard items={boardItems} />
+        <OrderBoard items={filteredBoardItems} />
       )}
     </div>
   );

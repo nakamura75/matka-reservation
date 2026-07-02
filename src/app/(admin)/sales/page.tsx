@@ -1,7 +1,12 @@
 import { getReservations, getStaff, getPlans, getOptions, getReservationOptions, getOrders, getOrderItems, getProducts, getHolidays } from '@/lib/db';
+import { isWeekend } from '@/lib/utils';
 import SalesSummary from './SalesSummary';
 
 export const dynamic = 'force-dynamic';
+
+// ロケの料金（src/app/api/reservations/[id]/route.ts と揃える）
+const LOC_HOLIDAY_SURCHARGE = 5500;
+const LOC_INSURANCE = 5500;
 
 export default async function SalesPage() {
   const [reservations, staff, plans, options, reservationOptions, orders, orderItems, products, holidays] = await Promise.all([
@@ -31,6 +36,15 @@ export default async function SalesPage() {
   const enrichedReservations = reservations.map((r) => {
     const planPrice = planPriceMap[r.planId] ?? 0;
     const optionTotal = optionTotalByReservation[r.id] ?? 0;
+
+    // ロケは「プラン＋休日料金＋オプション＋キャンセル保険」を合計（割引なし）
+    if (r.shootType === 'location') {
+      const holidaySurcharge = r.date && isWeekend(r.date) ? LOC_HOLIDAY_SURCHARGE : 0;
+      const insurance = r.cancelInsurance === '加入する' ? LOC_INSURANCE : 0;
+      const total = planPrice + holidaySurcharge + optionTotal + insurance;
+      return { ...r, planPrice, optionTotal, total };
+    }
+
     const shootingTotal = planPrice + optionTotal;
     const rate = r.discountRate ?? 0;
     const total = rate > 0
@@ -53,11 +67,6 @@ export default async function SalesPage() {
   }));
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">売上集計</h1>
-      </div>
-      <SalesSummary reservations={enrichedReservations} staff={staff} orders={enrichedOrders} holidays={holidays} reservationOptions={reservationOptions} optionPriceMap={optionPriceMap} />
-    </div>
+    <SalesSummary reservations={enrichedReservations} staff={staff} orders={enrichedOrders} holidays={holidays} reservationOptions={reservationOptions} optionPriceMap={optionPriceMap} />
   );
 }

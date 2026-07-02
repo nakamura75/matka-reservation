@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { Reservation, ReservationStatus } from '@/types';
 import { formatDate, stripSeconds } from '@/lib/utils';
 import { STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
+import type { ShootMode } from '@/lib/mode';
 
-const TAB_ORDER: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
+// スタジオは従来通り全ステータス、ロケは 仮予約/予約確定/完了/キャンセル のみ（見学・保留なし）
+const STUDIO_TABS: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
+const LOCATION_TABS: ReservationStatus[] = ['予約済', '予約確定', '完了', 'キャンセル'];
 
 // 「完了」「キャンセル」のカウントは非表示
 const TABS_WITH_COUNT = new Set<ReservationStatus>(['予約済', '予約確定', '見学', '保留']);
@@ -17,13 +20,29 @@ const PAGE_SIZE = 20;
 type SortKey = 'date' | 'createdAt';
 type SortDir = 'asc' | 'desc';
 
-export default function ReservationList({ reservations }: { reservations: Reservation[] }) {
+export default function ReservationList({ reservations, mode }: {
+  reservations: Reservation[];
+  mode: ShootMode;
+}) {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<ReservationStatus>('予約済');
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [photoUndeliveredOnly, setPhotoUndeliveredOnly] = useState(false);
+
+  const isLoc = mode === 'location';
+  const TAB_ORDER = isLoc ? LOCATION_TABS : STUDIO_TABS;
+
+  // モード切替で現在のタブが無効になったら先頭タブへ戻す
+  useEffect(() => {
+    if (!TAB_ORDER.includes(activeTab)) {
+      setActiveTab('予約済');
+      setPhotoUndeliveredOnly(false);
+      setPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -44,7 +63,8 @@ export default function ReservationList({ reservations }: { reservations: Reserv
           r.reservationNumber?.includes(search) ||
           (r.date && r.date.includes(search));
         const matchesPhotoFilter = !photoUndeliveredOnly || !r.photoDelivered;
-        return matchesSearch && r.status === activeTab && matchesPhotoFilter;
+        const matchesShoot = isLoc ? r.shootType === 'location' : r.shootType !== 'location';
+        return matchesSearch && matchesShoot && r.status === activeTab && matchesPhotoFilter;
       })
       .sort((a, b) => {
         let va: number, vb: number;
@@ -57,7 +77,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
         }
         return sortDir === 'asc' ? va - vb : vb - va;
       });
-  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly]);
+  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly, isLoc]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -66,10 +86,12 @@ export default function ReservationList({ reservations }: { reservations: Reserv
   const countByStatus = useMemo(() => {
     const counts: Partial<Record<ReservationStatus, number>> = {};
     for (const r of reservations) {
+      const inShoot = isLoc ? r.shootType === 'location' : r.shootType !== 'location';
+      if (!inShoot) continue;
       counts[r.status] = (counts[r.status] ?? 0) + 1;
     }
     return counts;
-  }, [reservations]);
+  }, [reservations, isLoc]);
 
   function SortIcon({ column }: { column: SortKey }) {
     if (sortKey !== column) return <ChevronUpIcon className="w-3 h-3 text-gray-300 ml-1 inline" />;
@@ -79,7 +101,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
   }
 
   return (
-    <div className="bg-white rounded-xl border border-cream-dark overflow-hidden">
+    <div className={`rounded-xl border overflow-hidden bg-white ${isLoc ? 'border-emerald-200' : 'border-cream-dark'}`}>
       {/* 検索バー */}
       <div className="p-4 border-b border-cream-dark">
         <input
@@ -99,7 +121,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
             onClick={() => { setActiveTab(status); setPage(1); }}
             className={`flex-1 min-w-max px-5 py-3 text-sm font-medium whitespace-nowrap transition-colors
               ${activeTab === status
-                ? 'border-b-2 border-brand text-brand bg-cream/40'
+                ? isLoc ? 'border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50' : 'border-b-2 border-brand text-brand bg-cream/40'
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
           >
@@ -135,7 +157,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
       {/* テーブル */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm table-fixed">
-          <thead className="bg-cream text-gray-500 text-xs uppercase tracking-wide">
+          <thead className={`text-gray-500 text-xs uppercase tracking-wide ${isLoc ? 'bg-emerald-50/60' : 'bg-cream'}`}>
             <tr>
               <th className="px-4 py-3 text-left w-[15%]">予約番号</th>
               <th className="px-4 py-3 text-left w-[16%] cursor-pointer select-none" onClick={() => handleSort('date')}>
@@ -143,7 +165,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
               </th>
               <th className="px-4 py-3 text-left w-[8%]">時間</th>
               <th className="px-4 py-3 text-left w-[14%]">顧客名</th>
-              <th className="px-4 py-3 text-left w-[15%]">シーン</th>
+              {!isLoc && <th className="px-4 py-3 text-left w-[15%]">シーン</th>}
               <th className="px-4 py-3 text-left w-[12%]">ステータス</th>
               <th className="px-4 py-3 text-left w-[12%] cursor-pointer select-none" onClick={() => handleSort('createdAt')}>
                 登録日<SortIcon column="createdAt" />
@@ -153,7 +175,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
           <tbody className="divide-y divide-gray-100">
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={isLoc ? 6 : 7} className="px-4 py-10 text-center text-gray-400">
                   予約が見つかりません
                 </td>
               </tr>
@@ -171,7 +193,7 @@ export default function ReservationList({ reservations }: { reservations: Reserv
                   <td className="px-4 py-3 text-gray-700">{r.date ? formatDate(r.date) : <span className="text-gray-400">未定</span>}</td>
                   <td className="px-4 py-3 text-gray-700">{r.timeSlot ? stripSeconds(r.timeSlot) : <span className="text-gray-400">未定</span>}</td>
                   <td className="px-4 py-3 text-gray-700">{r.customerName || r.customerId}</td>
-                  <td className="px-4 py-3 text-gray-500">{r.scene}</td>
+                  {!isLoc && <td className="px-4 py-3 text-gray-500">{r.scene}</td>}
                   <td className="px-4 py-3">
                     <div className="flex flex-row flex-nowrap items-center gap-1.5">
                       {r.pdfUrl && (

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useMode } from '@/components/layout/ModeProvider';
 import type { Reservation, Staff, Order, OrderItem, Holiday, ReservationOption } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
 import { isWeekend } from '@/lib/utils';
@@ -48,7 +49,28 @@ function taxExcluded(amount: number): number {
 
 type TaxMode = 'included' | 'excluded';
 
-export default function SalesSummary({ reservations, staff, orders, holidays, reservationOptions, optionPriceMap }: Props) {
+export default function SalesSummary({ reservations: allReservations, staff, orders: allOrders, holidays, reservationOptions, optionPriceMap }: Props) {
+  const mode = useMode();
+  const isLoc = mode === 'location';
+
+  // 撮影区分で絞り込み（以降の集計はこの絞り込み済みデータに対して行う）
+  const shootTypeByRes = useMemo(() => {
+    const m: Record<string, 'studio' | 'location'> = {};
+    for (const r of allReservations) m[r.id] = r.shootType === 'location' ? 'location' : 'studio';
+    return m;
+  }, [allReservations]);
+  const reservations = useMemo(
+    () => allReservations.filter((r) => (isLoc ? r.shootType === 'location' : r.shootType !== 'location')),
+    [allReservations, isLoc],
+  );
+  const orders = useMemo(
+    () => allOrders.filter((o) => {
+      const st = (o.reservationId && shootTypeByRes[o.reservationId]) ? shootTypeByRes[o.reservationId] : 'studio';
+      return isLoc ? st === 'location' : st !== 'location';
+    }),
+    [allOrders, shootTypeByRes, isLoc],
+  );
+
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const router = useRouter();
@@ -129,13 +151,14 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
     () => new Set(holidays.filter((h) => h.type === 'holiday').map((h) => h.date)),
     [holidays]
   );
+  // ロケは休日料金を total に含めているためここでは加算しない
   const holidayFeeTotal = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length * HOLIDAY_FEE,
-    [completedReservations, holidayDates]
+    () => isLoc ? 0 : completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length * HOLIDAY_FEE,
+    [completedReservations, holidayDates, isLoc]
   );
   const holidayFeeCount = useMemo(
-    () => completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length,
-    [completedReservations, holidayDates]
+    () => isLoc ? 0 : completedReservations.filter((r) => isHolidayOrWeekend(r.date, holidayDates) && (r.discountRate ?? 0) < 100).length,
+    [completedReservations, holidayDates, isLoc]
   );
 
   // 単価別の件数を記録する型
@@ -282,6 +305,8 @@ export default function SalesSummary({ reservations, staff, orders, holidays, re
 
   return (
     <div className="space-y-4">
+      <h1 className="text-2xl font-bold text-gray-900">売上集計</h1>
+
       {/* 月選択 & 税切り替え */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 flex-wrap">
         <label className="text-sm text-gray-600 font-medium">対象月</label>

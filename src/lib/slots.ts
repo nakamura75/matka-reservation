@@ -1,5 +1,6 @@
 import { createAdminClient } from './supabase/admin';
 import { BOOKING_DAYS, ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, TEL_ONLY_BUSINESS_DAYS } from './constants';
+import { getActiveCampaign, isCampaignScene } from './campaign';
 import type { AvailableSlot, ShootingScene, TimeSlot } from '@/types';
 
 // ============================================================
@@ -97,9 +98,21 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
   }
 
   // シーンに応じた利用可能時間枠（七五三・マタニティは9時不可）
-  const availableTimes = (scene === '七五三' || scene === 'マタニティ')
-    ? SHICHIGOSAN_TIME_SLOTS
-    : ALL_TIME_SLOTS;
+  // キャンペーンは「9:00枠のみ」かつ「期間内のみ」。期間/枠は campaign.ts に集約。
+  let availableTimes: readonly string[];
+  let campaignStart: string | null = null;
+  let campaignEnd: string | null = null;
+  if (isCampaignScene(scene)) {
+    const campaign = getActiveCampaign();
+    if (!campaign) return []; // キャンペーンOFF → 空き枠なし
+    availableTimes = campaign.allowedTimeSlots;
+    campaignStart = campaign.startDate;
+    campaignEnd = campaign.endDate;
+  } else if (scene === '七五三' || scene === 'マタニティ') {
+    availableTimes = SHICHIGOSAN_TIME_SLOTS;
+  } else {
+    availableTimes = ALL_TIME_SLOTS;
+  }
 
   // 中3営業日の境界日付を計算
   const telOnlyBoundary = getTelOnlyBoundaryDate(today, blockedDates, TEL_ONLY_BUSINESS_DAYS);
@@ -117,6 +130,9 @@ export async function getAvailableSlots(scene?: ShootingScene): Promise<Availabl
 
     // 終日ブロックは全スロット不可
     if (blockedDates.has(dateStr)) continue;
+
+    // キャンペーンは期間内の日付のみ
+    if (campaignStart && (dateStr < campaignStart || dateStr > campaignEnd!)) continue;
 
     const slots = availableTimes.map((time) => ({
       time: time as TimeSlot,

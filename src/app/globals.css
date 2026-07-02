@@ -5,6 +5,17 @@
 :root {
   --background: #FAF3E8;
   --foreground: #2C1810;
+  /* テーマ（既定=スタジオ：オレンジ）。data-mode="location" で緑に切替 */
+  --brand: #E8552B;
+  --brand-light: #FDF0EB;
+  --brand-dark: #D04420;
+}
+
+/* ロケモード：緑ベース（brand-green と同値）。AppShell ルート div に付与した data-mode が配下の brand-* を一括で上書き */
+[data-mode="location"] {
+  --brand: #4CBF68;
+  --brand-light: #EBF7ED;
+  --brand-dark: #3DA855;
 }
 
 body {

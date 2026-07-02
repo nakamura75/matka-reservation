@@ -31,7 +31,7 @@ function LoginForm() {
       return;
     }
 
-    router.push('/reservations');
+    router.push('/select');
     router.refresh();
   };
 

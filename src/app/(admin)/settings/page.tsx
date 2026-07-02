@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { PlusIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ChevronDownIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ChevronDownIcon, ArrowUpIcon, ArrowDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/utils';
 import type { Plan, Option, Product, Staff, Holiday, BlockedSlot } from '@/types';
 import { formatDate } from '@/lib/utils';
+import { useMode } from '@/components/layout/ModeProvider';
 
-type Tab = 'plans' | 'options' | 'products' | 'staff' | 'holidays';
+type Tab = 'plans' | 'options' | 'products' | 'staff' | 'holidays' | 'availability';
 
 // ============================================================
 // 汎用インライン編集行
@@ -954,18 +955,135 @@ function HolidaysTab() {
 }
 
 // ============================================================
+// 稼働日タブ（ロケ専用：撮影可能日 / 見学NG日）
+// ============================================================
+function MiniCalendar({ marked, onToggle, accent }: {
+  marked: Set<string>;
+  onToggle: (date: string) => void;
+  accent: 'emerald' | 'red';
+}) {
+  const [ym, setYM] = useState(() => { const t = new Date(); return { year: t.getFullYear(), month: t.getMonth() }; });
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const firstWeekday = new Date(ym.year, ym.month, 1).getDay();
+  const daysInMonth = new Date(ym.year, ym.month + 1, 0).getDate();
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(`${ym.year}-${String(ym.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  const prev = () => setYM((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }));
+  const next = () => setYM((c) => (c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 }));
+  const markedCls = accent === 'emerald' ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white';
+
+  return (
+    <div className="border border-gray-200 rounded-xl p-3 max-w-sm bg-white">
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" onClick={prev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><ChevronLeftIcon className="w-5 h-5" /></button>
+        <span className="text-sm font-bold text-gray-900">{ym.year}年 {ym.month + 1}月</span>
+        <button type="button" onClick={next} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><ChevronRightIcon className="w-5 h-5" /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {weekdays.map((w, i) => (
+          <div key={w} className={`text-center text-[11px] font-medium ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>{w}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((dateStr, idx) => {
+          if (!dateStr) return <div key={`e${idx}`} />;
+          const day = Number(dateStr.slice(-2));
+          const on = marked.has(dateStr);
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              onClick={() => onToggle(dateStr)}
+              className={`aspect-square rounded-lg text-sm flex items-center justify-center transition-colors
+                ${on ? markedCls + ' font-bold' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AvailabilityTab() {
+  const [shootDays, setShootDays] = useState<Set<string>>(new Set());
+  const [ngDays, setNgDays] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/location/shoot-days').then((r) => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/location/visit-ng').then((r) => r.json()).catch(() => ({ data: [] })),
+    ]).then(([a, b]) => {
+      setShootDays(new Set(a.data ?? []));
+      setNgDays(new Set(b.data ?? []));
+      setLoading(false);
+    });
+  }, []);
+
+  async function toggleShoot(date: string) {
+    const has = shootDays.has(date);
+    setShootDays((prev) => { const n = new Set(prev); if (has) n.delete(date); else n.add(date); return n; });
+    try {
+      if (has) await fetch(`/api/location/shoot-days?date=${date}`, { method: 'DELETE' });
+      else await fetch('/api/location/shoot-days', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) });
+    } catch { /* noop */ }
+  }
+
+  async function toggleNg(date: string) {
+    const has = ngDays.has(date);
+    setNgDays((prev) => { const n = new Set(prev); if (has) n.delete(date); else n.add(date); return n; });
+    try {
+      if (has) await fetch(`/api/location/visit-ng?date=${date}`, { method: 'DELETE' });
+      else await fetch('/api/location/visit-ng', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) });
+    } catch { /* noop */ }
+  }
+
+  if (loading) return <p className="text-sm text-gray-400 py-8 text-center">読み込み中...</p>;
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">撮影可能日</h2>
+          <p className="text-xs text-gray-400 mb-3">撮影が可能な日を選択（緑）。選んだ日だけ予約フォームに表示されます。</p>
+          <MiniCalendar marked={shootDays} onToggle={toggleShoot} accent="emerald" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">見学NG日</h2>
+          <p className="text-xs text-gray-400 mb-3">見学を受け付けない日を選択（赤）。予約フォームの見学カレンダーで選べなくなります。</p>
+          <MiniCalendar marked={ngDays} onToggle={toggleNg} accent="red" />
+        </div>
+      </div>
+      <p className="text-xs text-gray-400">※ 撮影の時間帯は午前9:10〜／午後13:00〜で固定です。</p>
+    </div>
+  );
+}
+
+// ============================================================
 // メインコンポーネント
 // ============================================================
-const TABS: { key: Tab; label: string }[] = [
+// スタジオは休日管理、ロケは稼働日（撮影可能日 / 見学NG日）をタブに持つ
+const STUDIO_SETTINGS_TABS: { key: Tab; label: string }[] = [
   { key: 'plans', label: 'プラン' },
   { key: 'options', label: 'オプション' },
   { key: 'products', label: '商品' },
   { key: 'staff', label: 'スタッフ' },
   { key: 'holidays', label: '休日管理' },
 ];
+const LOCATION_SETTINGS_TABS: { key: Tab; label: string }[] = [
+  { key: 'plans', label: 'プラン' },
+  { key: 'options', label: 'オプション' },
+  { key: 'products', label: '商品' },
+  { key: 'staff', label: 'スタッフ' },
+  { key: 'availability', label: '稼働日' },
+];
 
-export default function SettingsPage() {
+function SettingsTabs({ mode }: { mode: 'studio' | 'location' }) {
   const [tab, setTab] = useState<Tab>('plans');
+  const TABS = mode === 'location' ? LOCATION_SETTINGS_TABS : STUDIO_SETTINGS_TABS;
 
   return (
     <div>
@@ -991,6 +1109,13 @@ export default function SettingsPage() {
       {tab === 'products' && <ProductsTab />}
       {tab === 'staff' && <StaffTab />}
       {tab === 'holidays' && <HolidaysTab />}
+      {tab === 'availability' && <AvailabilityTab />}
     </div>
   );
+}
+
+// モード切替時に再フェッチさせるため、mode を key にして再マウントする
+export default function SettingsPage() {
+  const mode = useMode();
+  return <SettingsTabs key={mode} mode={mode} />;
 }
