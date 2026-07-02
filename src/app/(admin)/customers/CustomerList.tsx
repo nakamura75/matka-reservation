@@ -183,7 +183,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
             <tr>
               <th className="px-4 py-3 text-left">氏名</th>
-              <th className="px-4 py-3 text-left">区分</th>
+              <th className="px-2 py-3 text-left w-16">区分</th>
               <th className="px-4 py-3 text-left">フリガナ</th>
               <th className="px-4 py-3 text-left">電話番号</th>
               <th className="px-4 py-3 text-left">メール</th>
@@ -231,12 +231,12 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-2 py-3 w-16">
                     <select
                       value={c.shootType ?? 'studio'}
                       disabled={savingTypeId === c.id}
                       onChange={(e) => handleChangeShootType(c.id, e.target.value)}
-                      className={`text-xs font-medium rounded-full px-2 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-50 ${SHOOT_TYPE_BADGE[c.shootType ?? 'studio']}`}
+                      className={`text-xs font-medium rounded-full pl-2 pr-1 py-1 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/30 disabled:opacity-50 ${SHOOT_TYPE_BADGE[c.shootType ?? 'studio']}`}
                     >
                       <option value="studio">{SHOOT_TYPE_LABEL.studio}</option>
                       <option value="location">{SHOOT_TYPE_LABEL.location}</option>
@@ -246,14 +246,14 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
                   <td className="px-4 py-3 text-gray-500">{c.furigana ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-700">{c.phone}</td>
                   <td className="px-4 py-3 text-gray-500">{c.email ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     {c.chatLineUserId ? (
                       <a
                         href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${c.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80 whitespace-nowrap"
                         style={{ backgroundColor: '#06C755' }}
                       >
                         <svg viewBox="0 0 24 24" className="w-3 h-3 fill-white shrink-0" xmlns="http://www.w3.org/2000/svg">
