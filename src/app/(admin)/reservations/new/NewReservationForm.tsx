@@ -7,6 +7,7 @@ import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, VISIT_TIME_SLOTS, SHOOTING_SCEN
 import { isWeekend, formatCurrency } from '@/lib/utils';
 
 interface Props {
+  mode?: 'studio' | 'location';
   plans: Plan[];
   options: Option[];
   customers: Customer[];
@@ -20,7 +21,11 @@ interface SelectedOption {
   quantity: number;
 }
 
-export default function NewReservationForm({ plans, options, customers, blockedDates = [], blockedTimeSlots = {}, holidayDates = [] }: Props) {
+// ロケ本番の時間帯（午前/午後の2枠固定）
+const LOCATION_TIME_SLOTS = ['9:10', '13:00'];
+
+export default function NewReservationForm({ mode = 'studio', plans, options, customers, blockedDates = [], blockedTimeSlots = {}, holidayDates = [] }: Props) {
+  const isLoc = mode === 'location';
   const blockedDateSet = new Set(blockedDates);
   const holidayDateSet = new Set(holidayDates);
   const router = useRouter();
@@ -35,6 +40,9 @@ export default function NewReservationForm({ plans, options, customers, blockedD
   const [planId, setPlanId] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
   const [note, setNote] = useState('');
+  // ロケ専用項目
+  const [visitDate, setVisitDate] = useState('');
+  const [cancelInsurance, setCancelInsurance] = useState('');
 
   // 顧客選択 or 新規入力
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>('new');
@@ -90,8 +98,9 @@ export default function NewReservationForm({ plans, options, customers, blockedD
     }
   }
 
-  const isDateBlocked = date ? blockedDateSet.has(date) : false;
-  const dateBlockedSlots = date ? (blockedTimeSlots[date] ?? []) : [];
+  // スタジオの休業日はロケには適用しない（ロケは稼働日管理が別のため）
+  const isDateBlocked = !isLoc && date ? blockedDateSet.has(date) : false;
+  const dateBlockedSlots = isLoc ? [] : (date ? (blockedTimeSlots[date] ?? []) : []);
 
   // 見学モードのとき、その日にすでに埋まっている見学枠を取得（1件=1時間占有）
   const [visitOccupiedSlots, setVisitOccupiedSlots] = useState<string[]>([]);
@@ -153,13 +162,18 @@ export default function NewReservationForm({ plans, options, customers, blockedD
   }, 0);
   const total = (selectedPlan?.price ?? 0) + optionTotal;
 
-  const timeSlots = scene === '七五三' ? SHICHIGOSAN_TIME_SLOTS : ALL_TIME_SLOTS;
+  // 撮影時間帯：ロケは午前9:10/午後13:00の固定2枠。スタジオは七五三のみ9時不可。
+  const timeSlots = isLoc ? LOCATION_TIME_SLOTS : (scene === '七五三' ? SHICHIGOSAN_TIME_SLOTS : ALL_TIME_SLOTS);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
 
-    if (!isVisit && (!scene || !date || !timeSlot || !planId)) {
+    if (!isVisit && isLoc && (!date || !timeSlot || !planId)) {
+      setError('日付、時間帯、プランは必須です');
+      return;
+    }
+    if (!isVisit && !isLoc && (!scene || !date || !timeSlot || !planId)) {
       setError('撮影シーン、日付、時間帯、プランは必須です');
       return;
     }
@@ -185,10 +199,13 @@ export default function NewReservationForm({ plans, options, customers, blockedD
     setLoading(true);
     try {
       const payload = {
-        scene,
+        shootType: isLoc ? 'location' : 'studio',
+        scene: isLoc ? '' : scene,
         planId,
         date,
         timeSlot,
+        visitDate: isLoc ? visitDate : undefined,
+        cancelInsurance: isLoc ? cancelInsurance : undefined,
         customerName: customer?.name ?? customerName,
         furigana: customer?.furigana ?? furigana,
         zipCode: customer?.zipCode ?? zipCode,
@@ -279,6 +296,46 @@ export default function NewReservationForm({ plans, options, customers, blockedD
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
+          </div>
+        ) : isLoc ? (
+          /* ロケ撮影：シーンなし。プランのみ（＋見学日・キャンセル保険） */
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-500 mb-1">プラン *</label>
+              <select
+                value={planId}
+                onChange={(e) => setPlanId(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+              >
+                <option value="">選択...</option>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}（{formatCurrency(p.price)}）</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-500 mb-1">見学日</label>
+                <input
+                  type="date"
+                  value={visitDate}
+                  onChange={(e) => setVisitDate(e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-500 mb-1">キャンセル保険</label>
+                <select
+                  value={cancelInsurance}
+                  onChange={(e) => setCancelInsurance(e.target.value)}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
+                >
+                  <option value="">選択...</option>
+                  <option value="加入する">加入する</option>
+                  <option value="加入しない">加入しない</option>
+                </select>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">

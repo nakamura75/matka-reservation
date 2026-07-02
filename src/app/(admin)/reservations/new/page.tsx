@@ -1,12 +1,14 @@
 import { getPlans, getOptions, getCustomers, getHolidays, getBlockedSlots } from '@/lib/db';
+import { getMode } from '@/lib/mode.server';
 import NewReservationForm from './NewReservationForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewReservationPage() {
+  const mode = getMode() ?? 'studio';
   const [plans, options, customers, holidays, blockedSlots] = await Promise.all([
-    getPlans(),
-    getOptions(),
+    getPlans(mode),
+    getOptions(mode),
     getCustomers(),
     getHolidays().catch(() => []),
     getBlockedSlots().catch(() => []),
@@ -38,8 +40,9 @@ export default async function NewReservationPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">手動予約入力</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">手動予約入力{mode === 'location' ? '（ロケ）' : ''}</h1>
       <NewReservationForm
+        mode={mode}
         plans={activePlans}
         options={activeOptions}
         customers={customers}
