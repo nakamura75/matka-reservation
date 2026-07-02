@@ -11,6 +11,8 @@ import {
   CurrencyYenIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
+import { MODES } from '@/lib/mode';
+import { useMode, useSetMode } from './ModeProvider';
 
 const navItems = [
   { href: '/reservations', label: '予約一覧', icon: TableCellsIcon, exact: true },
@@ -28,6 +30,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const mode = useMode();
+  const setMode = useSetMode();
 
   return (
     <>
@@ -54,6 +58,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* モード切替（スタジオ / ロケ） */}
+        <div className="px-4 pt-4">
+          <div className="flex rounded-lg border border-cream-dark overflow-hidden text-sm">
+            {MODES.map((m, i) => {
+              const active = mode === m.value;
+              // 各ボタンは自分のモード色で点灯（スタジオ=オレンジ / ロケ=緑）
+              const activeColor = m.value === 'location' ? 'bg-emerald-600 text-white' : 'bg-[#E8552B] text-white';
+              return (
+                <button
+                  key={m.value}
+                  onClick={() => { if (!active) setMode(m.value); }}
+                  className={`flex-1 px-3 py-2 font-medium transition-colors ${i === 0 ? 'border-r border-cream-dark' : ''}
+                    ${active ? activeColor : 'bg-white text-gray-500 hover:bg-cream'}`}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ナビゲーション */}

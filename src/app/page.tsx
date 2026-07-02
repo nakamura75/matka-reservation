@@ -7,5 +7,5 @@ export default async function HomePage() {
   if (!user) {
     redirect('/login');
   }
-  redirect('/reservations');
+  redirect('/select');
 }

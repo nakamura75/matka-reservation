@@ -7,9 +7,16 @@ import {
   deleteReservation,
   getPlans,
   getOptions,
+  checkVisitSlotConflict,
 } from '@/lib/db';
-import { sendLinePush, buildConfirmMessage } from '@/lib/line';
+import { sendLinePush, buildConfirmMessage, buildLocationConfirmMessage } from '@/lib/line';
+import { isWeekend } from '@/lib/utils';
 import type { ReservationStatus } from '@/types';
+
+// ロケ料金（LocationForm と一致：平日77,000 / 休日+5,500 / 保険5,500）
+const LOC_BASIC = 77000;
+const LOC_HOLIDAY_SURCHARGE = 5500;
+const LOC_INSURANCE = 5500;
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +71,8 @@ export async function PATCH(
     planId?: string;
     snsPermission?: string;
     photoDelivered?: boolean;
+    visitDate?: string;
+    cancelInsurance?: string;
   } & Record<string, unknown>;
 
   const reservation = await getReservationById(params.id);
@@ -112,6 +121,21 @@ export async function PATCH(
   if (body.planId !== undefined) updates.planId = body.planId;
   if (body.snsPermission !== undefined) updates.snsPermission = body.snsPermission;
   if (body.photoDelivered !== undefined) updates.photoDelivered = body.photoDelivered;
+  if (body.visitDate !== undefined) updates.visitDate = body.visitDate;
+  if (body.cancelInsurance !== undefined) updates.cancelInsurance = body.cancelInsurance;
+
+  // 見学の日時を変更する場合、他の見学との重複を防止（見学1件=1時間占有・撮影枠とは独立）
+  const effectiveStatus = (body.status ?? reservation.status) as ReservationStatus;
+  if (effectiveStatus === '見学' && (body.date !== undefined || body.timeSlot !== undefined)) {
+    const effectiveDate = body.date ?? reservation.date;
+    const effectiveTime = body.timeSlot ?? reservation.timeSlot;
+    if (effectiveDate && effectiveTime) {
+      const visitConflict = await checkVisitSlotConflict(effectiveDate, effectiveTime, reservation.id);
+      if (visitConflict) {
+        return NextResponse.json({ error: 'この時間帯はすでに見学予約が入っています（前後1時間は重複できません）。別の時間をお選びください。' }, { status: 409 });
+      }
+    }
+  }
 
   if (Object.keys(updates).length > 0) {
     try {
@@ -123,7 +147,26 @@ export async function PATCH(
   }
 
   // 予約確定 → LINE通知（DB更新後に送信）
-  if (body.status === '予約確定' && reservation.lineUserId) {
+  if (body.status === '予約確定' && reservation.lineUserId && reservation.shootType === 'location') {
+    // ロケ：振込案内メッセージ（プラン不要）
+    const [allOptions, reservationOptions, updatedReservation] = await Promise.all([
+      getOptions(),
+      getReservationOptions(reservation.id),
+      getReservationById(reservation.id),
+    ]);
+    const target = updatedReservation ?? reservation;
+    const optionsWithInfo = reservationOptions.map((ro) => {
+      const opt = allOptions.find((o) => o.id === ro.optionId);
+      return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
+    }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
+    const optTotal = optionsWithInfo.reduce((s, o) => s + o.price * o.quantity, 0);
+    const planTotal = LOC_BASIC + (isWeekend(target.date) ? LOC_HOLIDAY_SURCHARGE : 0);
+    const insTotal = target.cancelInsurance === '加入する' ? LOC_INSURANCE : 0;
+    const total = planTotal + optTotal + insTotal;
+    await sendLinePush(reservation.lineUserId, [
+      buildLocationConfirmMessage(target, optionsWithInfo, total),
+    ]).catch((e) => console.error('LINE push failed:', e));
+  } else if (body.status === '予約確定' && reservation.lineUserId) {
     const [plans, allOptions, reservationOptions] = await Promise.all([
       getPlans(),
       getOptions(),

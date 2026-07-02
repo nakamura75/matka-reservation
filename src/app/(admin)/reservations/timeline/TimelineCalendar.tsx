@@ -25,6 +25,12 @@ const STATUS_BG: Record<Reservation['status'], string> = {
   'キャンセル': 'bg-gray-100 border-gray-300 text-gray-500',
 };
 
+// ロケ本番の所要時間（開始時刻 → 終了時刻）
+const LOCATION_SHOOT_END: Record<string, string> = {
+  '9:10': '12:00',
+  '13:00': '16:00',
+};
+
 /** 時間文字列を分に変換 */
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -210,6 +216,78 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
     return laneMap;
   }
 
+  // 区分ごとの色（見学はスタジオ=紫 / ロケ=緑 で色分け）
+  function blockBg(r: Reservation): string {
+    if (r.status === '見学') {
+      return r.shootType === 'location'
+        ? 'bg-emerald-100 border-emerald-300 text-emerald-800'
+        : 'bg-purple-100 border-purple-300 text-purple-800';
+    }
+    return STATUS_BG[r.status];
+  }
+  function blockDot(r: Reservation): string {
+    if (r.status === '見学') return r.shootType === 'location' ? 'bg-emerald-500' : 'bg-purple-400';
+    return STATUS_DOT[r.status];
+  }
+
+  // 1つの小列（スタジオ/ロケ/見学）に予約ブロックを配置
+  function renderSubColumn(reservations: Reservation[], blocked?: { time: string; reason: string }[]) {
+    const resBlocks = reservations
+      .filter((r) => r.checkInTime && r.checkOutTime)
+      .map((r) => ({ ...getBlockPosition(r.checkInTime!, r.checkOutTime!), id: r.id, reservation: r }));
+    const fallbackBlocks = reservations
+      .filter((r) => !r.checkInTime || !r.checkOutTime)
+      .map((r) => {
+        const s = timeToMinutes(r.timeSlot);
+        // ロケ本番は所要時間（9:10→12:00 / 13:00→16:00）でブロック長を決める。他は1時間
+        let endMin = s + 60;
+        if (r.shootType === 'location' && r.status !== '見学') {
+          const end = LOCATION_SHOOT_END[r.timeSlot];
+          if (end) endMin = timeToMinutes(end);
+        }
+        return { ...getBlockPosition(minutesToTime(s), minutesToTime(endMin)), id: r.id, reservation: r };
+      });
+    const allBlocks = [...resBlocks, ...fallbackBlocks];
+    const laneMap = computeLanes(allBlocks.map((b) => ({ top: b.top, height: b.height, id: b.id })));
+    return (
+      <div className="relative border-r border-gray-100 last:border-r-0 h-full">
+        {(blocked ?? []).map((b, idx) => {
+          const s = timeToMinutes(b.time);
+          const pos = getBlockPosition(minutesToTime(s), minutesToTime(s + 60));
+          return (
+            <div key={`b-${idx}`} className="absolute left-0.5 right-0.5 bg-red-50 border border-red-200 border-dashed rounded z-10 px-1 overflow-hidden" style={{ top: `${pos.top}px`, height: `${pos.height}px` }}>
+              <p className="text-[9px] text-red-400 font-medium truncate">{b.time.replace(/^(\d):/, '0$1:')} 不可</p>
+            </div>
+          );
+        })}
+        {allBlocks.map((block) => {
+          const r = block.reservation;
+          const lane = laneMap.get(block.id);
+          const tot = lane?.totalLanes ?? 1;
+          const overlap = tot > 1;
+          // 重なっても幅・位置は通常の枠と同じ（横/縦のずらしはしない）。
+          // 前面/背面は重なり順だけで制御：開始が遅い枠ほど前面、同じ開始なら短い枠を前面に。
+          const z = 100 + Math.round(block.top) * 4 - Math.round(block.height);
+          return (
+            <Link
+              key={block.id}
+              href={`/reservations/${r.id}`}
+              className={`absolute rounded border text-[10px] leading-tight overflow-hidden hover:opacity-90 transition-opacity px-1 py-0.5 ${blockBg(r)} ${overlap ? 'shadow-md ring-1 ring-white' : ''}`}
+              style={{ top: `${block.top}px`, height: `${block.height}px`, left: '0.5px', right: '2px', zIndex: z }}
+              title={`${r.checkInTime ?? r.timeSlot}〜${r.checkOutTime ?? ''} ${r.customerName ?? ''}${overlap ? `（この時間帯に${tot}件重複）` : ''}`}
+            >
+              <div className="flex items-start gap-0.5">
+                <span className={`w-1.5 h-1.5 mt-0.5 rounded-full flex-shrink-0 ${blockDot(r)}`} />
+                <span className="font-medium break-all whitespace-normal leading-[1.15]">{r.customerName ?? ''}</span>
+              </div>
+              {block.height >= 34 && <p className="text-[9px] opacity-70 truncate">{r.checkInTime ?? r.timeSlot}</p>}
+            </Link>
+          );
+        })}
+      </div>
+    );
+  }
+
   // 時間ラベル配列
   const timeLabels = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => TIMELINE_START + i);
 
@@ -260,12 +338,16 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
 
       {/* 凡例 */}
       <div className="flex flex-wrap gap-4 px-6 py-2 border-b border-gray-50 text-xs text-gray-500">
-        {Object.entries(STATUS_DOT).map(([status, dot]) => (
+        {Object.entries(STATUS_DOT).filter(([status]) => status !== 'キャンセル').map(([status, dot]) => (
           <span key={status} className="flex items-center gap-1">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
-            {STATUS_LABEL[status as Reservation['status']]}
+            {status === '見学' ? '見学（スタジオ）' : STATUS_LABEL[status as Reservation['status']]}
           </span>
         ))}
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          見学（ロケ）
+        </span>
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded bg-gray-200" />
           休業日
@@ -281,213 +363,115 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
       </div>
 
       {view === 'week' ? (
-        <>
-          {/* 週表示：曜日ヘッダー（日付付き） */}
-          <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-            <div className="border-r border-gray-100" />
-            {weekDays.map((day, i) => {
-              const dateStr = toDateStr(day);
-              const isToday = toDateStr(today) === dateStr;
-              const isSunday = i === 0;
-              const isSaturday = i === 6;
-              const isBlocked = blockedDateMap.has(dateStr);
-              const isHoliday = holidayDateSet.has(dateStr);
-
-              return (
-                <div key={dateStr} className={`text-center py-2 border-r border-gray-100 ${isBlocked ? 'bg-gray-50' : ''}`}>
-                  <div className={`text-xs font-medium ${isSunday || isHoliday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-500'}`}>
-                    {weekdays[i]}
-                  </div>
-                  <div className="flex items-center justify-center gap-1">
-                    <span
-                      className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full
-                        ${isToday ? 'bg-brand text-white' : isSunday || isHoliday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-gray-800'}`}
-                    >
-                      {day.getDate()}
-                    </span>
-                    {isBlocked && <span className="text-[10px] text-red-500 font-medium">休</span>}
-                    {isHoliday && !isBlocked && <span className="text-[10px] text-green-600 font-medium">祝</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 週表示：タイムライングリッド */}
-          <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
-            <div className="grid relative" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-              {/* 時間ラベル列 */}
-              <div className="relative border-r border-gray-100" style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
-                {timeLabels.slice(0, -1).map((hour) => (
-                  <div
-                    key={hour}
-                    className="absolute right-2 text-[11px] text-gray-400 leading-none"
-                    style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT - 6}px` }}
-                  >
-                    {hour}:00
-                  </div>
-                ))}
-              </div>
-
-              {/* 各日のカラム */}
-              {weekDays.map((day) => {
+        <div className="overflow-x-auto">
+          <div style={{ minWidth: '920px' }}>
+            <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '70vh' }}>
+            {/* 週表示：曜日ヘッダー＋3小列ラベル（sticky で本体と同じスクロール領域に入れて列を揃える） */}
+            <div className="grid border-b border-gray-100 sticky top-0 bg-white z-30" style={{ gridTemplateColumns: '56px repeat(7, minmax(150px, 1fr))' }}>
+              <div className="border-r border-gray-100" />
+              {weekDays.map((day, i) => {
                 const dateStr = toDateStr(day);
-                const dayReservations = weekReservationMap.get(dateStr) ?? [];
+                const isToday = toDateStr(today) === dateStr;
+                const isSunday = i === 0;
+                const isSaturday = i === 6;
                 const isBlocked = blockedDateMap.has(dateStr);
-                const partialBlocked = blockedTimeSlots[dateStr];
-
-                // 予約ブロックの位置計算
-                const resBlocks = dayReservations
-                  .filter((r) => r.checkInTime && r.checkOutTime)
-                  .map((r) => ({
-                    ...getBlockPosition(r.checkInTime!, r.checkOutTime!),
-                    id: r.id,
-                    reservation: r,
-                  }));
-
-                // checkInTime/checkOutTimeが無い予約はtimeSlotベースで1時間ブロック表示
-                const fallbackBlocks = dayReservations
-                  .filter((r) => !r.checkInTime || !r.checkOutTime)
-                  .map((r) => {
-                    const startMin = timeToMinutes(r.timeSlot);
-                    const endMin = startMin + 60; // デフォルト1時間
-                    return {
-                      ...getBlockPosition(minutesToTime(startMin), minutesToTime(endMin)),
-                      id: r.id,
-                      reservation: r,
-                    };
-                  });
-
-                const allBlocks = [...resBlocks, ...fallbackBlocks];
-                const laneMap = computeLanes(allBlocks.map((b) => ({ top: b.top, height: b.height, id: b.id })));
-
-                // ブロック枠（時間帯指定）の位置計算
-                const blockedSlotBlocks = partialBlocked
-                  ? Object.entries(partialBlocked).map(([time, reason]) => {
-                      const startMin = timeToMinutes(time);
-                      // ブロック枠は1時間分表示
-                      return {
-                        ...getBlockPosition(minutesToTime(startMin), minutesToTime(startMin + 60)),
-                        time,
-                        reason,
-                      };
-                    })
-                  : [];
-
+                const isHoliday = holidayDateSet.has(dateStr);
                 return (
-                  <div
-                    key={dateStr}
-                    className={`relative border-r border-gray-100 ${isBlocked ? 'bg-gray-50' : ''}`}
-                    style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}
-                  >
-                    {/* 時間グリッド線 */}
-                    {timeLabels.slice(0, -1).map((hour) => (
-                      <div
-                        key={hour}
-                        className="absolute w-full border-t border-gray-100"
-                        style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT}px` }}
-                      />
-                    ))}
-                    {/* 30分の点線 */}
-                    {timeLabels.slice(0, -1).map((hour) => (
-                      <div
-                        key={`half-${hour}`}
-                        className="absolute w-full border-t border-dashed border-gray-50"
-                        style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT + HOUR_HEIGHT / 2}px` }}
-                      />
-                    ))}
-
-                    {/* 終日ブロック表示 */}
-                    {isBlocked && (
-                      <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <div className="bg-gray-200/60 rounded-lg px-3 py-2 text-center">
-                          <p className="text-xs font-medium text-gray-500">予約不可</p>
-                          {blockedDateMap.get(dateStr) && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">{blockedDateMap.get(dateStr)}</p>
-                          )}
-                        </div>
+                  <div key={dateStr} className={`border-r border-gray-100 ${isBlocked ? 'bg-gray-50' : ''}`}>
+                    <div className="text-center py-1.5">
+                      <div className={`text-xs font-medium ${isSunday || isHoliday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-500'}`}>{weekdays[i]}</div>
+                      <div className="flex items-center justify-center gap-1">
+                        <span className={`text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-brand text-white' : isSunday || isHoliday ? 'text-red-500' : isSaturday ? 'text-blue-500' : 'text-gray-800'}`}>{day.getDate()}</span>
+                        {isBlocked && <span className="text-[10px] text-red-500 font-medium">休</span>}
+                        {isHoliday && !isBlocked && <span className="text-[10px] text-green-600 font-medium">祝</span>}
                       </div>
-                    )}
-
-                    {/* ブロック枠（時間帯指定） */}
-                    {!isBlocked && blockedSlotBlocks.map((block, idx) => (
-                      <div
-                        key={`blocked-${idx}`}
-                        className="absolute left-0.5 right-0.5 bg-red-50 border border-red-200 border-dashed rounded z-10 px-1 py-0.5 overflow-hidden"
-                        style={{ top: `${block.top}px`, height: `${block.height}px` }}
-                      >
-                        <p className="text-[10px] text-red-400 font-medium truncate">
-                          {block.time.replace(/^(\d):/, '0$1:')} 不可
-                        </p>
-                        {block.reason && (
-                          <p className="text-[10px] text-red-300 truncate">{block.reason}</p>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* 予約ブロック */}
-                    {!isBlocked && allBlocks.map((block) => {
-                      const r = block.reservation;
-                      const lane = laneMap.get(block.id);
-                      const totalLanes = lane?.totalLanes ?? 1;
-                      const laneIndex = lane?.laneIndex ?? 0;
-                      const laneWidth = 100 / totalLanes;
-                      const left = laneWidth * laneIndex;
-
-                      return (
-                        <Link
-                          key={block.id}
-                          href={`/reservations/${r.id}`}
-                          className={`absolute rounded border text-[11px] leading-tight overflow-hidden hover:opacity-80 transition-opacity z-20 px-1 py-0.5
-                            ${STATUS_BG[r.status]}`}
-                          style={{
-                            top: `${block.top}px`,
-                            height: `${block.height}px`,
-                            left: `${left}%`,
-                            width: `${laneWidth - 1}%`,
-                          }}
-                          title={`${r.checkInTime ?? r.timeSlot}〜${r.checkOutTime ?? ''} ${r.customerName ?? ''}`}
-                        >
-                          <div className="flex items-center gap-0.5">
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[r.status]}`} />
-                            <span className="font-medium truncate">{r.customerName ?? ''}</span>
-                          </div>
-                          {block.height >= 36 && (
-                            <p className="text-[10px] opacity-70 truncate">
-                              {r.checkInTime ?? r.timeSlot}〜{r.checkOutTime ?? ''}
-                            </p>
-                          )}
-                          {block.height >= 52 && r.planName && (
-                            <p className="text-[10px] opacity-60 truncate">{r.planName}</p>
-                          )}
-                        </Link>
-                      );
-                    })}
-
-                    {/* 現在時刻の線 */}
-                    {toDateStr(today) === dateStr && (() => {
-                      const nowMin = today.getHours() * 60 + today.getMinutes();
-                      const offset = nowMin - TIMELINE_START * 60;
-                      if (offset < 0 || offset > TOTAL_HOURS * 60) return null;
-                      const top = (offset / 60) * HOUR_HEIGHT;
-                      return (
-                        <div
-                          className="absolute left-0 right-0 z-30 pointer-events-none"
-                          style={{ top: `${top}px` }}
-                        >
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
-                            <div className="flex-1 h-[2px] bg-red-500" />
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    </div>
+                    <div className="grid grid-cols-3 border-t border-gray-100 text-[10px] font-medium">
+                      <div className="text-center py-0.5 border-r border-gray-100 text-blue-500">スタジオ</div>
+                      <div className="text-center py-0.5 border-r border-gray-100 text-emerald-600">ロケ</div>
+                      <div className="text-center py-0.5 text-purple-500">見学</div>
+                    </div>
                   </div>
                 );
               })}
             </div>
+
+            {/* 週表示：タイムライングリッド */}
+              <div className="grid relative" style={{ gridTemplateColumns: '56px repeat(7, minmax(150px, 1fr))' }}>
+                {/* 時間ラベル列 */}
+                <div className="relative border-r border-gray-100" style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
+                  {timeLabels.slice(0, -1).map((hour) => (
+                    <div key={hour} className="absolute right-2 text-[11px] text-gray-400 leading-none" style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT - 6}px` }}>
+                      {hour}:00
+                    </div>
+                  ))}
+                </div>
+
+                {/* 各日：スタジオ / ロケ / 見学 の3小列 */}
+                {weekDays.map((day) => {
+                  const dateStr = toDateStr(day);
+                  const dayReservations = weekReservationMap.get(dateStr) ?? [];
+                  const isBlocked = blockedDateMap.has(dateStr);
+                  const partialBlocked = blockedTimeSlots[dateStr];
+                  const blockedEntries = partialBlocked ? Object.entries(partialBlocked).map(([time, reason]) => ({ time, reason })) : [];
+                  const studio = dayReservations.filter((r) => r.status !== '見学' && r.shootType !== 'location');
+                  const location = dayReservations.filter((r) => r.status !== '見学' && r.shootType === 'location');
+                  const visit = dayReservations.filter((r) => r.status === '見学');
+
+                  return (
+                    <div key={dateStr} className={`relative border-r border-gray-100 ${isBlocked ? 'bg-gray-50' : ''}`} style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
+                      {/* 時間グリッド線 */}
+                      {timeLabels.slice(0, -1).map((hour) => (
+                        <div key={hour} className="absolute w-full border-t border-gray-100 pointer-events-none" style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT}px` }} />
+                      ))}
+
+                      {/* 3小列（休業日でも予約があれば表示する） */}
+                      {(!isBlocked || dayReservations.length > 0) && (
+                        <div className="grid grid-cols-3 h-full">
+                          {renderSubColumn(studio, blockedEntries)}
+                          {renderSubColumn(location)}
+                          {renderSubColumn(visit)}
+                        </div>
+                      )}
+
+                      {/* 終日ブロック表示（予約が無い休業日のみ中央表示） */}
+                      {isBlocked && dayReservations.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <div className="bg-gray-200/60 rounded-lg px-3 py-2 text-center">
+                            <p className="text-xs font-medium text-gray-500">予約不可</p>
+                            {blockedDateMap.get(dateStr) && <p className="text-[10px] text-gray-400 mt-0.5">{blockedDateMap.get(dateStr)}</p>}
+                          </div>
+                        </div>
+                      )}
+                      {/* 予約がある休業日は上部に休業ラベルを小さく表示 */}
+                      {isBlocked && dayReservations.length > 0 && (
+                        <div className="absolute top-0.5 left-0.5 z-10 bg-gray-200/70 rounded px-1.5 py-0.5 pointer-events-none">
+                          <p className="text-[9px] font-medium text-gray-500">休業日{blockedDateMap.get(dateStr) ? `（${blockedDateMap.get(dateStr)}）` : ''}</p>
+                        </div>
+                      )}
+
+                      {/* 現在時刻の線 */}
+                      {toDateStr(today) === dateStr && (() => {
+                        const nowMin = today.getHours() * 60 + today.getMinutes();
+                        const offset = nowMin - TIMELINE_START * 60;
+                        if (offset < 0 || offset > TOTAL_HOURS * 60) return null;
+                        const top = (offset / 60) * HOUR_HEIGHT;
+                        return (
+                          <div className="absolute left-0 right-0 z-30 pointer-events-none" style={{ top: `${top}px` }}>
+                            <div className="flex items-center">
+                              <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                              <div className="flex-1 h-[2px] bg-red-500" />
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </>
+        </div>
       ) : (
         /* ====== 月表示（既存カレンダーと同じUI） ====== */
         <>
@@ -541,10 +525,13 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                     {isBlocked && <span className="text-[10px] text-red-500 font-medium">休</span>}
                     {isHoliday && !isBlocked && <span className="text-[10px] text-green-600 font-medium">祝</span>}
                   </div>
-                  {isBlocked ? (
+                  {isBlocked && dayReservations.length === 0 ? (
                     <p className="text-[10px] text-gray-400 mt-1 text-center">予約不可{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
                   ) : (
                     <div className="space-y-0.5 mt-0.5">
+                      {isBlocked && (
+                        <p className="text-[10px] text-gray-400 truncate">休業日{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
+                      )}
                       {calItems.slice(0, 5).map((item, idx) =>
                         item.kind === 'blocked' ? (
                           <p key={`b-${idx}`} className="text-[10px] text-red-400 truncate">
@@ -558,10 +545,10 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                               ${item.r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
                                 item.r.status === '完了' ? 'bg-green-50 text-green-700' :
                                 item.r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                                item.r.status === '見学' ? 'bg-purple-50 text-purple-700' :
+                                item.r.status === '見学' ? (item.r.shootType === 'location' ? 'bg-emerald-50 text-emerald-700' : 'bg-purple-50 text-purple-700') :
                                 'bg-yellow-50 text-yellow-700'}`}
                           >
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[item.r.status]}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${blockDot(item.r)}`} />
                             <span className="truncate">
                               {item.r.timeSlot} {item.r.customerName ?? ''}
                             </span>
