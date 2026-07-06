@@ -33,8 +33,8 @@ export async function updateSession(request: NextRequest) {
   const isAdminRoute =
     request.nextUrl.pathname !== '/reserve' &&
     !request.nextUrl.pathname.startsWith('/reserve/') &&
-    request.nextUrl.pathname !== '/reserve-preview' &&
-    !request.nextUrl.pathname.startsWith('/reserve-preview/') &&
+    request.nextUrl.pathname !== '/booking' &&
+    !request.nextUrl.pathname.startsWith('/booking/') &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/api') &&
     !request.nextUrl.pathname.startsWith('/_next') &&
