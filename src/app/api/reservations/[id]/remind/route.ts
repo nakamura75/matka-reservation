@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getReservationById, getPlans } from '@/lib/db';
-import { sendLinePush, buildReminderMessage } from '@/lib/line';
+import { sendLinePush, buildReminderMessage, buildLocationVisitReminderMessage, buildLocationShootReminderMessage } from '@/lib/line';
+import { isLocationVisit } from '@/lib/location';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +21,23 @@ export async function POST(
 
   const body = await req.json() as { checkInTime?: string; checkOutTime?: string };
 
+  // ロケ見学（16:30枠）：プラン不要
+  if (isLocationVisit(reservation)) {
+    await sendLinePush(reservation.lineUserId, [buildLocationVisitReminderMessage(reservation)]);
+    return NextResponse.json({ success: true });
+  }
+
   const plans = await getPlans();
   const plan = plans.find((p) => p.id === reservation.planId);
-  if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
 
+  // ロケ撮影
+  if (reservation.shootType === 'location') {
+    await sendLinePush(reservation.lineUserId, [buildLocationShootReminderMessage(reservation, plan?.name ?? 'ロケーション撮影')]);
+    return NextResponse.json({ success: true });
+  }
+
+  // スタジオ撮影
+  if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
   await sendLinePush(reservation.lineUserId, [
     buildReminderMessage(reservation, plan.name, body.checkInTime ?? reservation.checkInTime ?? '', body.checkOutTime ?? reservation.checkOutTime ?? ''),
   ]);

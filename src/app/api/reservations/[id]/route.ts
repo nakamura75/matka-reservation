@@ -9,14 +9,9 @@ import {
   getOptions,
   checkVisitSlotConflict,
 } from '@/lib/db';
-import { sendLinePush, buildConfirmMessage, buildLocationConfirmMessage } from '@/lib/line';
-import { isWeekend } from '@/lib/utils';
+import { sendLinePush, buildConfirmMessage, buildLocationVisitConfirmMessage, buildLocationShootConfirmMessage } from '@/lib/line';
+import { locationPlanPrice, locationShootTotal, isLocationVisit } from '@/lib/location';
 import type { ReservationStatus } from '@/types';
-
-// ロケ料金（LocationForm と一致：平日77,000 / 休日+5,500 / 保険5,500）
-const LOC_BASIC = 77000;
-const LOC_HOLIDAY_SURCHARGE = 5500;
-const LOC_INSURANCE = 5500;
 
 export const dynamic = 'force-dynamic';
 
@@ -148,24 +143,31 @@ export async function PATCH(
 
   // 予約確定 → LINE通知（DB更新後に送信）
   if (body.status === '予約確定' && reservation.lineUserId && reservation.shootType === 'location') {
-    // ロケ：振込案内メッセージ（プラン不要）
-    const [allOptions, reservationOptions, updatedReservation] = await Promise.all([
+    // ロケ：見学/撮影で確定メッセージを出し分け（見分け＝変更前ステータス「見学」or 16:30枠）
+    const [plans, allOptions, reservationOptions, updatedReservation] = await Promise.all([
+      getPlans(),
       getOptions(),
       getReservationOptions(reservation.id),
       getReservationById(reservation.id),
     ]);
     const target = updatedReservation ?? reservation;
-    const optionsWithInfo = reservationOptions.map((ro) => {
-      const opt = allOptions.find((o) => o.id === ro.optionId);
-      return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
-    }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
-    const optTotal = optionsWithInfo.reduce((s, o) => s + o.price * o.quantity, 0);
-    const planTotal = LOC_BASIC + (isWeekend(target.date) ? LOC_HOLIDAY_SURCHARGE : 0);
-    const insTotal = target.cancelInsurance === '加入する' ? LOC_INSURANCE : 0;
-    const total = planTotal + optTotal + insTotal;
-    await sendLinePush(reservation.lineUserId, [
-      buildLocationConfirmMessage(target, optionsWithInfo, total),
-    ]).catch((e) => console.error('LINE push failed:', e));
+    if (reservation.status === '見学' || isLocationVisit(reservation)) {
+      // 見学の確定（金額・振込なし）
+      await sendLinePush(reservation.lineUserId, [
+        buildLocationVisitConfirmMessage(target),
+      ]).catch((e) => console.error('LINE push failed:', e));
+    } else {
+      // 撮影の確定（振込案内つき）
+      const optionsWithInfo = reservationOptions.map((ro) => {
+        const opt = allOptions.find((o) => o.id === ro.optionId);
+        return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
+      }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
+      const plan = plans.find((p) => p.id === target.planId);
+      const total = locationShootTotal(target, optionsWithInfo);
+      await sendLinePush(reservation.lineUserId, [
+        buildLocationShootConfirmMessage(target, plan?.name ?? 'ロケーション撮影', locationPlanPrice(target.date), optionsWithInfo, total),
+      ]).catch((e) => console.error('LINE push failed:', e));
+    }
   } else if (body.status === '予約確定' && reservation.lineUserId) {
     const [plans, allOptions, reservationOptions] = await Promise.all([
       getPlans(),

@@ -393,19 +393,14 @@ export function buildConfirmMessage(
 }
 
 // ============================================================
-// ロケ予約確定メッセージ（Flex Message・振込先案内）
-// ※ 振込先はプレースホルダ。確定文面に差し替えてください。
+// ロケーション撮影 — 共通ブロック
 // ============================================================
 
-export function buildLocationConfirmMessage(
-  reservation: Reservation,
-  options: { name: string; price: number; quantity: number }[],
-  total: number
-): LineMessage {
-  const shootDate = (reservation.date ?? '').replace(/-/g, '/');
-  const visitDate = (reservation.visitDate ?? '').replace(/-/g, '/');
+const TOZANSO = '東山荘（名古屋市瑞穂区）';
 
-  const optionItems = options.map((o) => ({
+/** オプション明細（横並び） */
+function optionLineItems(options: { name: string; price: number; quantity: number }[]): Record<string, unknown>[] {
+  return options.map((o) => ({
     type: 'box',
     layout: 'horizontal',
     contents: [
@@ -414,21 +409,11 @@ export function buildLocationConfirmMessage(
     ],
     margin: 'xs',
   }));
+}
 
-  const bodyContents: Record<string, unknown>[] = [
-    labelValue('📆 撮影日', `${shootDate}  ${reservation.timeSlot ?? ''}`),
-    labelValue('🏛 見学日', visitDate ? `${visitDate}  16:30` : '—'),
-    labelValue('🛡 キャンセル保険', reservation.cancelInsurance || '—'),
-  ];
-
-  if (options.length > 0) {
-    bodyContents.push(separator());
-    bodyContents.push(textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }));
-    bodyContents.push(...optionItems);
-  }
-
-  bodyContents.push(separator());
-  bodyContents.push({
+/** 合計行（ロケ＝緑） */
+function locTotalRow(total: number): Record<string, unknown> {
+  return {
     type: 'box',
     layout: 'horizontal',
     contents: [
@@ -436,43 +421,316 @@ export function buildLocationConfirmMessage(
       textComponent(`¥${total.toLocaleString()}`, { weight: 'bold', color: BRAND_GREEN, size: 'lg', align: 'end', flex: 2 }),
     ],
     margin: 'md',
-  } as Record<string, unknown>);
+  } as Record<string, unknown>;
+}
 
-  // 振込先（プレースホルダ）
-  bodyContents.push(
+/** 時刻を大きく強調するボックス（ロケ＝緑） */
+function locBigTimeBox(label: string, time: string): Record<string, unknown> {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      textComponent(label, { size: 'xs', color: GRAY_TEXT, align: 'center' }),
+      { type: 'text', text: time || '—', weight: 'bold', size: 'xxl', color: BRAND_GREEN, align: 'center', margin: 'xs' },
+    ],
+    backgroundColor: '#EBF7ED',
+    cornerRadius: '8px',
+    paddingAll: '12px',
+    margin: 'md',
+  } as Record<string, unknown>;
+}
+
+/** 「こちらは仮予約です」案内ボックス */
+function locTentativeNoticeBox(): Record<string, unknown> {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      textComponent('⚠️ こちらは仮予約です', { weight: 'bold', size: 'xs', color: '#FF6B35' }),
+      textComponent('3日以内に担当者よりご連絡いたします。', { size: 'xs', color: GRAY_TEXT, margin: 'xs' }),
+      textComponent('ご不明点はLINEよりお問い合わせください。', { size: 'xs', color: GRAY_TEXT, margin: 'xs' }),
+    ],
+    backgroundColor: '#EBF7ED',
+    cornerRadius: '8px',
+    paddingAll: '12px',
+    margin: 'lg',
+  } as Record<string, unknown>;
+}
+
+/** 見学場所（matka.スタジオ）駐車場ブロック */
+function locVisitParkingBlock(): Record<string, unknown>[] {
+  return [
     separator(),
+    textComponent('🅿️ 駐車場について', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('住所: 名古屋市瑞穂区佐渡町5丁目4-1', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('専用駐車場を2台分ご用意しています（黄色のカラーコーンが目印）。1組様につき1台分のお貸し出しです。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('満車の場合はお近くのコインパーキングをご利用ください。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
     {
       type: 'box',
       layout: 'vertical',
       contents: [
-        textComponent('🏦 お振込先', { weight: 'bold', size: 'xs', color: BRAND_GREEN }),
-        textComponent('【ここに振込先を記載】', { size: 'xs', color: DARK_TEXT, margin: 'sm' }),
-        textComponent('○○銀行 ○○支店（普通）0000000', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
-        textComponent('口座名義：カ）○○○○', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
-        textComponent('※ お振込は撮影日の2週間前までにお願いいたします。', { size: 'xxs', color: '#FF6B35', margin: 'sm' }),
+        { type: 'text', text: '駐車場の詳細はこちら', size: 'xs', color: '#1a73e8', action: { type: 'uri', uri: 'https://matka-photostudio.jp/news/matka-%E5%B0%82%E7%94%A8%E9%A7%90%E8%BB%8A%E5%A0%B4%E3%81%8C%E3%81%A7%E3%81%8D%E3%81%BE%E3%81%97%E3%81%9F%F0%9F%9A%99/' }, align: 'center' },
       ],
-      backgroundColor: '#EBF7ED',
-      cornerRadius: '8px',
-      paddingAll: '12px',
-      margin: 'md',
+      margin: 'xs',
     } as Record<string, unknown>,
-    separator(),
-    textComponent('当日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
-  );
+  ];
+}
 
+/** 撮影場所（東山荘）駐車場ブロック */
+function tozansoParkingBlock(): Record<string, unknown>[] {
+  return [
+    separator(),
+    textComponent('🅿️ 駐車場について', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('東山荘駐車場をご利用ください。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('住所: 名古屋市瑞穂区初日町2丁目3番地', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('駐車スペースは10台分ございますが、ハイシーズンは混み合うため、なるべく乗り合わせてお越しくださいませ。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('満車の場合はお近くのコインパーキングをご利用ください。（駐車料金はお客様負担です）', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+  ];
+}
+
+/** ロケ撮影 注意事項ブロック */
+function locShootNotesBlock(): Record<string, unknown>[] {
+  const notes = [
+    '当日はヘアセット後にお着付けとなりますので、お子様は前開きのお洋服をご着用いただきますようお願いいたします。',
+    '肌着は首の空いたタンクトップやキャミソールタイプのものをご着用ください。',
+    'お洋服の貸し出しは行なっておりません。',
+  ];
+  return [
+    separator(),
+    textComponent('⚠️ 撮影に関する注意事項', { weight: 'bold', size: 'xs', color: '#FF6B35', margin: 'md' }),
+    ...notes.map((n) => textComponent(`・${n}`, { size: 'xxs', color: GRAY_TEXT, margin: 'xs' })),
+  ];
+}
+
+/** ロケ キャンセル規定ブロック */
+function locCancelPolicyBlock(): Record<string, unknown>[] {
+  return [
+    separator(),
+    textComponent('キャンセル規定', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('・撮影日1週間前より：ご予約のプランに関わらずベーシックプラン料金の50%', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('・撮影日当日：ご予約のプランに関わらずベーシックプラン料金の100%', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('※ 撮影日1週間前より、日程変更等もキャンセルと同じ金額をお支払いいただきます。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('※ キャンセル料は土日祝料金も含みます。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+    textComponent('※ お子様が体調を崩しやすい方やお仕事の都合などで急な予定変更が予想される方は、キャンセル保険5,500円へのご加入をおすすめします。', { size: 'xxs', color: BRAND_COLOR, margin: 'xs' }),
+  ];
+}
+
+/** ロケ 撮影データについてブロック */
+function locDataDeliveryBlock(): Record<string, unknown>[] {
+  return [
+    separator(),
+    textComponent('📷 撮影データについて', { weight: 'bold', size: 'xs', margin: 'md' }),
+    textComponent('撮影データの納品期限は撮影より1週間とさせていただきます。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+  ];
+}
+
+/** 振込先ブロック（プレースホルダ・実データ確定後にここだけ差し替え） */
+function bankTransferBlock(): Record<string, unknown> {
+  return {
+    type: 'box',
+    layout: 'vertical',
+    contents: [
+      textComponent('🏦 お振込先', { weight: 'bold', size: 'xs', color: BRAND_GREEN }),
+      textComponent('【ここに振込先を記載】', { size: 'xs', color: DARK_TEXT, margin: 'sm' }),
+      textComponent('○○銀行 ○○支店（普通）0000000', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+      textComponent('口座名義：カ）○○○○', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+      textComponent('※ お振込は撮影日の2週間前までにお願いいたします。', { size: 'xxs', color: '#FF6B35', margin: 'sm' }),
+    ],
+    backgroundColor: '#EBF7ED',
+    cornerRadius: '8px',
+    paddingAll: '12px',
+    margin: 'md',
+  } as Record<string, unknown>;
+}
+
+// ============================================================
+// ① 仮予約（見学）
+// ============================================================
+export function buildLocationVisitTentativeMessage(reservation: Reservation): LineMessage {
+  const d = (reservation.date ?? '').replace(/-/g, '/');
+  const t = reservation.timeSlot ?? '16:30';
+  const body: Record<string, unknown>[] = [
+    labelValue('🏛 見学日時', `${d}  ${t}`),
+    labelValue('👤 代表者様', `${reservation.customerName ?? ''} 様`),
+    separator(),
+    locTentativeNoticeBox(),
+    separator(),
+    textComponent('📍 見学場所はmatka.のスタジオでございます。', { size: 'xs', color: DARK_TEXT, margin: 'md' }),
+    textComponent('駐車場はmatka.専用駐車場をご利用ください。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+  ];
   return {
     type: 'flex',
-    altText: `✅ ロケ撮影のご予約が確定しました（${shootDate}）`,
+    altText: `🏛 見学の仮予約を受け付けました（${d} ${t}）`,
     contents: {
       type: 'bubble',
-      header: headerBox('✅ ご予約が確定しました', BRAND_GREEN),
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        contents: bodyContents,
-        paddingAll: '16px',
-      },
+      header: headerBox('🏛 見学の仮予約を受け付けました', BRAND_GREEN),
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
+      footer: storeFooter(),
+    },
+  };
+}
+
+// ============================================================
+// ② 仮予約（撮影）
+// ============================================================
+export function buildLocationShootTentativeMessage(
+  reservation: Reservation,
+  planName: string,
+  planPrice: number,
+  options: { name: string; price: number; quantity: number }[],
+  total: number
+): LineMessage {
+  const d = (reservation.date ?? '').replace(/-/g, '/');
+  const t = reservation.timeSlot ?? '';
+  const body: Record<string, unknown>[] = [
+    labelValue('📆 撮影日時', `${d}  ${t}`),
+    labelValue('👤 代表者様', `${reservation.customerName ?? ''} 様`),
+    separator(),
+    labelValue('📋 プラン', planName),
+    labelValue('プラン料金', `¥${planPrice.toLocaleString()}`),
+  ];
+  if (options.length > 0) {
+    body.push(separator(), textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }), ...optionLineItems(options));
+  }
+  body.push(separator(), locTotalRow(total));
+  body.push(textComponent('※ 見学時のご相談内容により、最終金額が変更になる場合がございます。', { size: 'xxs', color: '#FF6B35', margin: 'sm', wrap: true }));
+  body.push(separator(), locTentativeNoticeBox());
+  body.push(
+    separator(),
+    textComponent(`📍 撮影場所は${TOZANSO}でございます。`, { size: 'xs', color: DARK_TEXT, margin: 'md' }),
+    textComponent('ご集合は東山荘駐車場へお願いします。', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+  );
+  return {
+    type: 'flex',
+    altText: `📸 撮影の仮予約を受け付けました（${d} ${t}）`,
+    contents: {
+      type: 'bubble',
+      header: headerBox('📸 撮影の仮予約を受け付けました', BRAND_GREEN),
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
+      footer: storeFooter(),
+    },
+  };
+}
+
+// ============================================================
+// ③ 予約確定（見学）
+// ============================================================
+export function buildLocationVisitConfirmMessage(reservation: Reservation): LineMessage {
+  const d = (reservation.date ?? '').replace(/-/g, '/');
+  const t = reservation.timeSlot ?? '16:30';
+  const body: Record<string, unknown>[] = [
+    labelValue('🏛 見学日時', `${d}  ${t}`),
+    labelValue('👤 代表者様', `${reservation.customerName ?? ''} 様`),
+    separator(),
+    locBigTimeBox('🕐 ご来店時間', t),
+    ...locVisitParkingBlock(),
+    separator(),
+    textComponent('当日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
+  ];
+  return {
+    type: 'flex',
+    altText: `✅ 見学のご予約が確定しました（${d} ${t}）`,
+    contents: {
+      type: 'bubble',
+      header: headerBox('✅ 見学のご予約が確定しました', BRAND_GREEN),
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
       footer: confirmFooter(),
+    },
+  };
+}
+
+// ============================================================
+// ④ 予約確定（撮影）
+// ============================================================
+export function buildLocationShootConfirmMessage(
+  reservation: Reservation,
+  planName: string,
+  planPrice: number,
+  options: { name: string; price: number; quantity: number }[],
+  total: number
+): LineMessage {
+  const d = (reservation.date ?? '').replace(/-/g, '/');
+  const t = reservation.timeSlot ?? '';
+  const body: Record<string, unknown>[] = [
+    labelValue('📆 撮影日時', `${d}  ${t}`),
+    labelValue('📸 プラン', planName),
+    labelValue('プラン料金', `¥${planPrice.toLocaleString()}`),
+  ];
+  if (options.length > 0) {
+    body.push(separator(), textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }), ...optionLineItems(options));
+  }
+  body.push(separator(), locTotalRow(total));
+  body.push(separator(), bankTransferBlock());
+  body.push(separator(), locBigTimeBox('🕐 ご集合時間', t));
+  body.push(...locShootNotesBlock());
+  body.push(...tozansoParkingBlock());
+  body.push(...locCancelPolicyBlock());
+  body.push(...locDataDeliveryBlock());
+  body.push(separator(), textComponent('当日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }));
+  return {
+    type: 'flex',
+    altText: `✅ 撮影のご予約が確定しました（${d} ${t}）`,
+    contents: {
+      type: 'bubble',
+      header: headerBox('✅ 撮影のご予約が確定しました', BRAND_GREEN),
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
+      footer: confirmFooter(),
+    },
+  };
+}
+
+// ============================================================
+// ⑤ 前日リマインド（見学）
+// ============================================================
+export function buildLocationVisitReminderMessage(reservation: Reservation): LineMessage {
+  const d = (reservation.date ?? '').replace(/-/g, '/');
+  const t = reservation.timeSlot ?? '16:30';
+  const body: Record<string, unknown>[] = [
+    labelValue('🏛 見学日時', `${d}  ${t}`),
+    separator(),
+    locBigTimeBox('🕐 明日のご来店時間', t),
+    ...locVisitParkingBlock(),
+    separator(),
+    textComponent('明日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
+  ];
+  return {
+    type: 'flex',
+    altText: `📅 明日の見学のご確認（${d} ${t}）`,
+    contents: {
+      type: 'bubble',
+      header: headerBox('📅 明日のご予約のご確認（見学）', '#5B7FFF'),
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
+      footer: reminderFooter(),
+    },
+  };
+}
+
+// ============================================================
+// ⑥ 前日リマインド（撮影）
+// ============================================================
+export function buildLocationShootReminderMessage(reservation: Reservation, planName: string): LineMessage {
+  const d = (reservation.date ?? '').replace(/-/g, '/');
+  const t = reservation.timeSlot ?? '';
+  const body: Record<string, unknown>[] = [
+    labelValue('📆 撮影日時', `${d}  ${t}`),
+    labelValue('📸 プラン', planName),
+    separator(),
+    locBigTimeBox('🕐 明日のご集合時間', t),
+    ...locShootNotesBlock(),
+    ...tozansoParkingBlock(),
+    ...locCancelPolicyBlock(),
+    ...locDataDeliveryBlock(),
+    separator(),
+    textComponent('明日お会いできますことを楽しみにしております！', { size: 'xs', color: DARK_TEXT, margin: 'md', align: 'center' }),
+  ];
+  return {
+    type: 'flex',
+    altText: `📅 明日の撮影のご確認（${d} ${t}）`,
+    contents: {
+      type: 'bubble',
+      header: headerBox('📅 明日のご予約のご確認（撮影）', '#5B7FFF'),
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
+      footer: reminderFooter(),
     },
   };
 }
