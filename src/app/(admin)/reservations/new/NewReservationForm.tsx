@@ -6,6 +6,9 @@ import type { Plan, Option, Customer } from '@/types';
 import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, VISIT_TIME_SLOTS, SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
 import { isWeekend, formatCurrency } from '@/lib/utils';
 
+// ロケのキャンセル保険（税込）
+const LOC_INSURANCE = 5500;
+
 interface Props {
   mode?: 'studio' | 'location';
   plans: Plan[];
@@ -325,15 +328,33 @@ export default function NewReservationForm({ mode = 'studio', plans, options, cu
               </div>
               <div>
                 <label className="block text-sm text-gray-500 mb-1">キャンセル保険</label>
-                <select
-                  value={cancelInsurance}
-                  onChange={(e) => setCancelInsurance(e.target.value)}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
-                >
-                  <option value="">選択...</option>
-                  <option value="加入する">加入する</option>
-                  <option value="加入しない">加入しない</option>
-                </select>
+                <div className="flex items-center gap-5 min-h-[42px]">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="new-cancel-insurance-yes"
+                      checked={cancelInsurance === '加入する'}
+                      onChange={(e) => setCancelInsurance(e.target.checked ? '加入する' : '')}
+                      className="w-4 h-4 accent-brand"
+                    />
+                    <label htmlFor="new-cancel-insurance-yes" className="text-sm text-gray-700 cursor-pointer">
+                      加入する
+                      <span className="text-gray-400 ml-2">{formatCurrency(LOC_INSURANCE)}</span>
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="new-cancel-insurance-no"
+                      checked={cancelInsurance === '加入しない'}
+                      onChange={(e) => setCancelInsurance(e.target.checked ? '加入しない' : '')}
+                      className="w-4 h-4 accent-brand"
+                    />
+                    <label htmlFor="new-cancel-insurance-no" className="text-sm text-gray-700 cursor-pointer">
+                      加入しない
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
