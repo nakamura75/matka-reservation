@@ -8,6 +8,9 @@ import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssign
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS } from '@/lib/constants';
 
+// ロケのキャンセル保険（税込）
+const LOC_INSURANCE = 5500;
+
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrderItem = { productName: string; price: number; quantity: number };
 type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number; items: LinkedOrderItem[] };
@@ -669,15 +672,33 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 {isLocation && (
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">キャンセル保険</label>
-                    <select
-                      value={editCancelInsurance}
-                      onChange={(e) => setEditCancelInsurance(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                    >
-                      <option value="">—</option>
-                      <option value="加入する">加入する</option>
-                      <option value="加入しない">加入しない</option>
-                    </select>
+                    <div className="flex items-center gap-5 min-h-[38px]">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="edit-cancel-insurance-yes"
+                          checked={editCancelInsurance === '加入する'}
+                          onChange={(e) => setEditCancelInsurance(e.target.checked ? '加入する' : '')}
+                          className="w-4 h-4 accent-brand"
+                        />
+                        <label htmlFor="edit-cancel-insurance-yes" className="text-sm text-gray-700 cursor-pointer">
+                          加入する
+                          <span className="text-gray-400 ml-2">{formatCurrency(LOC_INSURANCE)}</span>
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="edit-cancel-insurance-no"
+                          checked={editCancelInsurance === '加入しない'}
+                          onChange={(e) => setEditCancelInsurance(e.target.checked ? '加入しない' : '')}
+                          className="w-4 h-4 accent-brand"
+                        />
+                        <label htmlFor="edit-cancel-insurance-no" className="text-sm text-gray-700 cursor-pointer">
+                          加入しない
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 )}
                 <div>
