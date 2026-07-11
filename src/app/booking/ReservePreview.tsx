@@ -6,6 +6,12 @@ import StudioForm from './StudioForm';
 import LocationForm from './LocationForm';
 import { LIFF_ID, LINE_OA_ID } from '@/lib/constants';
 
+// 入口をLINE必須にするか。
+// true  = LINE外(PC/Web)は予約不可（誘導画面で停止）
+// false = LINE外でも予約可（現状 /reserve と同じ挙動。完了画面で予約番号のLINE送信へ誘導）
+// ※先方が「入口は現状のまま（LINE任意）」で確定したら false のままGo。仕様が戻ったら true に。
+const REQUIRE_LINE = false;
+
 type Mode = '' | 'studio' | 'location';
 
 // 木のアイコン（輪郭線のみ・塗りなし。雲形の樹冠＋中央を貫く一本線の幹＋
@@ -89,8 +95,9 @@ export default function ReservePreview() {
 
   // ============================================================
   // 入口：LINEアプリ外からのアクセス → 予約はLINE内のみ（誘導画面）
+  // ※ REQUIRE_LINE=false のときはこの壁をスキップし、LINE外でもフォームへ進める
   // ============================================================
-  if (liffState === 'outside') {
+  if (REQUIRE_LINE && liffState === 'outside') {
     const liffUrl = LIFF_ID ? `https://liff.line.me/${LIFF_ID}` : '';
     const addFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(LINE_OA_ID)}`;
     return (
@@ -210,8 +217,8 @@ export default function ReservePreview() {
       )}
 
       {/* ② 分岐（LINE連携情報を各フォームへ引き継ぎ） */}
-      {mode === 'studio' && <StudioForm lineUserId={lineUserId} lineName={lineName} />}
-      {mode === 'location' && <LocationForm lineUserId={lineUserId} lineName={lineName} />}
+      {mode === 'studio' && <StudioForm lineUserId={lineUserId} lineName={lineName} isInLine={liffState === 'in-line'} />}
+      {mode === 'location' && <LocationForm lineUserId={lineUserId} lineName={lineName} isInLine={liffState === 'in-line'} />}
     </>
   );
 }

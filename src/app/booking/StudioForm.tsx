@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { QRCodeSVG } from 'qrcode.react';
 import type { Plan, Option, AvailableSlot, ShootingScene, TimeSlot } from '@/types';
-import { SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
+import { SHOOTING_SCENES, SCENE_PLAN_MAP, LINE_OA_ID } from '@/lib/constants';
 import { getActiveCampaign, isCampaignScene, isCampaignEnabled, CAMPAIGN_OPTION_CODES } from '@/lib/campaign';
 import { formatCurrency, formatDate, isWeekend } from '@/lib/utils';
 
@@ -111,7 +112,10 @@ function StepIndicator({ current }: { current: number }) {
 // ============================================================
 // メインコンポーネント
 // ============================================================
-export default function StudioForm({ lineUserId = '', lineName = '' }: { lineUserId?: string; lineName?: string }) {
+export default function StudioForm({ lineUserId = '', lineName = '', isInLine }: { lineUserId?: string; lineName?: string; isInLine?: boolean }) {
+  // LINE内アクセスか。明示指定が無ければ lineUserId の有無で判定。
+  // LINE外(Web)は完了画面で予約番号のLINE送信へ誘導する。
+  const inLine = isInLine ?? !!lineUserId;
   const [step, setStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [reservationNumber, setReservationNumber] = useState('');
@@ -347,9 +351,38 @@ export default function StudioForm({ lineUserId = '', lineName = '' }: { lineUse
             <p className="text-xs text-gray-500 mb-1">予約番号</p>
             <p className="font-bold text-brand tracking-wide" style={{ fontSize: '13px' }}>{reservationNumber}</p>
           </div>
-          <p className="text-sm text-green-600 bg-green-50 rounded-xl p-3">
-            ✅ LINEで予約確認メッセージをお送りしました
-          </p>
+          {!inLine && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-left">
+              <p className="text-sm font-semibold text-green-800 mb-2">📲 LINEで予約番号を送信してください</p>
+              <p className="text-xs text-green-700 mb-3">
+                下のボタンを押すと、予約番号がLINEトーク内に表示されます。<br />
+                予約内容の確認・通知をLINEで受け取るために、そのまま送信してください。
+              </p>
+              <div className="bg-white rounded-lg px-3 py-2 text-sm font-mono text-gray-800 border border-green-200 mb-3">
+                matka予約: {reservationNumber}
+              </div>
+              <div className="bg-amber-50 border border-amber-300 rounded-lg px-3 py-2 mb-3">
+                <p className="text-xs font-semibold text-amber-800">⚠️ メッセージの内容は変更せずにそのまま送信してください</p>
+              </div>
+              <div className="flex flex-col items-center bg-white rounded-xl border border-green-200 p-4 mb-3">
+                <QRCodeSVG value={`https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`} size={120} />
+                <p className="text-xs text-gray-500 mt-2">カメラでスキャン または ボタンをタップ</p>
+              </div>
+              <a
+                href={`https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(`matka予約: ${reservationNumber}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center py-2.5 bg-[#06C755] text-white text-sm font-medium rounded-lg hover:bg-[#05a847] transition-colors"
+              >
+                LINEで予約番号を送信する
+              </a>
+            </div>
+          )}
+          {inLine && (
+            <p className="text-sm text-green-600 bg-green-50 rounded-xl p-3">
+              ✅ LINEで予約確認メッセージをお送りしました
+            </p>
+          )}
         </div>
       </div>
     );
