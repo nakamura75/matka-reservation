@@ -524,16 +524,15 @@ function locDataDeliveryBlock(): Record<string, unknown>[] {
   ];
 }
 
-/** 振込先ブロック（プレースホルダ・実データ確定後にここだけ差し替え） */
+/** 振込先ブロック */
 function bankTransferBlock(): Record<string, unknown> {
   return {
     type: 'box',
     layout: 'vertical',
     contents: [
       textComponent('🏦 お振込先', { weight: 'bold', size: 'xs', color: BRAND_GREEN }),
-      textComponent('【ここに振込先を記載】', { size: 'xs', color: DARK_TEXT, margin: 'sm' }),
-      textComponent('○○銀行 ○○支店（普通）0000000', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
-      textComponent('口座名義：カ）○○○○', { size: 'xxs', color: GRAY_TEXT, margin: 'xs' }),
+      textComponent('名古屋銀行 堀田支店', { size: 'sm', color: DARK_TEXT, margin: 'sm', weight: 'bold' }),
+      textComponent('普通 5022325', { size: 'sm', color: DARK_TEXT, margin: 'xs', weight: 'bold' }),
       textComponent('※ お振込は撮影日の2週間前までにお願いいたします。', { size: 'xxs', color: '#FF6B35', margin: 'sm' }),
     ],
     backgroundColor: '#EBF7ED',
