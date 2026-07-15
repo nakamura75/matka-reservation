@@ -6,10 +6,8 @@ import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option, Holiday } from '@/types';
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
+import { LOC_INSURANCE } from '@/lib/location';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS } from '@/lib/constants';
-
-// ロケのキャンセル保険（税込）
-const LOC_INSURANCE = 5500;
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrderItem = { productName: string; price: number; quantity: number };
