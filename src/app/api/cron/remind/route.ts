@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getReservations, getPlans } from '@/lib/db';
-import { sendLinePush, buildReminderMessage } from '@/lib/line';
+import { sendLinePush, buildReminderMessage, buildLocationVisitReminderMessage, buildLocationShootReminderMessage } from '@/lib/line';
+import { isLocationVisit } from '@/lib/location';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,18 @@ export async function GET(req: NextRequest) {
 
   const results = await Promise.allSettled(
     targets.map(async (r) => {
+      // ロケ見学（16:30枠）：プラン不要
+      if (isLocationVisit(r)) {
+        await sendLinePush(r.lineUserId!, [buildLocationVisitReminderMessage(r)]);
+        return;
+      }
       const plan = plans.find((p) => p.id === r.planId);
+      // ロケ撮影
+      if (r.shootType === 'location') {
+        await sendLinePush(r.lineUserId!, [buildLocationShootReminderMessage(r, plan?.name ?? 'ロケーション撮影')]);
+        return;
+      }
+      // スタジオ撮影
       if (!plan) throw new Error(`Plan not found for reservation ${r.id}`);
       await sendLinePush(r.lineUserId!, [
         buildReminderMessage(r, plan.name, r.checkInTime ?? '', r.checkOutTime ?? ''),

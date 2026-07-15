@@ -40,7 +40,8 @@ import {
   getOptions,
   getCustomers,
 } from '@/lib/db';
-import { sendLinePush, buildTentativeMessage } from '@/lib/line';
+import { sendLinePush, buildTentativeMessage, buildLocationVisitTentativeMessage, buildLocationShootTentativeMessage, type LineMessage } from '@/lib/line';
+import { locationPlanPrice, locationShootTotal } from '@/lib/location';
 import { getActiveCampaign, isCampaignScene } from '@/lib/campaign';
 import { generateId, generateReservationNumber } from '@/lib/utils';
 import type { ReservationFormData, Reservation } from '@/types';
@@ -223,17 +224,36 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（見学・ロケ本番はスキップ）
-    if (!isVisit && !isLocation && body.lineUserId) {
+    // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（スタジオ撮影 / ロケ見学 / ロケ撮影）
+    if (body.lineUserId) {
       const allOptions = await getOptions().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; });
       const optionsWithInfo = body.selectedOptions.map((sel) => {
         const opt = allOptions.find((o) => o.id === sel.optionId);
         return opt ? { name: opt.name, price: opt.price, quantity: sel.quantity } : null;
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
 
-      await sendLinePush(body.lineUserId, [
-        buildTentativeMessage(reservation as Reservation, plan!.name, plan!.price, optionsWithInfo),
-      ]).catch((e) => console.error('LINE Push failed:', e));
+      let message: LineMessage | null = null;
+      if (isLocation && isVisit) {
+        // ロケ：見学の仮予約
+        message = buildLocationVisitTentativeMessage(reservation as Reservation);
+      } else if (isLocation && !isVisit) {
+        // ロケ：撮影の仮予約（金額は見学後に変わる可能性あり）
+        const locPlan = plans.find((p) => p.id === body.planId);
+        const total = locationShootTotal(reservation as Reservation, optionsWithInfo);
+        message = buildLocationShootTentativeMessage(
+          reservation as Reservation,
+          locPlan?.name ?? 'ロケーション撮影',
+          locationPlanPrice(reservation.date),
+          optionsWithInfo,
+          total,
+        );
+      } else if (!isVisit && !isLocation && plan) {
+        // スタジオ撮影の仮予約
+        message = buildTentativeMessage(reservation as Reservation, plan.name, plan.price, optionsWithInfo);
+      }
+      if (message) {
+        await sendLinePush(body.lineUserId, [message]).catch((e) => console.error('LINE Push failed:', e));
+      }
     }
 
     return NextResponse.json({

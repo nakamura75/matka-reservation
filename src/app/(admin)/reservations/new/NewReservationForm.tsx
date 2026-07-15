@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Plan, Option, Customer } from '@/types';
 import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, VISIT_TIME_SLOTS, SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
 import { isWeekend, formatCurrency } from '@/lib/utils';
-
-// ロケのキャンセル保険（税込）
-const LOC_INSURANCE = 5500;
+import { LOC_INSURANCE } from '@/lib/location';
 
 interface Props {
   mode?: 'studio' | 'location';
