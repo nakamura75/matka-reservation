@@ -3,8 +3,8 @@ import ReservePreview from './ReservePreview';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: '撮影予約（プレビュー） | Matka Photo Studio',
-  description: '撮影予約フォームの確認用プレビューです。入力内容は保存されません。',
+  title: '撮影予約 | Matka Photo Studio',
+  description: 'Matka Photo Studio のオンライン撮影予約フォームです。',
   robots: { index: false, follow: false },
 };
 

@@ -142,10 +142,12 @@ export default function ReservePreview() {
   // ============================================================
   return (
     <>
-      {/* 開発用フォーム（ローカルは開発DBに接続） */}
-      <div className="bg-amber-100 border-b border-amber-300 text-amber-800 text-xs text-center py-1.5 px-4">
-        ⚠️ 開発用フォームです。入力は<strong>開発DBに保存されます</strong>（本番DBには影響しません）。
-      </div>
+      {/* 開発用の注意書き（本番では非表示。ローカル/プレビューのみ＝実際に開発DBに接続する環境） */}
+      {process.env.NODE_ENV !== 'production' && (
+        <div className="bg-amber-100 border-b border-amber-300 text-amber-800 text-xs text-center py-1.5 px-4">
+          ⚠️ 開発用フォームです。入力は<strong>開発DBに保存されます</strong>（本番DBには影響しません）。
+        </div>
+      )}
 
       {/* 撮影タイプを選び直す（分岐後のみ表示） */}
       {mode !== '' && (
