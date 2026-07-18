@@ -8,6 +8,7 @@ import {
   getPlans,
   getOptions,
   checkVisitSlotConflict,
+  getLocationPairSibling,
 } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage, buildLocationVisitConfirmMessage, buildLocationShootConfirmMessage } from '@/lib/line';
 import { locationPlanPrice, locationShootTotal, isLocationVisit } from '@/lib/location';
@@ -204,7 +205,13 @@ export async function DELETE(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
+    // ロケは「見学＋撮影」の2件で1予約。相方も一緒に削除して両方の枠を解放する。
+    const reservation = await getReservationById(params.id);
+    const sibling = reservation?.shootType === 'location'
+      ? await getLocationPairSibling(reservation)
+      : null;
     await deleteReservation(params.id);
+    if (sibling) await deleteReservation(sibling.id);
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
