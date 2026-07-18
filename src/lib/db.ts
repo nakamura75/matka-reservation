@@ -464,6 +464,28 @@ export async function linkLineUserId(id: string, lineUserId: string): Promise<vo
   await updateReservation(id, { lineUserId, flag: true });
 }
 
+/**
+ * ロケ予約の対（見学↔撮影）の相方を取得する。
+ * WEB予約は見学(16:30)＋撮影の2件を作成し、見学.date === 撮影.visit_date で対応づく。
+ * 同一顧客・shoot_type=location で相方を探す。見つからなければ null。
+ */
+export async function getLocationPairSibling(r: Reservation): Promise<Reservation | null> {
+  const { data, error } = await supabase()
+    .from('reservations')
+    .select('*')
+    .eq('customer_id', r.customerId)
+    .eq('shoot_type', 'location')
+    .neq('id', r.id);
+  if (error) throw error;
+  const rows = (data ?? []).map(dbToReservation);
+  if (r.status === '見学') {
+    // この見学の相方＝撮影（visit_date がこの見学の date に一致）
+    return rows.find((x) => x.status !== '見学' && x.visitDate === r.date) ?? null;
+  }
+  // この撮影の相方＝見学（date がこの撮影の visit_date に一致）
+  return rows.find((x) => x.status === '見学' && x.date === r.visitDate) ?? null;
+}
+
 export async function saveChatLineUserId(id: string, chatLineUserId: string): Promise<void> {
   await updateReservation(id, { chatLineUserId });
 }

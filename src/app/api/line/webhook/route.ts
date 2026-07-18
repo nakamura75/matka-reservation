@@ -15,8 +15,10 @@ import {
   getReservationOptions,
   getOptions,
   getPlans,
+  getLocationPairSibling,
 } from '@/lib/db';
 import { isLocationVisit, locationPlanPrice, locationShootTotal } from '@/lib/location';
+import type { Reservation } from '@/types';
 
 /**
  * POST /api/line/webhook
@@ -98,24 +100,42 @@ async function handleTextMessage(event: LineEvent) {
     };
   });
 
-  // スタジオ/ロケ（見学・撮影）で仮予約メッセージを出し分け（フォーム送信時の自動送信と揃える）
-  let message: LineMessage;
+  // オプション情報を {name,price,quantity}[] に整形するヘルパー
+  const toOptInfo = (ros: { optionId: string; quantity: number }[]) =>
+    ros.map((ro) => {
+      const opt = options.find((o) => o.id === ro.optionId);
+      return { name: opt?.name ?? '', price: opt?.price ?? 0, quantity: ro.quantity };
+    });
+  // 撮影の仮予約メッセージを組み立て（プラン実額で計算）
+  const buildShoot = (shoot: Reservation, opts: { name: string; price: number; quantity: number }[]) => {
+    const plan = plans.find((p) => p.id === shoot.planId);
+    const planPrice = plan?.price ?? locationPlanPrice(shoot.date);
+    const total = locationShootTotal(shoot, opts, planPrice);
+    return buildLocationShootTentativeMessage(shoot, plan?.name ?? 'ロケーション撮影', planPrice, opts, total);
+  };
+
+  const messages: LineMessage[] = [];
   if (res.shootType === 'location') {
-    if (isLocationVisit(res)) {
-      message = buildLocationVisitTentativeMessage(res);
-    } else {
-      const plan = plans.find((p) => p.id === res.planId);
-      const planPrice = plan?.price ?? locationPlanPrice(res.date);
-      const total = locationShootTotal(res, optionsWithInfo, planPrice);
-      message = buildLocationShootTentativeMessage(res, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total);
+    // ロケは「見学＋撮影」の2通を送る（LINE外予約は番号送信でここに来るため、片方だけにならないよう対を辿る）
+    const sibling = await getLocationPairSibling(reservation);
+    if (sibling) await linkLineUserId(sibling.id, userId);
+    const withName = (r: Reservation | null): Reservation | null => (r ? { ...r, customerName: res.customerName } : null);
+    const visitR: Reservation | null = isLocationVisit(res) ? res : withName(sibling);
+    const shootR: Reservation | null = isLocationVisit(res) ? withName(sibling) : res;
+    if (visitR) messages.push(buildLocationVisitTentativeMessage(visitR));
+    if (shootR) {
+      const shootOpts = shootR.id === reservation.id
+        ? optionsWithInfo
+        : toOptInfo(await getReservationOptions(shootR.id));
+      messages.push(buildShoot(shootR, shootOpts));
     }
   } else {
     const plan = plans.find((p) => p.id === res.planId);
     if (!plan) return;
-    message = buildTentativeMessage(res, plan.name, plan.price, optionsWithInfo);
+    messages.push(buildTentativeMessage(res, plan.name, plan.price, optionsWithInfo));
   }
 
-  await sendLinePush(userId, [message]);
+  if (messages.length) await sendLinePush(userId, messages);
 }
 
 // ============================================================
