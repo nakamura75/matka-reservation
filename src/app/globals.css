@@ -46,8 +46,21 @@ body {
   font-size: 16px;
 }
 .booking-form input[type="date"] {
-  /* 枠内に収める（はみ出し防止）。appearanceは無効化しない＝他の入力と同じネイティブ見た目・高さを保つ */
-  min-width: 0;
+  /* iOSのネイティブ日付入力は width を無視して枠からはみ出すため appearance を無効化して収める。
+     さらに背景を白・値を左寄せにして、他のテキスト入力と同じ見た目に揃える。 */
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  background-color: #fff;
+  color: #1f2937;
+}
+.booking-form input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+/* 未入力(プレースホルダ状態)の日付の文字色を他のプレースホルダに合わせる */
+.booking-form input[type="date"]:not(:valid)::-webkit-datetime-edit {
+  color: #9ca3af;
 }

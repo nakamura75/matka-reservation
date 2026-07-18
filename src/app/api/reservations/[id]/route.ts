@@ -158,7 +158,7 @@ export async function PATCH(
         buildLocationVisitConfirmMessage(target),
       ]).catch((e) => console.error('LINE push failed:', e));
     } else {
-      // 撮影の確定（振込案内つき）
+      // 撮影の確定（振込案内つき）＋ 対の見学確定も一緒に送る（見学→撮影の順）
       const optionsWithInfo = reservationOptions.map((ro) => {
         const opt = allOptions.find((o) => o.id === ro.optionId);
         return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
@@ -166,9 +166,12 @@ export async function PATCH(
       const plan = plans.find((p) => p.id === target.planId);
       const planPrice = plan?.price ?? locationPlanPrice(target.date);
       const total = locationShootTotal(target, optionsWithInfo, planPrice);
-      await sendLinePush(reservation.lineUserId, [
-        buildLocationShootConfirmMessage(target, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total),
-      ]).catch((e) => console.error('LINE push failed:', e));
+      const shootMsg = buildLocationShootConfirmMessage(target, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total);
+      const visit = await getLocationPairSibling(reservation);
+      const messages = visit
+        ? [buildLocationVisitConfirmMessage({ ...visit, customerName: target.customerName ?? visit.customerName }), shootMsg]
+        : [shootMsg];
+      await sendLinePush(reservation.lineUserId, messages).catch((e) => console.error('LINE push failed:', e));
     }
   } else if (body.status === '予約確定' && reservation.lineUserId) {
     const [plans, allOptions, reservationOptions] = await Promise.all([
