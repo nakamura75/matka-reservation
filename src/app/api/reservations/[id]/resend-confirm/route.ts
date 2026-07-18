@@ -40,9 +40,10 @@ export async function POST(
 
   // ロケ撮影
   if (reservation.shootType === 'location') {
-    const total = locationShootTotal(reservation, optionsWithInfo);
+    const planPrice = plan?.price ?? locationPlanPrice(reservation.date);
+    const total = locationShootTotal(reservation, optionsWithInfo, planPrice);
     await sendLinePush(reservation.lineUserId, [
-      buildLocationShootConfirmMessage(reservation, plan?.name ?? 'ロケーション撮影', locationPlanPrice(reservation.date), optionsWithInfo, total),
+      buildLocationShootConfirmMessage(reservation, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total),
     ]);
     return NextResponse.json({ success: true });
   }

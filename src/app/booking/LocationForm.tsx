@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { TruckIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { QRCodeSVG } from 'qrcode.react';
-import type { Option } from '@/types';
+import type { Option, Plan } from '@/types';
 import { formatCurrency, isWeekend } from '@/lib/utils';
 import { LINE_OA_ID } from '@/lib/constants';
 
@@ -18,10 +18,19 @@ const SHOOT_TIMES = [
 const VISIT_TIME = '16:30';        // 見学はWEB予約だと16:30固定
 const VISIT_LEAD_DAYS = 8;          // 本番日は見学日の8日後以降
 
-// ベーシックプラン料金（平日77,000円 / 休日は+5,500円）。休日判定は本番撮影日の土日で自動判定。
-const BASIC_PLAN_WEEKDAY = 77000;
-const HOLIDAY_SURCHARGE = 5500;
+// プラン料金は設定（DB）のロケ用プランから取得し、平日/休日は撮影日で自動選択する。
 const CANCEL_INSURANCE = 5500;
+
+// プラン説明（DBのdescriptionが空のときのフォールバック表示。ベース名で照合）
+const PLAN_DESC: Record<string, string> = {
+  'Basic Plan': '撮影データのみ',
+  'Frame Plan': '撮影データ ＋ Walnut Frame 8×10',
+  'Album Plan': '撮影データ ＋ Crystal Book（アルバム）',
+};
+const PLAN_NOTE: Record<string, string> = {
+  'Frame Plan': 'フレーム単品注文より7,700円お得／フレーム用のお写真を1枚お選びいただけます',
+  'Album Plan': 'アルバム単品注文より9,900円お得／アルバムデザインはお任せください',
+};
 
 // ============================================================
 // 日付ヘルパー
@@ -51,7 +60,7 @@ function validateEmail(v: string): string | null { const t = v.trim(); if (!t) r
 function validateZip(v: string): string | null { const t = v.trim(); if (!t) return null; if (!/^\d{3}-?\d{4}$/.test(t)) return '郵便番号は7桁（例: 123-4567）で入力してください'; return null; }
 function validateAddress(v: string): string | null { const t = v.trim(); if (!t) return null; if (t.length < 5) return '住所を正しく入力してください'; return null; }
 
-const STEPS = ['日程', 'お客様情報', '来店人数', 'オプション', '確認・送信'];
+const STEPS = ['日程', 'お客様情報', '来店人数', 'ご主役のお支度', 'オプション', '確認・送信'];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -126,8 +135,11 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   // オプション（子供向けのみ）
   const [options, setOptions] = useState<Option[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; quantity: number }[]>([]);
-  // ロケのプランID（予約に正規の項目として保存するため設定から取得）
-  const [locationPlanId, setLocationPlanId] = useState('');
+  // 主役のお子様のお支度（着付け＋ヘアメイクはプラン込み＝¥0、日本髪のみ別途¥2,200）
+  const [mainPrep, setMainPrep] = useState<string[]>([]);
+  // ロケ用プラン（設定から取得）。planTier は平日/休日を除いたベース名（例: "Basic Plan"）
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [planTier, setPlanTier] = useState('');
 
   // お電話の希望
   const [phoneCallPreference, setPhoneCallPreference] = useState('');
@@ -149,7 +161,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       .catch(() => {});
     fetch('/api/plans?mode=location')
       .then((r) => r.json())
-      .then((d) => setLocationPlanId(d.data?.[0]?.id ?? ''))
+      .then((d) => setPlans((d.data ?? []).filter((p: Plan) => p.showInForm !== false)))
       .catch(() => {});
   }, []);
 
@@ -200,12 +212,39 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     return sum + (opt ? opt.price * so.quantity : 0);
   }, 0);
 
-  // 本番撮影日の土日で平日/休日を自動判定し、ベーシックプラン料金を算出
+  // 主役のお子様のお支度：着付け＋ヘアメイクはプラン込み（¥0表示）、日本髪のみ別途料金
+  function isNihongami(o: Option) { return o.id === 'loc-opt-nihongami' || o.name.includes('日本髪'); }
+  const mainPrepOptions = options.filter((o) => !o.name.includes('ヘアメイクのみ'));
+  const mainPrepPrice = (o: Option) => (isNihongami(o) ? o.price : 0);
+  function toggleMainPrep(id: string) {
+    setMainPrep((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+  const mainPrepFee = mainPrep.reduce((sum, id) => {
+    const o = options.find((x) => x.id === id);
+    return sum + (o ? mainPrepPrice(o) : 0);
+  }, 0);
+
+  // 本番撮影日の土日で平日/休日を自動判定
   const isHolidayShoot = shootDate ? isWeekend(shootDate) : false;
-  const planLabel = `ベーシックプラン（${isHolidayShoot ? '休日' : '平日'}）`;
-  const planPrice = BASIC_PLAN_WEEKDAY + (isHolidayShoot ? HOLIDAY_SURCHARGE : 0);
+  // ロケ用プランを「（平日）／（休日）」を除いたベース名でまとめ、撮影日に応じた金額を出す
+  const planTiers = (() => {
+    const map = new Map<string, { base: string; weekday?: Plan; holiday?: Plan }>();
+    for (const p of plans) {
+      const base = p.name.replace(/（平日）|（休日）/g, '').trim();
+      const e = map.get(base) ?? { base };
+      if (p.name.includes('休日')) e.holiday = p; else e.weekday = p;
+      map.set(base, e);
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => (a.weekday?.price ?? a.holiday?.price ?? 0) - (b.weekday?.price ?? b.holiday?.price ?? 0),
+    );
+  })();
+  const selectedTier = planTiers.find((t) => t.base === planTier);
+  const selectedPlan = selectedTier ? (isHolidayShoot ? selectedTier.holiday : selectedTier.weekday) : undefined;
+  const planLabel = selectedPlan?.name ?? '';
+  const planPrice = selectedPlan?.price ?? 0;
   const insuranceFee = insurance === '加入する' ? CANCEL_INSURANCE : 0;
-  const grandTotal = planPrice + optionTotal + insuranceFee;
+  const grandTotal = planPrice + optionTotal + insuranceFee + mainPrepFee;
 
   // 本番日の8日前まで（見学日の最大値）
   const maxVisitDate = shootDate ? addDays(shootDate, -VISIT_LEAD_DAYS) : '';
@@ -262,17 +301,25 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   }
 
   const visitValid = visitDate && visitDate >= today && (!maxVisitDate || visitDate <= maxVisitDate) && visitStatus === 'free' && !visitNgDates.has(visitDate);
-  const scheduleValid = shootDate && shootTime && visitValid;
+  // 日程（本番＋見学）が揃ったらプラン選択を表示。次へ進むにはプラン選択も必須。
+  const datesValid = shootDate && shootTime && visitValid;
+  const scheduleValid = datesValid && !!planTier;
   const customerValid = name.trim() && furigana.trim() && phone.trim() && zip.trim() && address.trim() && phoneCallPreference
     && !validateName(name) && !validateFurigana(furigana) && !validatePhone(phone) && !validateZip(zip) && !validateAddress(address) && !validateEmail(email);
   const peopleValid = childrenCount !== '' && adultCount !== '';
-  const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid) || step === 3;
+  const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid) || step === 3 || step === 4;
 
   async function handleSubmit() {
     setSubmitting(true);
     setError('');
     const childrenDetail = childrenDetails.length > 0
       ? childrenDetails.map((c, i) => `${i + 1}人目: ${c.name}（${c.furigana}）（${c.gender}）${c.birthday} / ${c.clothingSize}`).join('\n')
+      : '';
+    // 主役のお子様のお支度を備考に記録（管理画面の「お客様備考」で把握）。日本髪のみ+料金を明記
+    const mainPrepNote = mainPrep.length
+      ? '【ご主役のお子様のお支度】' + mainPrep
+          .map((id) => { const o = options.find((x) => x.id === id); if (!o) return null; return isNihongami(o) ? `${o.name}（＋${formatCurrency(o.price)}）` : o.name; })
+          .filter(Boolean).join('、')
       : '';
     const base = {
       shootType: 'location',
@@ -309,7 +356,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       // ② 本番撮影（仮予約）：プランは正規項目(planId)、見学日/保険も専用項目に
       const shootRes = await fetch('/api/reservations', {
         method: 'POST', headers,
-        body: JSON.stringify({ ...base, isVisit: false, planId: locationPlanId, date: shootDate, timeSlot: shootTime, visitDate, cancelInsurance: insurance, note: '' }),
+        body: JSON.stringify({ ...base, isVisit: false, planId: selectedPlan?.id ?? '', date: shootDate, timeSlot: shootTime, visitDate, cancelInsurance: insurance, note: mainPrepNote }),
       });
       const shootData = await shootRes.json();
       if (!shootData.success) { setError(shootData.error ?? '本番予約の登録に失敗しました'); return; }
@@ -501,21 +548,37 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 {visitStatus === 'checking' && <p className="text-xs text-gray-400">空き状況を確認中...</p>}
                 {visitStatus === 'taken' && <p className="text-xs text-red-600">この日の見学（{VISIT_TIME}）は既に予約が入っています。別の日をお選びください。</p>}
 
-                {/* 金額表記（本番撮影日の平日/休日で自動算出） */}
-                {scheduleValid && (
+                {/* プラン選択（撮影日の平日/休日で金額を自動切替。金額はDBのロケ用プランを使用） */}
+                {datesValid && (
                   <div className="mt-4 space-y-3">
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-gray-400 mb-0.5">適用プラン</p>
-                        <p className="text-sm font-medium text-gray-800">{planLabel}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          基本77,000円{isHolidayShoot && ` ＋ 休日料金${formatCurrency(HOLIDAY_SURCHARGE)}`}
-                        </p>
-                      </div>
-                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(planPrice)}</p>
+                    <p className="text-sm font-bold text-gray-900">プランをお選びください <span className="text-red-500">*</span></p>
+                    <p className="text-xs text-gray-400">
+                      撮影日（{jpDate(shootDate)}）は<strong>{isHolidayShoot ? '休日料金' : '平日料金'}</strong>が適用されます。全プランにご主役のお子様1名様分のお支度料金・施設利用料が含まれます。
+                    </p>
+                    <div className="space-y-2">
+                      {planTiers.map((tier) => {
+                        const p = isHolidayShoot ? tier.holiday : tier.weekday;
+                        if (!p) return null;
+                        const sel = planTier === tier.base;
+                        const desc = p.description || PLAN_DESC[tier.base];
+                        const note = PLAN_NOTE[tier.base];
+                        return (
+                          <button key={tier.base} type="button" onClick={() => setPlanTier(tier.base)}
+                            className={`w-full flex justify-between items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors
+                              ${sel ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300 hover:border-emerald-200'}`}>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900">{tier.base}</p>
+                              {desc && <p className="text-xs text-gray-500 mt-0.5">{desc}</p>}
+                              {note && <p className="text-xs text-emerald-700 mt-0.5">※ {note}</p>}
+                            </div>
+                            <p className="text-lg font-bold text-emerald-700 flex-shrink-0 whitespace-nowrap">{formatCurrency(p.price)}</p>
+                          </button>
+                        );
+                      })}
                     </div>
                     <div className="text-xs text-red-600 space-y-1 leading-relaxed">
-                      <p>※ 上記はベーシックプランの料金です。オプションは次のステップでお選びいただけます。</p>
+                      <p>※ お得なセットプランの料金は、事前お振込時のみの適用となります。</p>
+                      <p>※ オプション・日本髪・キャンセル保険は次のステップ以降でお選びいただけます。</p>
                     </div>
                   </div>
                 )}
@@ -611,11 +674,47 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     );
   }
 
+  function renderMainPrep() {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-base font-bold text-gray-900">ご主役のお子様のお支度</h2>
+        <p className="text-xs text-gray-400">ご主役のお子様のお支度内容をご選択ください。</p>
+        {mainPrepOptions.length === 0 ? (
+          <p className="text-sm text-gray-400">選択可能な項目はありません。</p>
+        ) : (
+          <div className="space-y-3">
+            {mainPrepOptions.map((opt) => {
+              const selected = mainPrep.includes(opt.id);
+              return (
+                <div key={opt.id} onClick={() => toggleMainPrep(opt.id)}
+                  className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors
+                    ${selected ? 'border-emerald-600 bg-emerald-50' : 'border-gray-200 hover:border-emerald-200'}`}>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
+                    ${selected ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'}`}>
+                    {selected && <span className="text-white text-xs">✓</span>}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">{opt.name}</p>
+                    {opt.description && (
+                      <p className={`text-xs mt-0.5 ${opt.description.startsWith('※') ? 'text-red-500' : 'text-gray-400'}`}>{opt.description}</p>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 flex-shrink-0">{formatCurrency(mainPrepPrice(opt))}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-xs text-gray-400">※ ご主役のお子様のお支度料金はプラン料金に含まれております（日本髪をご希望の場合のみ別途2,200円）。</p>
+      </div>
+    );
+  }
+
   function renderOptions() {
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">オプション選択</h2>
-        <p className="text-xs text-gray-400">お子様向けの着付け・ヘアセットをお選びいただけます（任意・複数選択可）。</p>
+        <p className="text-xs text-gray-400">他のお子様のお着付け・ヘアメイクをご希望の方はこちらでお選びください（任意・複数選択可）。</p>
         {options.length === 0 ? (
           <p className="text-sm text-gray-400">選択可能なオプションはありません。</p>
         ) : (
@@ -653,6 +752,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
             <span>オプション小計</span><span>{formatCurrency(optionTotal)}</span>
           </div>
         )}
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="text-xs text-amber-800"><span className="font-semibold">注意事項</span>　※お着付けをご希望の場合はヘアメイクもセットのご案内となります。</p>
+        </div>
       </div>
     );
   }
@@ -671,6 +773,20 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           <div className="flex justify-between"><span className="text-gray-500">住所</span><span className="text-gray-800 text-right">{zip} {address}</span></div>
           <div className="flex justify-between"><span className="text-gray-500">来店人数</span><span className="text-gray-800">お子様{childrenCount || 0}名・大人{adultCount === '5以上' ? '5名以上' : `${adultCount || 0}名`}</span></div>
           <div className="flex justify-between pt-2 border-t border-gray-200"><span className="text-gray-500">{planLabel}</span><span className="text-gray-800">{formatCurrency(planPrice)}</span></div>
+          {mainPrep.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-gray-500">ご主役のお子様のお支度</p>
+              {mainPrep.map((id) => {
+                const opt = options.find((o) => o.id === id);
+                if (!opt) return null;
+                return (
+                  <div key={id} className="flex justify-between text-gray-500">
+                    <span>　{opt.name}</span><span>{isNihongami(opt) ? formatCurrency(opt.price) : 'プラン内'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {selectedOptions.length > 0 && (
             <div className="space-y-1">
               {selectedOptions.map((so) => {
@@ -709,7 +825,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
             <p className="text-xs font-semibold text-emerald-700 mb-1">■ 撮影について</p>
             <ul className="text-xs text-gray-600 list-disc pl-4 space-y-0.5">
               <li>撮影は1家族様ごとのご案内です（限られたスペースのため大人数での撮影はお受けできません）。</li>
-              <li>主役のお子様のソロカット中心です。ご家族・ご兄弟写真は数カット程度撮影可能です。</li>
+              <li>ご主役のお子様のソロカット中心です。ご家族・ご兄弟写真は数カット程度撮影可能です。</li>
               <li>撮影開始後のお着替え・再撮影はできません。</li>
               <li>荒天時は屋外撮影を中止し、室内撮影のみとなる場合がございます。</li>
             </ul>
@@ -741,7 +857,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     );
   }
 
-  const renderers = [renderSchedule, renderCustomer, renderPeople, renderOptions, renderConfirm];
+  const renderers = [renderSchedule, renderCustomer, renderPeople, renderMainPrep, renderOptions, renderConfirm];
 
   return (
     <div className="max-w-lg mx-auto px-4 py-4">

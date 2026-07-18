@@ -4,6 +4,9 @@ import {
   sendLinePush,
   sendLineReply,
   buildTentativeMessage,
+  buildLocationVisitTentativeMessage,
+  buildLocationShootTentativeMessage,
+  type LineMessage,
 } from '@/lib/line';
 import {
   getReservationByNumber,
@@ -13,6 +16,7 @@ import {
   getOptions,
   getPlans,
 } from '@/lib/db';
+import { isLocationVisit, locationPlanPrice, locationShootTotal } from '@/lib/location';
 
 /**
  * POST /api/line/webhook
@@ -84,9 +88,7 @@ async function handleTextMessage(event: LineEvent) {
     getCustomerById(reservation.customerId),
   ]);
 
-  const plan = plans.find((p) => p.id === reservation.planId);
-  if (!plan) return;
-
+  const res = { ...reservation, customerName: customer?.name ?? reservation.customerName ?? '' };
   const optionsWithInfo = reservationOptions.map((ro) => {
     const opt = options.find((o) => o.id === ro.optionId);
     return {
@@ -96,12 +98,22 @@ async function handleTextMessage(event: LineEvent) {
     };
   });
 
-  const message = buildTentativeMessage(
-    { ...reservation, customerName: customer?.name ?? '' },
-    plan.name,
-    plan.price,
-    optionsWithInfo
-  );
+  // スタジオ/ロケ（見学・撮影）で仮予約メッセージを出し分け（フォーム送信時の自動送信と揃える）
+  let message: LineMessage;
+  if (res.shootType === 'location') {
+    if (isLocationVisit(res)) {
+      message = buildLocationVisitTentativeMessage(res);
+    } else {
+      const plan = plans.find((p) => p.id === res.planId);
+      const planPrice = plan?.price ?? locationPlanPrice(res.date);
+      const total = locationShootTotal(res, optionsWithInfo, planPrice);
+      message = buildLocationShootTentativeMessage(res, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total);
+    }
+  } else {
+    const plan = plans.find((p) => p.id === res.planId);
+    if (!plan) return;
+    message = buildTentativeMessage(res, plan.name, plan.price, optionsWithInfo);
+  }
 
   await sendLinePush(userId, [message]);
 }
