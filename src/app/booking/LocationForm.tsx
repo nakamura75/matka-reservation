@@ -860,7 +860,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   const renderers = [renderSchedule, renderCustomer, renderPeople, renderMainPrep, renderOptions, renderConfirm];
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-4">
+    <div className="booking-form max-w-lg mx-auto px-4 py-4">
       <div className="rounded-2xl bg-gradient-to-b from-emerald-800 to-emerald-700 text-white p-6 text-center mb-4">
         <div className="flex items-center justify-center gap-2 mb-1">
           <TruckIcon className="w-5 h-5" />

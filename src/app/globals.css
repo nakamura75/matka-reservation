@@ -36,3 +36,17 @@ body {
     text-wrap: balance;
   }
 }
+
+/* 予約フォーム（モバイル）:
+   - 入力欄を16px以上にしてiOSのフォーカス時自動ズーム（画面が拡大したまま戻らない）を防止
+   - 日付入力(type=date)はiOSで固有の最小幅を持ち枠からはみ出すため appearance を無効化して収める */
+.booking-form input,
+.booking-form select,
+.booking-form textarea {
+  font-size: 16px;
+}
+.booking-form input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
