@@ -1,5 +1,6 @@
 import type { Reservation } from '@/types';
 import { getActiveCampaign, isCampaignScene } from './campaign';
+import { LOC_INSURANCE } from './location';
 
 const LINE_API_BASE = 'https://api.line.me/v2/bot';
 
@@ -591,6 +592,9 @@ export function buildLocationShootTentativeMessage(
   if (options.length > 0) {
     body.push(separator(), textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }), ...optionLineItems(options));
   }
+  if (reservation.cancelInsurance === '加入する') {
+    body.push(separator(), labelValue('🛡 キャンセル保険', `¥${LOC_INSURANCE.toLocaleString()}`));
+  }
   body.push(separator(), locTotalRow(total));
   body.push(textComponent('※ 見学時のご相談内容により、最終金額が変更になる場合がございます。', { size: 'xxs', color: '#FF6B35', margin: 'sm', wrap: true }));
   body.push(separator(), locTentativeNoticeBox());
@@ -657,6 +661,9 @@ export function buildLocationShootConfirmMessage(
   ];
   if (options.length > 0) {
     body.push(separator(), textComponent('🎀 オプション', { size: 'xs', color: GRAY_TEXT, margin: 'md' }), ...optionLineItems(options));
+  }
+  if (reservation.cancelInsurance === '加入する') {
+    body.push(separator(), labelValue('🛡 キャンセル保険', `¥${LOC_INSURANCE.toLocaleString()}`));
   }
   body.push(separator(), locTotalRow(total));
   body.push(separator(), bankTransferBlock());

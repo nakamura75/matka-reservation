@@ -340,6 +340,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const optionTotal = isVisit ? 0 : currentOptions.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = isVisit ? 0 : (currentPlan?.price ?? 0);
   const computedTotal = planPrice + optionTotal;
+  // ロケのキャンセル保険（加入時 ¥5,500）。割引対象外で合計に加算し、LINEの合計と一致させる
+  const cancelInsuranceFee = (isLocation && reservation.cancelInsurance === '加入する') ? 5500 : 0;
 
   // 商品合計（linkedOrders の合計）
   const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
@@ -351,8 +353,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const discountedShootingTotal = Math.round(computedTotal * (1 - discountRate / 100));
   // 割引後の商品合計
   const discountedProductTotal = Math.round(orderItemTotal * (1 - productDiscountRate / 100));
-  // 全体合計
-  const grandTotal = discountedShootingTotal + discountedProductTotal;
+  // 全体合計（キャンセル保険は割引対象外で加算）
+  const grandTotal = discountedShootingTotal + discountedProductTotal + cancelInsuranceFee;
 
   async function changeStatus(newStatus: Reservation['status']) {
     setLoading(true);
@@ -1410,6 +1412,14 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     </>
                   )}
                 </>
+              )}
+
+              {/* キャンセル保険（ロケ・加入時／割引対象外） */}
+              {cancelInsuranceFee > 0 && (
+                <div className="flex justify-between text-gray-600 mt-3">
+                  <span>キャンセル保険</span>
+                  <span>{formatCurrency(cancelInsuranceFee)}</span>
+                </div>
               )}
 
               {/* 全体合計 */}

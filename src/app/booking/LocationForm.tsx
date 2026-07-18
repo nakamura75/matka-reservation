@@ -321,6 +321,12 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           .map((id) => { const o = options.find((x) => x.id === id); if (!o) return null; return isNihongami(o) ? `${o.name}（＋${formatCurrency(o.price)}）` : o.name; })
           .filter(Boolean).join('、')
       : '';
+    // ご主役のお支度の有料項目（日本髪のみ）は課金対象なのでオプションに含める。
+    // 着付け＋ヘアメイク等はプラン込み(¥0)なので備考のみ（DB価格で課金されないよう除外）。
+    const mainPrepBilled = mainPrep
+      .map((id) => options.find((o) => o.id === id))
+      .filter((o): o is Option => !!o && mainPrepPrice(o) > 0)
+      .map((o) => ({ optionId: o.id, quantity: 1 }));
     const base = {
       shootType: 'location',
       scene: 'その他',
@@ -335,7 +341,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       childrenCount: Number(childrenCount) || 0,
       adultCount,
       childrenDetail,
-      selectedOptions,
+      selectedOptions: [...selectedOptions, ...mainPrepBilled],
       phoneCallPreference,
       cancelPolicyAgreed: true,
       lineUserId,
