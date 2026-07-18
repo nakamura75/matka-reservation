@@ -123,7 +123,8 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
   const m: Record<string, unknown> = {};
   if (r.id !== undefined) m.id = r.id;
   if (r.customerId !== undefined) m.customer_id = r.customerId;
-  if (r.planId !== undefined) m.plan_id = r.planId;
+  // 空文字は NULL に正規化（本番の外部キー reservations_plan_id_fkey は '' を弾くため。見学予約はプラン無し）
+  if (r.planId !== undefined) m.plan_id = r.planId === '' ? null : r.planId;
   if (r.paymentStatus !== undefined) m.payment_status = r.paymentStatus;
   if (r.paymentDate !== undefined) m.payment_date = r.paymentDate;
   if (r.date !== undefined) m.date = r.date;
