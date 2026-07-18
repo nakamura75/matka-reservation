@@ -58,6 +58,8 @@ export default async function ReceiptPage({
   const optionTotal = optionsWithInfo.reduce((sum, o) => sum + o.price * o.quantity, 0);
   const planPrice = plan?.price ?? 0;
   const shootingTotal = planPrice + optionTotal;
+  // ロケのキャンセル保険（加入時 ¥5,500・割引対象外）
+  const cancelInsuranceFee = (reservation.shootType === 'location' && reservation.cancelInsurance === '加入する') ? 5500 : 0;
   const rate = reservation.discountRate ?? 0;
   const productRate = reservation.productDiscountRate ?? 0;
   const discountedShooting = rate > 0
@@ -68,8 +70,8 @@ export default async function ReceiptPage({
   const discountedProduct = productRate > 0
     ? Math.round(orderItemTotal * (1 - productRate / 100))
     : orderItemTotal;
-  const calculatedTotal = shootingTotal + orderItemTotal;
-  const total = discountedShooting + discountedProduct;
+  const calculatedTotal = shootingTotal + orderItemTotal + cancelInsuranceFee;
+  const total = discountedShooting + discountedProduct + cancelInsuranceFee;
   const hasDiscount = total < calculatedTotal;
   const discountDiff = calculatedTotal - total;
 
@@ -194,6 +196,14 @@ export default async function ReceiptPage({
                   <td style={{ textAlign: 'right' }}>{formatCurrency(i.price * i.quantity)}</td>
                 </tr>
               ))}
+              {cancelInsuranceFee > 0 && (
+                <tr>
+                  <td>キャンセル保険</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(cancelInsuranceFee)}</td>
+                  <td style={{ textAlign: 'right' }}>1</td>
+                  <td style={{ textAlign: 'right' }}>{formatCurrency(cancelInsuranceFee)}</td>
+                </tr>
+              )}
             </tbody>
           </table>
 
