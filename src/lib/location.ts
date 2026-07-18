@@ -16,14 +16,19 @@ export function locationPlanPrice(dateStr: string): number {
   return LOC_BASIC + (dateStr && isWeekend(dateStr) ? LOC_HOLIDAY_SURCHARGE : 0);
 }
 
-/** ロケ撮影の合計（プラン＋オプション＋保険） */
+/**
+ * ロケ撮影の合計（プラン＋オプション＋保険）。
+ * planPrice を渡せば選択プランの実額で計算。省略時は日付ベースの基本料金にフォールバック。
+ */
 export function locationShootTotal(
   reservation: Pick<Reservation, 'date' | 'cancelInsurance'>,
-  options: { price: number; quantity: number }[]
+  options: { price: number; quantity: number }[],
+  planPrice?: number
 ): number {
   const optTotal = options.reduce((s, o) => s + o.price * o.quantity, 0);
   const ins = reservation.cancelInsurance === '加入する' ? LOC_INSURANCE : 0;
-  return locationPlanPrice(reservation.date ?? '') + optTotal + ins;
+  const base = planPrice ?? locationPlanPrice(reservation.date ?? '');
+  return base + optTotal + ins;
 }
 
 /** ロケ予約が「見学」か（WEB見学は16:30固定・撮影枠は9:10/13:00なので時刻で判別可能） */

@@ -239,11 +239,12 @@ export async function POST(req: NextRequest) {
       } else if (isLocation && !isVisit) {
         // ロケ：撮影の仮予約（金額は見学後に変わる可能性あり）
         const locPlan = plans.find((p) => p.id === body.planId);
-        const total = locationShootTotal(reservation as Reservation, optionsWithInfo);
+        const locPlanPrice = locPlan?.price ?? locationPlanPrice(reservation.date);
+        const total = locationShootTotal(reservation as Reservation, optionsWithInfo, locPlanPrice);
         message = buildLocationShootTentativeMessage(
           reservation as Reservation,
           locPlan?.name ?? 'ロケーション撮影',
-          locationPlanPrice(reservation.date),
+          locPlanPrice,
           optionsWithInfo,
           total,
         );

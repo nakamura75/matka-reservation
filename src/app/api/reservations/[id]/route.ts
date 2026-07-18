@@ -163,9 +163,10 @@ export async function PATCH(
         return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
       const plan = plans.find((p) => p.id === target.planId);
-      const total = locationShootTotal(target, optionsWithInfo);
+      const planPrice = plan?.price ?? locationPlanPrice(target.date);
+      const total = locationShootTotal(target, optionsWithInfo, planPrice);
       await sendLinePush(reservation.lineUserId, [
-        buildLocationShootConfirmMessage(target, plan?.name ?? 'ロケーション撮影', locationPlanPrice(target.date), optionsWithInfo, total),
+        buildLocationShootConfirmMessage(target, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total),
       ]).catch((e) => console.error('LINE push failed:', e));
     }
   } else if (body.status === '予約確定' && reservation.lineUserId) {
