@@ -46,7 +46,8 @@ body {
   font-size: 16px;
 }
 .booking-form input[type="date"] {
-  -webkit-appearance: none;
-  appearance: none;
+  /* 枠内に収める（はみ出し防止）。appearanceは無効化しない＝他の入力と同じネイティブ見た目・高さを保つ */
   min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
