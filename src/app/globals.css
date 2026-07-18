@@ -55,6 +55,9 @@ body {
   box-sizing: border-box;
   background-color: #fff;
   color: #1f2937;
+  /* 未入力時に高さが縮む問題を防ぐ＝「1行分＋py-2.5(1.25rem)＋枠線(2px)」でテキスト入力と同じ高さに */
+  min-height: 2.75rem; /* lh非対応ブラウザ向けフォールバック */
+  min-height: calc(1lh + 1.25rem + 2px);
 }
 .booking-form input[type="date"]::-webkit-date-and-time-value {
   text-align: left;

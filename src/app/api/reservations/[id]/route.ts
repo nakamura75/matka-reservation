@@ -9,6 +9,7 @@ import {
   getOptions,
   checkVisitSlotConflict,
   getLocationPairSibling,
+  getCustomerById,
 } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage, buildLocationVisitConfirmMessage, buildLocationShootConfirmMessage } from '@/lib/line';
 import { locationPlanPrice, locationShootTotal, isLocationVisit } from '@/lib/location';
@@ -145,13 +146,16 @@ export async function PATCH(
   // 予約確定 → LINE通知（DB更新後に送信）
   if (body.status === '予約確定' && reservation.lineUserId && reservation.shootType === 'location') {
     // ロケ：見学/撮影で確定メッセージを出し分け（見分け＝変更前ステータス「見学」or 16:30枠）
-    const [plans, allOptions, reservationOptions, updatedReservation] = await Promise.all([
+    const [plans, allOptions, reservationOptions, updatedReservation, customer] = await Promise.all([
       getPlans(),
       getOptions(),
       getReservationOptions(reservation.id),
       getReservationById(reservation.id),
+      getCustomerById(reservation.customerId),
     ]);
-    const target = updatedReservation ?? reservation;
+    // 予約行に代表者名が無いため顧客マスタから補完する（空「代表者様　様」対策）
+    const cname = customer?.name ?? reservation.customerName ?? '';
+    const target = { ...(updatedReservation ?? reservation), customerName: cname };
     if (reservation.status === '見学' || isLocationVisit(reservation)) {
       // 見学の確定（金額・振込なし）
       await sendLinePush(reservation.lineUserId, [
@@ -169,7 +173,7 @@ export async function PATCH(
       const shootMsg = buildLocationShootConfirmMessage(target, plan?.name ?? 'ロケーション撮影', planPrice, optionsWithInfo, total);
       const visit = await getLocationPairSibling(reservation);
       const messages = visit
-        ? [buildLocationVisitConfirmMessage({ ...visit, customerName: target.customerName ?? visit.customerName }), shootMsg]
+        ? [buildLocationVisitConfirmMessage({ ...visit, customerName: cname }), shootMsg]
         : [shootMsg];
       await sendLinePush(reservation.lineUserId, messages).catch((e) => console.error('LINE push failed:', e));
     }
