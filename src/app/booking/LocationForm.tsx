@@ -147,6 +147,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   // 確認
   const [insurance, setInsurance] = useState<'' | '加入する' | '加入しない'>('');
   const [acknowledged, setAcknowledged] = useState(false);
+  const [policyRead, setPolicyRead] = useState(false);
 
   // ステップ切替時は必ずページ先頭から表示する（確認ページ等が中盤から始まるのを防ぐ）
   useEffect(() => {
@@ -223,6 +224,11 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     const o = options.find((x) => x.id === id);
     return sum + (o ? mainPrepPrice(o) : 0);
   }, 0);
+  // 0円の着付け＋ヘアメイク項目（日本髪を除く）を最低1つ選択しないと次へ進めない
+  const mainPrepValid = mainPrep.some((id) => {
+    const o = options.find((x) => x.id === id);
+    return o && !isNihongami(o);
+  });
 
   // 本番撮影日の土日で平日/休日を自動判定
   const isHolidayShoot = shootDate ? isWeekend(shootDate) : false;
@@ -307,7 +313,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   const customerValid = name.trim() && furigana.trim() && phone.trim() && zip.trim() && address.trim() && phoneCallPreference
     && !validateName(name) && !validateFurigana(furigana) && !validatePhone(phone) && !validateZip(zip) && !validateAddress(address) && !validateEmail(email);
   const peopleValid = childrenCount !== '' && adultCount !== '';
-  const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid) || step === 3 || step === 4;
+  const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid) || (step === 3 && mainPrepValid) || step === 4;
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -683,8 +689,8 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   function renderMainPrep() {
     return (
       <div className="space-y-4">
-        <h2 className="text-base font-bold text-gray-900">ご主役のお子様のお支度</h2>
-        <p className="text-xs text-gray-400">ご主役のお子様のお支度内容をご選択ください。</p>
+        <h2 className="text-base font-bold text-gray-900">ご主役のお子様のお支度<span className="text-red-500"> *</span></h2>
+        <p className="text-xs text-gray-400">ご主役のお子様のお支度内容をご選択ください（お着付け・ヘアメイクのいずれかを必ずお選びください）。</p>
         {mainPrepOptions.length === 0 ? (
           <p className="text-sm text-gray-400">選択可能な項目はありません。</p>
         ) : (
@@ -812,14 +818,31 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>合計（税込）</span><span className="text-emerald-700">{formatCurrency(grandTotal)}</span></div>
         </div>
 
+        {/* キャンセル規定（ご一読のうえキャンセル保険の加入をご判断ください） */}
+        <div className="border-2 border-red-200 rounded-xl p-4 bg-red-50/40">
+          <p className="text-sm font-semibold text-red-700 mb-2">■ キャンセルについて（必ずお読みください）</p>
+          <ul className="text-xs text-gray-700 list-disc pl-4 space-y-1">
+            <li>撮影日の1週間前に入ってからのキャンセル・日程変更は、ベーシックプラン料金77,000円（土日祝は+5,500円）の<strong className="text-red-700">50%</strong>をキャンセル料として申し受けます。</li>
+            <li>撮影日当日のキャンセル・日程変更は、ベーシックプラン料金77,000円（土日祝は+5,500円）の<strong className="text-red-700">100%</strong>を申し受けます。</li>
+            <li>事前にキャンセル保険（5,500円）へご加入のお客様は、キャンセル料の請求はございません。</li>
+          </ul>
+          <label className="flex items-start gap-2 pt-3 cursor-pointer">
+            <input type="checkbox" checked={policyRead} onChange={(e) => setPolicyRead(e.target.checked)} className="mt-0.5 w-4 h-4 accent-red-600" />
+            <span className="text-sm font-medium text-gray-800">キャンセル規定を確認しました<span className="text-red-500"> *</span></span>
+          </label>
+        </div>
+
         {/* キャンセル保険 */}
         <div className="border border-emerald-200 rounded-xl p-4">
           <p className="text-sm font-semibold text-gray-800 mb-1">キャンセル保険（5,500円）<span className="text-red-500"> *</span></p>
           <p className="text-xs text-gray-500 mb-3">ご加入いただくと、万が一キャンセルされた際にキャンセル料の請求がございません。ご加入の場合はプラン料金とともに事前振込をお願いします。</p>
+          {!policyRead && (
+            <p className="text-xs text-red-500 mb-2">※ 上のキャンセル規定をご確認いただくとご選択いただけます。</p>
+          )}
           <div className="flex gap-3">
             {(['加入する', '加入しない'] as const).map((opt) => (
-              <button key={opt} type="button" onClick={() => setInsurance(opt)}
-                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${insurance === opt ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{opt}</button>
+              <button key={opt} type="button" disabled={!policyRead} onClick={() => setInsurance(opt)}
+                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${insurance === opt ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{opt}</button>
             ))}
           </div>
         </div>
@@ -857,7 +880,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           </label>
         </div>
 
-        <p className="text-xs text-gray-400">※ キャンセル規定は別途、承諾書にてご確認いただきます。</p>
+        <p className="text-xs text-gray-400">※ 正式なキャンセル規定は、別途承諾書にて改めてご確認いただきます。</p>
         {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{error}</div>}
       </div>
     );
@@ -889,7 +912,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
             <button type="button" disabled={!canNext} onClick={() => setStep((s) => s + 1)}
               className="flex-1 py-3 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed">次へ</button>
           ) : (
-            <button type="button" disabled={submitting || insurance === '' || !acknowledged} onClick={handleSubmit}
+            <button type="button" disabled={submitting || !policyRead || insurance === '' || !acknowledged} onClick={handleSubmit}
               className="flex-1 py-3 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed">
               {submitting ? '送信中...' : '送信する'}
             </button>
