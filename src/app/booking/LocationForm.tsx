@@ -845,6 +845,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${insurance === opt ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{opt}</button>
             ))}
           </div>
+          <p className="text-xs text-gray-400 mt-2">※ キャンセル保険の加入有無は、見学時に改めてご相談・ご変更いただけます。</p>
         </div>
 
         {/* 注意事項 */}
