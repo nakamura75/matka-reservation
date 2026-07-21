@@ -113,6 +113,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   // 日程タブ（本番 / 見学）
   const [scheduleTab, setScheduleTab] = useState<'shoot' | 'visit'>('shoot');
 
+  // 見学の希望（''=未選択／'yes'=見学する／'no'=見学しない）。'no' なら見学日の選択と見学予約をスキップ
+  const [wantsVisit, setWantsVisit] = useState<'' | 'yes' | 'no'>('');
+
   // 見学日（16:30固定）
   const [visitDate, setVisitDate] = useState('');
   const [visitStatus, setVisitStatus] = useState<'idle' | 'checking' | 'free' | 'taken'>('idle');
@@ -307,8 +310,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   }
 
   const visitValid = visitDate && visitDate >= today && (!maxVisitDate || visitDate <= maxVisitDate) && visitStatus === 'free' && !visitNgDates.has(visitDate);
-  // 日程（本番＋見学）が揃ったらプラン選択を表示。次へ進むにはプラン選択も必須。
-  const datesValid = shootDate && shootTime && visitValid;
+  // 日程が揃ったらプラン選択を表示。次へ進むにはプラン選択も必須。
+  // 見学する場合は見学日まで、見学しない場合は本番撮影日＋時間帯のみで確定とみなす。
+  const datesValid = !!shootDate && !!shootTime && (wantsVisit === 'no' ? true : wantsVisit === 'yes' && !!visitValid);
   const scheduleValid = datesValid && !!planTier;
   const customerValid = name.trim() && furigana.trim() && phone.trim() && zip.trim() && address.trim() && phoneCallPreference
     && !validateName(name) && !validateFurigana(furigana) && !validatePhone(phone) && !validateZip(zip) && !validateAddress(address) && !validateEmail(email);
@@ -358,17 +362,20 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     // プラン/オプション/見学日/保険はそれぞれの正規項目に保存し、備考には詰め込まない。
     try {
       // ① 見学（16:30・重複チェックあり）。見学レコードにも見学日を持たせる
-      const visitRes = await fetch('/api/reservations', {
-        method: 'POST', headers,
-        body: JSON.stringify({ ...base, isVisit: true, date: visitDate, timeSlot: VISIT_TIME, visitDate, note: '' }),
-      });
-      const visitData = await visitRes.json();
-      if (!visitData.success) { setError(visitData.error ?? '見学枠の登録に失敗しました'); return; }
+      // ※「見学しない」の場合は見学予約を作成せず、本番撮影の1件のみ登録する
+      if (wantsVisit === 'yes') {
+        const visitRes = await fetch('/api/reservations', {
+          method: 'POST', headers,
+          body: JSON.stringify({ ...base, isVisit: true, date: visitDate, timeSlot: VISIT_TIME, visitDate, note: '' }),
+        });
+        const visitData = await visitRes.json();
+        if (!visitData.success) { setError(visitData.error ?? '見学枠の登録に失敗しました'); return; }
+      }
 
       // ② 本番撮影（仮予約）：プランは正規項目(planId)、見学日/保険も専用項目に
       const shootRes = await fetch('/api/reservations', {
         method: 'POST', headers,
-        body: JSON.stringify({ ...base, isVisit: false, planId: selectedPlan?.id ?? '', date: shootDate, timeSlot: shootTime, visitDate, cancelInsurance: insurance, note: mainPrepNote }),
+        body: JSON.stringify({ ...base, isVisit: false, planId: selectedPlan?.id ?? '', date: shootDate, timeSlot: shootTime, visitDate: wantsVisit === 'yes' ? visitDate : '', cancelInsurance: insurance, note: mainPrepNote }),
       });
       const shootData = await shootRes.json();
       if (!shootData.success) { setError(shootData.error ?? '本番予約の登録に失敗しました'); return; }
@@ -393,7 +400,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           <h2 className="font-bold mb-1" style={{ color: '#e53935', fontSize: '14px' }}>仮予約を受け付けました</h2>
           <p className="font-bold mb-2" style={{ color: '#e53935', fontSize: '20px' }}>※まだ予約は確定しておりません</p>
           <p className="text-sm text-gray-500 mb-6">
-            担当者より見学・お振込のご案内をご連絡いたします。
+            {wantsVisit === 'no'
+              ? '担当者よりお振込のご案内をご連絡いたします。'
+              : '担当者より見学・お振込のご案内をご連絡いたします。'}
           </p>
           {reservationNumber && (
             <div className="bg-emerald-50 rounded-xl p-4 mb-6">
@@ -490,25 +499,98 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     );
   }
 
+  // プラン選択（見学する場合は見学タブ、見学しない場合は撮影タブに表示するため共通化）
+  function renderPlanPicker() {
+    return (
+      <div className="mt-4 space-y-3">
+        <p className="text-sm font-bold text-gray-900">プランをお選びください <span className="text-red-500">*</span></p>
+        <p className="text-xs text-gray-400">
+          撮影日（{jpDate(shootDate)}）は<strong>{isHolidayShoot ? '休日料金' : '平日料金'}</strong>が適用されます。全プランにご主役のお子様1名様分のお支度料金・施設利用料が含まれます。
+        </p>
+        <div className="space-y-2">
+          {planTiers.map((tier) => {
+            const p = isHolidayShoot ? tier.holiday : tier.weekday;
+            if (!p) return null;
+            const sel = planTier === tier.base;
+            const desc = p.description || PLAN_DESC[tier.base];
+            const note = PLAN_NOTE[tier.base];
+            return (
+              <button key={tier.base} type="button" onClick={() => setPlanTier(tier.base)}
+                className={`w-full flex justify-between items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors
+                  ${sel ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300 hover:border-emerald-200'}`}>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-900">{tier.base}</p>
+                  {desc && <p className="text-xs text-gray-500 mt-0.5">{desc}</p>}
+                  {note && <p className="text-xs text-emerald-700 mt-0.5">※ {note}</p>}
+                </div>
+                <p className="text-lg font-bold text-emerald-700 flex-shrink-0 whitespace-nowrap">{formatCurrency(p.price)}</p>
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-xs text-red-600 space-y-1 leading-relaxed">
+          <p>※ お得なセットプランの料金は、事前お振込時のみの適用となります。</p>
+          <p>※ オプション・日本髪・キャンセル保険は次のステップ以降でお選びいただけます。</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 見学する／見学しない の選択（見学が難しい方向けに見学なしでも申し込めるようにする）
+  function renderVisitChoice() {
+    return (
+      <div className="border-2 border-emerald-200 rounded-xl p-4 space-y-2">
+        <p className="text-sm font-semibold text-gray-800">事前の見学はご希望されますか？<span className="text-red-500"> *</span></p>
+        <p className="text-xs text-gray-400">見学が難しい場合は「見学しない」をお選びいただけます（見学日の選択はスキップされます）。</p>
+        <div className="flex gap-3 pt-1">
+          {([
+            { key: 'yes', label: '見学する' },
+            { key: 'no', label: '見学しない' },
+          ] as const).map((o) => (
+            <button key={o.key} type="button"
+              onClick={() => {
+                setWantsVisit(o.key);
+                if (o.key === 'no') {
+                  // 見学なし：選択済みの見学日をリセットし、撮影タブに戻す
+                  setVisitDate('');
+                  setVisitStatus('idle');
+                  setScheduleTab('shoot');
+                } else {
+                  setScheduleTab('visit');
+                }
+              }}
+              className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
+                ${wantsVisit === o.key ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   function renderSchedule() {
     const shootSet = new Set(shootDays);
     const shootSummary = shootDate ? `${jpDate(shootDate)}${shootTime ? ` ${shootTime}〜` : ''}` : '未選択';
-    const visitSummary = visitDate ? `${jpDate(visitDate)} ${VISIT_TIME}` : '未選択';
+    const visitSummary = wantsVisit === 'no' ? '見学なし' : visitDate ? `${jpDate(visitDate)} ${VISIT_TIME}` : '未選択';
     return (
       <div className="space-y-4">
-        {/* タブ */}
+        {/* タブ（見学しない場合は②を選択不可にする） */}
         <div className="flex rounded-xl border border-gray-200 overflow-hidden">
           {([
             { key: 'shoot', no: '①', label: '本番撮影日', summary: shootSummary },
             { key: 'visit', no: '②', label: '見学日', summary: visitSummary },
-          ] as const).map((t, i) => (
-            <button key={t.key} type="button" onClick={() => setScheduleTab(t.key)}
-              className={`flex-1 px-3 py-2 text-left transition-colors ${i === 0 ? 'border-r border-gray-200' : ''}
-                ${scheduleTab === t.key ? 'bg-emerald-50' : 'bg-white hover:bg-gray-50'}`}>
-              <div className={`text-sm font-semibold ${scheduleTab === t.key ? 'text-emerald-800' : 'text-gray-500'}`}>{t.no} {t.label}</div>
-              <div className="text-[11px] text-gray-500 truncate">{t.summary}</div>
-            </button>
-          ))}
+          ] as const).map((t, i) => {
+            const disabled = t.key === 'visit' && wantsVisit === 'no';
+            return (
+              <button key={t.key} type="button" disabled={disabled} onClick={() => setScheduleTab(t.key)}
+                className={`flex-1 px-3 py-2 text-left transition-colors ${i === 0 ? 'border-r border-gray-200' : ''}
+                  ${disabled ? 'bg-gray-50 cursor-not-allowed' : scheduleTab === t.key ? 'bg-emerald-50' : 'bg-white hover:bg-gray-50'}`}>
+                <div className={`text-sm font-semibold ${disabled ? 'text-gray-400' : scheduleTab === t.key ? 'text-emerald-800' : 'text-gray-500'}`}>{t.no} {t.label}</div>
+                <div className="text-[11px] text-gray-500 truncate">{t.summary}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* タブ内容 */}
@@ -530,12 +612,16 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 </div>
               );
             })()}
-            {shootDate && shootTime && (
+            {shootDate && shootTime && wantsVisit !== 'no' && (
               <button type="button" onClick={() => setScheduleTab('visit')}
                 className="w-full py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800">
                 見学日の選択へ →
               </button>
             )}
+            {/* 見学する／見学しない の選択（本番撮影日＋時間帯が決まってから表示） */}
+            {shootDate && shootTime && renderVisitChoice()}
+            {/* 見学しない場合はここでプラン選択まで完結させる */}
+            {wantsVisit === 'no' && datesValid && renderPlanPicker()}
           </div>
         ) : (
           <div className="space-y-3">
@@ -546,7 +632,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
             ) : (
               <>
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-800">
-                  ロケ撮影は事前の見学が必須です。見学はマトカスタジオにて <strong>{VISIT_TIME}</strong> から承ります。<br />
+                  見学はマトカスタジオにて <strong>{VISIT_TIME}</strong> から承ります。<br />
                   本番撮影（{jpDate(shootDate)}）の<strong>1週間以上前</strong>＝<strong>{jpDate(maxVisitDate)}まで</strong>の緑の日をお選びください。
                 </div>
                 {calendarGrid(
@@ -561,39 +647,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 {visitStatus === 'taken' && <p className="text-xs text-red-600">この日の見学（{VISIT_TIME}）は既に予約が入っています。別の日をお選びください。</p>}
 
                 {/* プラン選択（撮影日の平日/休日で金額を自動切替。金額はDBのロケ用プランを使用） */}
-                {datesValid && (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-sm font-bold text-gray-900">プランをお選びください <span className="text-red-500">*</span></p>
-                    <p className="text-xs text-gray-400">
-                      撮影日（{jpDate(shootDate)}）は<strong>{isHolidayShoot ? '休日料金' : '平日料金'}</strong>が適用されます。全プランにご主役のお子様1名様分のお支度料金・施設利用料が含まれます。
-                    </p>
-                    <div className="space-y-2">
-                      {planTiers.map((tier) => {
-                        const p = isHolidayShoot ? tier.holiday : tier.weekday;
-                        if (!p) return null;
-                        const sel = planTier === tier.base;
-                        const desc = p.description || PLAN_DESC[tier.base];
-                        const note = PLAN_NOTE[tier.base];
-                        return (
-                          <button key={tier.base} type="button" onClick={() => setPlanTier(tier.base)}
-                            className={`w-full flex justify-between items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors
-                              ${sel ? 'border-emerald-600 bg-emerald-50' : 'border-gray-300 hover:border-emerald-200'}`}>
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-gray-900">{tier.base}</p>
-                              {desc && <p className="text-xs text-gray-500 mt-0.5">{desc}</p>}
-                              {note && <p className="text-xs text-emerald-700 mt-0.5">※ {note}</p>}
-                            </div>
-                            <p className="text-lg font-bold text-emerald-700 flex-shrink-0 whitespace-nowrap">{formatCurrency(p.price)}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="text-xs text-red-600 space-y-1 leading-relaxed">
-                      <p>※ お得なセットプランの料金は、事前お振込時のみの適用となります。</p>
-                      <p>※ オプション・日本髪・キャンセル保険は次のステップ以降でお選びいただけます。</p>
-                    </div>
-                  </div>
-                )}
+                {datesValid && renderPlanPicker()}
               </>
             )}
           </div>
@@ -778,7 +832,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
         <h2 className="text-base font-bold text-gray-900">確認・送信</h2>
         <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-gray-500">本番撮影日</span><span className="text-gray-800 text-right">{jpDate(shootDate)}　{shootLabel}</span></div>
-          <div className="flex justify-between"><span className="text-gray-500">見学日</span><span className="text-gray-800">{jpDate(visitDate)}　{VISIT_TIME}</span></div>
+          <div className="flex justify-between"><span className="text-gray-500">見学日</span><span className="text-gray-800">{wantsVisit === 'no' ? '見学なし' : `${jpDate(visitDate)}　${VISIT_TIME}`}</span></div>
           <div className="flex justify-between"><span className="text-gray-500">お名前</span><span className="text-gray-800">{name}（{furigana}）</span></div>
           <div className="flex justify-between"><span className="text-gray-500">電話番号</span><span className="text-gray-800">{phone}</span></div>
           {email && <div className="flex justify-between"><span className="text-gray-500">メール</span><span className="text-gray-800">{email}</span></div>}
@@ -845,7 +899,11 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${insurance === opt ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{opt}</button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">※ キャンセル保険の加入有無は、見学時に改めてご相談・ご変更いただけます。</p>
+          <p className="text-xs text-gray-400 mt-2">
+            {wantsVisit === 'no'
+              ? '※ キャンセル保険の加入有無は、お電話等で別途ご相談・ご変更いただけます。'
+              : '※ キャンセル保険の加入有無は、見学時に改めてご相談・ご変更いただけます。'}
+          </p>
         </div>
 
         {/* 注意事項 */}
