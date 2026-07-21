@@ -878,7 +878,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
 
         {/* 施設・お着物の取り扱い（本来は見学時の承諾書。見学なしの方にも統一して同意いただく） */}
         <div className="border-2 border-amber-200 rounded-xl p-4 bg-amber-50/40">
-          <p className="text-sm font-semibold text-amber-800 mb-2">■ 施設・お着物の取り扱いについて</p>
+          <p className="text-sm font-semibold text-amber-800 mb-2">■ 施設・お着物の取り扱いについて（必ずお読みください）</p>
           <ul className="text-xs text-gray-700 list-disc pl-4 space-y-1">
             <li>お客様の故意または過失により施設の破損が生じた場合、修繕費をご負担いただく場合がございます。</li>
             <li>事故防止のため撮影していないお子様からは目を離さないようお願いいたします。</li>
