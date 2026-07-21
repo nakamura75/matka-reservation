@@ -581,7 +581,8 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
             { key: 'shoot', no: '①', label: '本番撮影日', summary: shootSummary },
             { key: 'visit', no: '②', label: '見学日', summary: visitSummary },
           ] as const).map((t, i) => {
-            const disabled = t.key === 'visit' && wantsVisit === 'no';
+            // ②見学日タブは「見学する」を選んだ時のみ操作可（未選択・見学しないでは開けない）
+            const disabled = t.key === 'visit' && wantsVisit !== 'yes';
             return (
               <button key={t.key} type="button" disabled={disabled} onClick={() => setScheduleTab(t.key)}
                 className={`flex-1 px-3 py-2 text-left transition-colors ${i === 0 ? 'border-r border-gray-200' : ''}
@@ -612,14 +613,15 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 </div>
               );
             })()}
-            {shootDate && shootTime && wantsVisit !== 'no' && (
+            {/* 見学する／見学しない の選択（本番撮影日＋時間帯が決まってから表示） */}
+            {shootDate && shootTime && renderVisitChoice()}
+            {/* 見学日の選択へ進めるのは「見学する」を選んだ後のみ */}
+            {shootDate && shootTime && wantsVisit === 'yes' && (
               <button type="button" onClick={() => setScheduleTab('visit')}
                 className="w-full py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800">
                 見学日の選択へ →
               </button>
             )}
-            {/* 見学する／見学しない の選択（本番撮影日＋時間帯が決まってから表示） */}
-            {shootDate && shootTime && renderVisitChoice()}
             {/* 見学しない場合はここでプラン選択まで完結させる */}
             {wantsVisit === 'no' && datesValid && renderPlanPicker()}
           </div>
