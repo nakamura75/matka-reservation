@@ -151,6 +151,8 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   const [insurance, setInsurance] = useState<'' | '加入する' | '加入しない'>('');
   const [acknowledged, setAcknowledged] = useState(false);
   const [policyRead, setPolicyRead] = useState(false);
+  // 施設・お着物の取り扱いの承諾（本来は見学時の承諾書。見学なしの方にも統一して同意いただく）
+  const [facilityAgreed, setFacilityAgreed] = useState(false);
 
   // ステップ切替時は必ずページ先頭から表示する（確認ページ等が中盤から始まるのを防ぐ）
   useEffect(() => {
@@ -874,6 +876,20 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           <div className="flex justify-between font-bold text-gray-900 pt-2 border-t border-gray-200"><span>合計（税込）</span><span className="text-emerald-700">{formatCurrency(grandTotal)}</span></div>
         </div>
 
+        {/* 施設・お着物の取り扱い（本来は見学時の承諾書。見学なしの方にも統一して同意いただく） */}
+        <div className="border-2 border-amber-200 rounded-xl p-4 bg-amber-50/40">
+          <p className="text-sm font-semibold text-amber-800 mb-2">■ 施設・お着物の取り扱いについて</p>
+          <ul className="text-xs text-gray-700 list-disc pl-4 space-y-1">
+            <li>お客様の故意または過失により施設の破損が生じた場合、修繕費をご負担いただく場合がございます。</li>
+            <li>事故防止のため撮影していないお子様からは目を離さないようお願いいたします。</li>
+            <li>お子様の行動により着物の破損や著しい汚れが発生した場合、修繕費等をご請求させていただく場合がございます。</li>
+          </ul>
+          <label className="flex items-start gap-2 pt-3 cursor-pointer">
+            <input type="checkbox" checked={facilityAgreed} onChange={(e) => setFacilityAgreed(e.target.checked)} className="mt-0.5 w-4 h-4 accent-amber-600" />
+            <span className="text-sm font-medium text-gray-800">上記の内容を確認・承諾しました<span className="text-red-500"> *</span></span>
+          </label>
+        </div>
+
         {/* キャンセル規定（ご一読のうえキャンセル保険の加入をご判断ください） */}
         <div className="border-2 border-red-200 rounded-xl p-4 bg-red-50/40">
           <p className="text-sm font-semibold text-red-700 mb-2">■ キャンセルについて（必ずお読みください）</p>
@@ -973,7 +989,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
             <button type="button" disabled={!canNext} onClick={() => setStep((s) => s + 1)}
               className="flex-1 py-3 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed">次へ</button>
           ) : (
-            <button type="button" disabled={submitting || !policyRead || insurance === '' || !acknowledged} onClick={handleSubmit}
+            <button type="button" disabled={submitting || !facilityAgreed || !policyRead || insurance === '' || !acknowledged} onClick={handleSubmit}
               className="flex-1 py-3 rounded-xl bg-emerald-700 text-white text-sm font-medium hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed">
               {submitting ? '送信中...' : '送信する'}
             </button>
