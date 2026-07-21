@@ -596,7 +596,13 @@ export function buildLocationShootTentativeMessage(
     body.push(separator(), labelValue('🛡 キャンセル保険', `¥${LOC_INSURANCE.toLocaleString()}`));
   }
   body.push(separator(), locTotalRow(total));
-  body.push(textComponent('※ 見学時のご相談内容により、最終金額が変更になる場合がございます。', { size: 'xxs', color: '#FF6B35', margin: 'sm', wrap: true }));
+  // 見学なし（visitDate 未設定）の場合は「見学時の」という表現を避ける
+  body.push(textComponent(
+    reservation.visitDate
+      ? '※ 見学時のご相談内容により、最終金額が変更になる場合がございます。'
+      : '※ ご相談内容により、最終金額が変更になる場合がございます。',
+    { size: 'xxs', color: '#FF6B35', margin: 'sm', wrap: true },
+  ));
   body.push(separator(), locTentativeNoticeBox());
   body.push(
     separator(),
