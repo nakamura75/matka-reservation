@@ -784,7 +784,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">オプション選択</h2>
-        <p className="text-xs text-gray-400">他のお子様のお着付け・ヘアメイクをご希望の方はこちらでお選びください（任意・複数選択可）。</p>
+        <p className="text-xs text-red-600 font-bold">他のお子様のお着付け・ヘアメイクをご希望の方はこちらでお選びください（任意・複数選択可）。</p>
         {options.length === 0 ? (
           <p className="text-sm text-gray-400">選択可能なオプションはありません。</p>
         ) : (
