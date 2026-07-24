@@ -210,7 +210,7 @@ export default function ReservePreview() {
               </span>
               <div className="relative flex-1 min-w-0">
                 <span className="block text-base font-bold text-gray-900">ロケーション撮影</span>
-                <span className="block text-xs text-gray-500 mt-0.5">文化財などでの撮影（見学必須）</span>
+                <span className="block text-xs text-gray-500 mt-0.5">東山荘（文化財）での撮影</span>
               </div>
               <ChevronRightIcon className="relative w-5 h-5 text-emerald-600 group-hover:translate-x-1.5 transition-transform flex-shrink-0" />
             </button>
