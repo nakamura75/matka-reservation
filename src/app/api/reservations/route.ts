@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     const allCustomers = await getCustomers();
     let customer = allCustomers.find((c) => c.phone === body.phone);
 
-    const now = new Date().toLocaleDateString('ja-JP');
+    const now = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
     const reservationId = generateId();
     const reservationNumber = generateReservationNumber(body.date);
 

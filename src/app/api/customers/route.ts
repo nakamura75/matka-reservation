@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       lineName: body.lineName ?? '',
       note: body.note ?? '',
       shootType: (body.shootType === 'location' || body.shootType === 'both') ? body.shootType : 'studio',
-      createdAt: new Date().toLocaleDateString('ja-JP'),
+      createdAt: new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }),
     };
     await createCustomer(customer);
     return NextResponse.json({ success: true, data: customer });

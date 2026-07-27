@@ -190,7 +190,7 @@ export async function getCustomerById(id: string): Promise<Customer | null> {
 
 export async function createCustomer(data: Customer): Promise<Customer> {
   const row = customerToDb(data);
-  if (!row.created_at) row.created_at = new Date().toLocaleDateString('ja-JP');
+  if (!row.created_at) row.created_at = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
   const { error } = await supabase().from('customers').insert(row);
   if (error) throw error;
   return data as Customer;
