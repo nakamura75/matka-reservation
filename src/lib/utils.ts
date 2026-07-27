@@ -10,11 +10,14 @@ export function generateId(): string {
   return crypto.randomUUID();
 }
 
-/** 日付が土日祝かどうかを判定（JST基準、祝日は別途チェック必要） */
+/** 日付が土日かどうかを判定（タイムゾーン非依存、祝日は別途チェック必要） */
 export function isWeekend(dateStr: string): boolean {
-  const d = new Date(dateStr + 'T00:00:00+09:00');
-  const day = d.getDay();
-  return day === 0 || day === 6;
+  if (!dateStr) return false;
+  // "YYYY-MM-DD" を分解し UTC 基準で曜日を算出。実行環境(本番=UTC/開発=JST)に依存させない。
+  const [y, m, day] = dateStr.split('-').map(Number);
+  if (!y || !m || !day) return false;
+  const dow = new Date(Date.UTC(y, m - 1, day)).getUTCDay();
+  return dow === 0 || dow === 6;
 }
 
 /** YYYY-MM-DD 形式に変換 */
@@ -45,16 +48,17 @@ export function formatCurrency(amount: number): string {
   return `¥${amount.toLocaleString('ja-JP')}`;
 }
 
-/** 日付を YYYY/MM/DD(曜日) 形式で表示（JST基準） */
+/** 日付を YYYY/MM/DD(曜日) 形式で表示（タイムゾーン非依存） */
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00+09:00');
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  // "YYYY-MM-DD" を文字列から直接分解する。Date のローカルタイムゾーン依存を避け、
+  // 本番(UTC)でも開発(JST)でも同じ結果になるようにする。
+  const [y, m, day] = dateStr.split('-').map(Number);
+  if (!y || !m || !day) return dateStr;
+  // 曜日のみ UTC 基準の Date で算出（実行環境のタイムゾーンに依存させない）
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-  const w = weekdays[d.getDay()];
-  return `${y}/${m}/${day}(${w})`;
+  const w = weekdays[new Date(Date.UTC(y, m - 1, day)).getUTCDay()];
+  return `${y}/${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}(${w})`;
 }
 
 /** 時間の秒を削除（H:MM:SS → H:MM のみ変換。H:MM はそのまま） */
