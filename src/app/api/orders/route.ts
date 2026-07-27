@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const today = new Date().toLocaleDateString('ja-JP');
+    const today = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
     const order = {
       id: generateId(),
       customerId: body.customerId,

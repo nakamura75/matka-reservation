@@ -75,10 +75,12 @@ export default async function ReceiptPage({
   const hasDiscount = total < calculatedTotal;
   const discountDiff = calculatedTotal - total;
 
+  // 発行日はJST基準で算出（本番サーバーはUTCのため、timeZone未指定だと0:00〜8:59 JSTに前日となる）
   const issueDate = new Date().toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: 'Asia/Tokyo',
   });
 
   return (
