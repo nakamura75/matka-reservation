@@ -12,9 +12,11 @@ import { LINE_OA_ID } from '@/lib/constants';
 // 定数
 // ============================================================
 const SHOOT_TIMES = [
-  { value: '9:10', label: '午前の部　9:10〜12:00' },
-  { value: '13:00', label: '午後の部　13:00〜16:00' },
+  { value: '9:10', half: 'am' as const, label: '午前の部　9:10〜12:00' },
+  { value: '13:00', half: 'pm' as const, label: '午後の部　13:00〜16:00' },
 ];
+// 撮影可能日は午前(am)/午後(pm)を個別に公開できる（東山荘が半日しか押さえられない日に対応）
+type ShootDayHalves = { am: boolean; pm: boolean };
 const VISIT_TIME = '16:30';        // 見学はWEB予約だと16:30固定
 const VISIT_LEAD_DAYS = 8;          // 本番日は見学日の8日後以降
 
@@ -96,8 +98,8 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   // 本番撮影日
   const [shootDate, setShootDate] = useState('');
   const [shootTime, setShootTime] = useState('');
-  // 撮影可能日（設定で登録された日）／見学NG日／本番の予約済み枠（date|timeSlot）
-  const [shootDays, setShootDays] = useState<string[]>([]);
+  // 撮影可能日（設定で登録された日。午前/午後を個別公開）／見学NG日／本番の予約済み枠（date|timeSlot）
+  const [shootDays, setShootDays] = useState<Record<string, ShootDayHalves>>({});
   const [visitNgDates, setVisitNgDates] = useState<Set<string>>(new Set());
   const [bookedShoots, setBookedShoots] = useState<Set<string>>(new Set());
   // カレンダー表示月（初期は今月。撮影可能日が読み込めたら最も近い日へ移動）
@@ -172,10 +174,13 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     fetch('/api/location/shoot-days')
       .then((r) => r.json())
       .then((d) => {
-        const days: string[] = (d.data ?? []).filter((x: string) => x >= minShootDate);
-        setShootDays(days);
+        const rows = ((d.data ?? []) as { date: string; am?: boolean; pm?: boolean }[])
+          .filter((x) => x.date >= minShootDate);
+        const map: Record<string, ShootDayHalves> = {};
+        for (const r of rows) map[r.date] = { am: r.am !== false, pm: r.pm !== false };
+        setShootDays(map);
         // 直近の撮影可能日の月へカレンダーを移動
-        const next = days.slice().sort()[0];
+        const next = Object.keys(map).sort()[0];
         if (next) {
           const [y, m] = next.split('-').map(Number);
           setCalYM({ year: y, month: m - 1 });
@@ -192,10 +197,13 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       .catch(() => {});
   }, [today]);
 
-  // 選択中の時間帯が予約済みになったら選択解除
+  // 選択中の時間帯が予約済み・非公開になったら選択解除
   useEffect(() => {
-    if (shootDate && shootTime && bookedShoots.has(`${shootDate}|${shootTime}`)) setShootTime('');
-  }, [shootDate, shootTime, bookedShoots]);
+    if (!shootDate || !shootTime) return;
+    const half = SHOOT_TIMES.find((t) => t.value === shootTime)?.half;
+    const stillOpen = half ? shootDays[shootDate]?.[half] : false;
+    if (!stillOpen || bookedShoots.has(`${shootDate}|${shootTime}`)) setShootTime('');
+  }, [shootDate, shootTime, bookedShoots, shootDays]);
 
   function toggleOption(optionId: string) {
     setSelectedOptions((prev) => {
@@ -485,7 +493,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   }
 
   function renderSchedule() {
-    const shootSet = new Set(shootDays);
+    // その日に実際に選べる時間帯＝「設定で公開されている枠」かつ「まだ予約が入っていない枠」
+    const availableTimes = (d: string) =>
+      SHOOT_TIMES.filter((t) => shootDays[d]?.[t.half] && !bookedShoots.has(`${d}|${t.value}`));
     const shootSummary = shootDate ? `${jpDate(shootDate)}${shootTime ? ` ${shootTime}〜` : ''}` : '未選択';
     const visitSummary = visitDate ? `${jpDate(visitDate)} ${VISIT_TIME}` : '未選択';
     return (
@@ -508,20 +518,25 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
         {/* タブ内容 */}
         {scheduleTab === 'shoot' ? (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">カレンダーから撮影日（緑の日）と時間帯をお選びください。</p>
-            {calendarGrid(calYM, setCalYM, (d) => shootSet.has(d) && SHOOT_TIMES.some((t) => !bookedShoots.has(`${d}|${t.value}`)), shootDate, setShootDate)}
+            <p className="text-xs text-gray-500">カレンダーから撮影日（緑の日）と時間帯をお選びください。日によって午前のみ・午後のみの場合があります。</p>
+            {calendarGrid(calYM, setCalYM, (d) => availableTimes(d).length > 0, shootDate, setShootDate)}
             {shootDate && (() => {
-              const avail = SHOOT_TIMES.filter((t) => !bookedShoots.has(`${shootDate}|${t.value}`));
+              const avail = availableTimes(shootDate);
               return (
-                <div className="flex gap-2">
-                  {avail.map((t) => (
-                    <button key={t.value} type="button" onClick={() => setShootTime(t.value)}
-                      className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
-                        ${shootTime === t.value ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-700 hover:border-emerald-200'}`}>
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="flex gap-2">
+                    {avail.map((t) => (
+                      <button key={t.value} type="button" onClick={() => setShootTime(t.value)}
+                        className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors
+                          ${shootTime === t.value ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-700 hover:border-emerald-200'}`}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  {avail.length === 1 && (
+                    <p className="text-xs text-emerald-700">この日は{avail[0].label.split('　')[0]}のみ承れます。</p>
+                  )}
+                </>
               );
             })()}
             {shootDate && shootTime && (

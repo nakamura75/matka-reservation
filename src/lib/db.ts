@@ -874,14 +874,30 @@ export async function deleteBlockedSlot(id: string): Promise<void> {
 // ロケ稼働日（撮影可能日 / 見学NG日）
 // ============================================================
 
-export async function getLocationShootDays(): Promise<string[]> {
-  const { data, error } = await supabase().from('location_shoot_days').select('date').order('date');
+/**
+ * ロケ撮影可能日。am/pm で午前(9:10〜)・午後(13:00〜)を個別に公開できる。
+ * 両方 false の日は行を持たない（＝非公開）。
+ */
+export type LocationShootDay = { date: string; am: boolean; pm: boolean };
+
+export async function getLocationShootDays(): Promise<LocationShootDay[]> {
+  // select('*') で取るのは、am/pm 列を追加するマイグレーション適用前でも落ちないようにするため。
+  // 列が無い（＝旧スキーマ）場合は従来どおり「終日公開」として扱う。
+  const { data, error } = await supabase().from('location_shoot_days').select('*').order('date');
   if (error) throw error;
-  return (data ?? []).map((r) => r.date as string);
+  return (data ?? []).map((r) => ({
+    date: r.date as string,
+    am: r.am !== false,
+    pm: r.pm !== false,
+  }));
 }
 
-export async function addLocationShootDay(date: string): Promise<void> {
-  const { error } = await supabase().from('location_shoot_days').upsert({ date }, { onConflict: 'date' });
+/** 撮影可能日を保存。am/pm ともに false なら行を削除（非公開）する。 */
+export async function setLocationShootDay(date: string, am: boolean, pm: boolean): Promise<void> {
+  if (!am && !pm) return removeLocationShootDay(date);
+  const { error } = await supabase()
+    .from('location_shoot_days')
+    .upsert({ date, am, pm }, { onConflict: 'date' });
   if (error) throw error;
 }
 

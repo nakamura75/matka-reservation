@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PlusIcon, PencilSquareIcon, CheckIcon, XMarkIcon, ChevronDownIcon, ArrowUpIcon, ArrowDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
 import { formatCurrency } from '@/lib/utils';
 import type { Plan, Option, Product, Staff, Holiday, BlockedSlot } from '@/types';
 import { formatDate } from '@/lib/utils';
@@ -1007,8 +1008,125 @@ function MiniCalendar({ marked, onToggle, accent }: {
   );
 }
 
+type ShootDayHalves = { am: boolean; pm: boolean };
+
+const WEEKDAY_JP = ['日', '月', '火', '水', '木', '金', '土'];
+
+/** 'YYYY-MM-DD' → '8月11日(火)' */
+function jpDayLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return `${m}月${d}日(${WEEKDAY_JP[new Date(y, m - 1, d).getDay()]})`;
+}
+
+// 午前＝太陽 / 午後＝月（heroicons solid）
+const MorningIcon = SunIcon;
+const AfternoonIcon = MoonIcon;
+
+// 日付の下のアイコン：左＝午前(太陽) / 右＝午後(傾いた太陽)。公開中だけ色がつく
+function HalfIcons({ am, pm, size = 'w-3.5 h-3.5' }: ShootDayHalves & { size?: string }) {
+  return (
+    <span className="flex items-center justify-center gap-0.5 mt-0.5">
+      <MorningIcon className={`${size} ${am ? 'text-orange-500' : 'text-gray-300'}`} />
+      <AfternoonIcon className={`${size} ${pm ? 'text-yellow-400' : 'text-gray-300'}`} />
+    </span>
+  );
+}
+
+/**
+ * 撮影可能日カレンダー。
+ * カレンダーは1マス1日のまま（押しやすさ優先）で、日付を選ぶと
+ * 下の大きなボタンで午前/午後を切り替える。マスの色とバーで状態が分かる。
+ */
+function ShootDayCalendar({ days, onToggle }: {
+  days: Record<string, ShootDayHalves>;
+  onToggle: (date: string, half: 'am' | 'pm') => void;
+}) {
+  const [ym, setYM] = useState(() => { const t = new Date(); return { year: t.getFullYear(), month: t.getMonth() }; });
+  const [selected, setSelected] = useState<string | null>(null);
+  const firstWeekday = new Date(ym.year, ym.month, 1).getDay();
+  const daysInMonth = new Date(ym.year, ym.month + 1, 0).getDate();
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(`${ym.year}-${String(ym.month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+  const prev = () => setYM((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { year: c.year, month: c.month - 1 }));
+  const next = () => setYM((c) => (c.month === 11 ? { year: c.year + 1, month: 0 } : { year: c.year, month: c.month + 1 }));
+
+  const sel = selected ? days[selected] ?? { am: false, pm: false } : null;
+  const halfButton = (half: 'am' | 'pm', title: string, time: string) => {
+    const on = !!sel?.[half];
+    const Icon = half === 'am' ? MorningIcon : AfternoonIcon;
+    return (
+      <button type="button" onClick={() => selected && onToggle(selected, half)}
+        className={`rounded-xl border-2 px-3 py-3 text-center transition-colors
+          ${on ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white text-gray-500 hover:border-emerald-300'}`}>
+        <Icon className={`w-6 h-6 mx-auto mb-1 ${on ? 'text-white' : half === 'am' ? 'text-orange-300' : 'text-yellow-300'}`} />
+        <span className="block text-sm font-bold">{title}</span>
+        <span className={`block text-xs ${on ? 'text-emerald-50' : 'text-gray-400'}`}>{time}</span>
+        <span className="block text-[11px] font-medium mt-1">{on ? '公開中' : '非公開'}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div className="max-w-sm">
+      <div className="border border-gray-200 rounded-xl p-3 bg-white">
+        <div className="flex items-center justify-between mb-2">
+          <button type="button" onClick={prev} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><ChevronLeftIcon className="w-5 h-5" /></button>
+          <span className="text-sm font-bold text-gray-900">{ym.year}年 {ym.month + 1}月</span>
+          <button type="button" onClick={next} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><ChevronRightIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {WEEKDAY_JP.map((w, i) => (
+            <div key={w} className={`text-center text-[11px] font-medium ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'}`}>{w}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((dateStr, idx) => {
+            if (!dateStr) return <div key={`e${idx}`} />;
+            const day = Number(dateStr.slice(-2));
+            const d = days[dateStr] ?? { am: false, pm: false };
+            const open = d.am || d.pm;
+            const isSel = selected === dateStr;
+            return (
+              <button key={dateStr} type="button" onClick={() => setSelected(dateStr)}
+                aria-label={`${day}日 ${d.am && d.pm ? '終日公開' : d.am ? '午前のみ公開' : d.pm ? '午後のみ公開' : '非公開'}`}
+                className={`aspect-square rounded-lg border flex flex-col items-center justify-center transition-colors
+                  ${open ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-200 hover:bg-gray-50'}
+                  ${isSel ? 'ring-2 ring-emerald-600 ring-offset-1' : ''}`}>
+                <span className={`text-sm leading-none ${open ? 'text-emerald-900 font-bold' : 'text-gray-400'}`}>{day}</span>
+                <HalfIcons am={d.am} pm={d.pm} />
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+          <MorningIcon className="w-3.5 h-3.5 text-orange-500" />午前
+          <AfternoonIcon className="w-3.5 h-3.5 text-yellow-400 ml-1" />午後
+          <span className="ml-1">／</span>
+          <MorningIcon className="w-3.5 h-3.5 text-gray-300" />
+          <AfternoonIcon className="w-3.5 h-3.5 text-gray-300" />
+          <span>は非公開</span>
+        </p>
+      </div>
+
+      {selected ? (
+        <div className="border border-gray-200 rounded-xl p-3 bg-white mt-3">
+          <p className="text-sm font-bold text-gray-900 mb-2">{jpDayLabel(selected)}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {halfButton('am', '午前の部', '9:10〜12:00')}
+            {halfButton('pm', '午後の部', '13:00〜16:00')}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">ボタンを押すと公開／非公開が切り替わります。両方を非公開にするとその日は予約フォームに出ません。</p>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400 mt-3">カレンダーの日付をクリックすると、午前／午後を設定できます。</p>
+      )}
+    </div>
+  );
+}
+
 function AvailabilityTab() {
-  const [shootDays, setShootDays] = useState<Set<string>>(new Set());
+  const [shootDays, setShootDays] = useState<Record<string, ShootDayHalves>>({});
   const [ngDays, setNgDays] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
@@ -1017,18 +1135,36 @@ function AvailabilityTab() {
       fetch('/api/location/shoot-days').then((r) => r.json()).catch(() => ({ data: [] })),
       fetch('/api/location/visit-ng').then((r) => r.json()).catch(() => ({ data: [] })),
     ]).then(([a, b]) => {
-      setShootDays(new Set(a.data ?? []));
+      const map: Record<string, ShootDayHalves> = {};
+      for (const d of (a.data ?? []) as { date: string; am?: boolean; pm?: boolean }[]) {
+        map[d.date] = { am: d.am !== false, pm: d.pm !== false };
+      }
+      setShootDays(map);
       setNgDays(new Set(b.data ?? []));
       setLoading(false);
     });
   }, []);
 
-  async function toggleShoot(date: string) {
-    const has = shootDays.has(date);
-    setShootDays((prev) => { const n = new Set(prev); if (has) n.delete(date); else n.add(date); return n; });
+  // 午前/午後を個別にON/OFF。両方OFFになった日はその日ごと非公開（行を削除）にする
+  async function toggleShootHalf(date: string, half: 'am' | 'pm') {
+    const cur = shootDays[date] ?? { am: false, pm: false };
+    const next: ShootDayHalves = half === 'am' ? { ...cur, am: !cur.am } : { ...cur, pm: !cur.pm };
+    setShootDays((prev) => {
+      const n = { ...prev };
+      if (!next.am && !next.pm) delete n[date];
+      else n[date] = next;
+      return n;
+    });
     try {
-      if (has) await fetch(`/api/location/shoot-days?date=${date}`, { method: 'DELETE' });
-      else await fetch('/api/location/shoot-days', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) });
+      if (!next.am && !next.pm) {
+        await fetch(`/api/location/shoot-days?date=${date}`, { method: 'DELETE' });
+      } else {
+        await fetch('/api/location/shoot-days', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, am: next.am, pm: next.pm }),
+        });
+      }
     } catch { /* noop */ }
   }
 
@@ -1048,8 +1184,11 @@ function AvailabilityTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">撮影可能日</h2>
-          <p className="text-xs text-gray-400 mb-3">撮影が可能な日を選択（緑）。選んだ日だけ予約フォームに表示されます。</p>
-          <MiniCalendar marked={shootDays} onToggle={toggleShoot} accent="emerald" />
+          <p className="text-xs text-gray-400 mb-3">
+            日付をクリックして、<strong>午前の部・午後の部</strong>をそれぞれ公開／非公開にします。
+            終日空いている日は両方を、半日だけの日は片方だけを公開にしてください。公開した枠だけが予約フォームに表示されます。
+          </p>
+          <ShootDayCalendar days={shootDays} onToggle={toggleShootHalf} />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">見学NG日</h2>
@@ -1057,7 +1196,7 @@ function AvailabilityTab() {
           <MiniCalendar marked={ngDays} onToggle={toggleNg} accent="red" />
         </div>
       </div>
-      <p className="text-xs text-gray-400">※ 撮影の時間帯は午前9:10〜／午後13:00〜で固定です。</p>
+      <p className="text-xs text-gray-400">※ 撮影の時間帯は午前の部 9:10〜12:00／午後の部 13:00〜16:00 で固定です。</p>
     </div>
   );
 }
