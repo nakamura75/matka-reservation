@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getCustomers, getReservations, getOrders, getPlans, getOrderItems, getProducts } from '@/lib/db';
+import { buildRepeaterIndex } from '@/lib/repeater';
 import CustomerDetail from './CustomerDetail';
 
 export const dynamic = 'force-dynamic';
@@ -37,25 +38,11 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
     .sort((a, b) => b.orderDate.localeCompare(a.orderDate));
 
   // リピーター判定: 電話番号またはLINE IDが一致する予約が複数あるか
-  const samePhoneIds = customer.phone?.trim()
-    ? customers.filter((c) => c.phone?.trim() === customer.phone?.trim()).map((c) => c.id)
-    : [customer.id];
-  const totalByPhone = samePhoneIds.reduce(
-    (sum, id) => sum + reservations.filter((r) => r.customerId === id).length,
-    0,
-  );
-  const customerLineIds = new Set(
-    reservations
-      .filter((r) => r.customerId === customer.id && r.lineUserId?.trim())
-      .map((r) => r.lineUserId!.trim()),
-  );
-  const isRepeaterByLine = Array.from(customerLineIds).some(
-    (lineId) => reservations.filter((r) => r.lineUserId?.trim() === lineId).length > 1,
-  );
-  const isRepeater = totalByPhone > 1 || isRepeaterByLine;
+  const repeaters = buildRepeaterIndex(customers, reservations);
+  const isRepeater = repeaters.isRepeater(customer.id);
 
   // 予約シートのO列からlineUserIdを取得してcustomerに付与
-  const lineUserId = Array.from(customerLineIds)[0] ?? undefined;
+  const lineUserId = repeaters.lineUserIdsOf(customer.id)[0] ?? undefined;
   // 顧客テーブルの chatLineUserId を優先、なければ予約テーブルから取得
   const chatLineUserId = customer.chatLineUserId?.trim() || customerReservations.find((r) => r.chatLineUserId?.trim())?.chatLineUserId || undefined;
   const customerWithLine = { ...customer, lineUserId, chatLineUserId };

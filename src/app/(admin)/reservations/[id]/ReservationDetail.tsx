@@ -71,6 +71,7 @@ interface Props {
   products: Product[];
   linkedOrders: LinkedOrder[];
   holidays: Holiday[];
+  isRepeater: boolean;
 }
 
 function parseAssignment(json?: string): StaffAssignment {
@@ -78,7 +79,7 @@ function parseAssignment(json?: string): StaffAssignment {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders, holidays }: Props) {
+export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders, holidays, isRepeater }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
@@ -1254,7 +1255,14 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             {customer ? (
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="text-lg font-bold text-gray-900">{customer.name}</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {customer.name}
+                    {isRepeater && (
+                      <span className="ml-2 text-xs bg-brand-light text-brand px-2 py-0.5 rounded-full font-normal align-middle">
+                        リピーター
+                      </span>
+                    )}
+                  </p>
                   {customer.furigana && (
                     <p className="text-xs text-gray-400">{customer.furigana}</p>
                   )}
