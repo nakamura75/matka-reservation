@@ -9,7 +9,10 @@ import {
   getOrderItems,
   getProducts,
   getHolidays,
+  getCustomers,
+  getReservations,
 } from '@/lib/db';
+import { buildRepeaterIndex } from '@/lib/repeater';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
 
@@ -37,10 +40,17 @@ export default async function ReservationDetailPage({
     getHolidays().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
-  const [customer, reservationOptions] = await Promise.all([
+  const [customer, reservationOptions, allCustomers, allReservations] = await Promise.all([
     getCustomerById(reservation.customerId),
     getReservationOptions(reservation.id),
+    getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
+
+  // リピーター判定は顧客一覧・顧客詳細と同じ共通ロジックを使う
+  const isRepeater = customer
+    ? buildRepeaterIndex(allCustomers, allReservations).isRepeater(customer.id)
+    : false;
 
   const plan = plans.find((p) => p.id === reservation.planId);
 
@@ -77,6 +87,7 @@ export default async function ReservationDetailPage({
       products={products.filter((p) => p.isActive)}
       linkedOrders={linkedOrders}
       holidays={holidays}
+      isRepeater={isRepeater}
     />
   );
 }
