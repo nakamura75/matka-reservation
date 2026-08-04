@@ -114,7 +114,6 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                   { label: 'メール', key: 'email', type: 'email' },
                   { label: '郵便番号', key: 'zipCode', type: 'text' },
                   { label: '住所', key: 'address', type: 'text' },
-                  { label: '備考', key: 'note', type: 'text' },
                 ].map(({ label, key, type }) => (
                   <div key={key}>
                     <label className="block text-xs text-gray-400 mb-1">{label}</label>
@@ -126,6 +125,17 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                     />
                   </div>
                 ))}
+                {/* 備考は予約詳細と同様に複数行・改行可のテキストエリア（過去の顧客メモを書き溜める用途） */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">備考</label>
+                  <textarea
+                    value={form.note}
+                    onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                    rows={7}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30 resize-y"
+                    placeholder={'お客様メモ...\n例）ママヘアメイクにこだわり強め。\n　　お子様人見知りあり。\n　　2026.8.1 水野'}
+                  />
+                </div>
                 <div className="flex gap-2 pt-2">
                   <button
                     onClick={handleSave}
@@ -228,7 +238,7 @@ export default function CustomerDetail({ customer, reservations, orders, isRepea
                 {customer.note && (
                   <div>
                     <dt className="text-gray-400 text-xs">備考</dt>
-                    <dd className="text-gray-700 mt-0.5">{customer.note}</dd>
+                    <dd className="text-gray-700 mt-0.5 whitespace-pre-wrap">{customer.note}</dd>
                   </div>
                 )}
                 <div>
