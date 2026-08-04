@@ -83,7 +83,12 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
         c.name.toLowerCase().includes(q) ||
         c.phone.includes(q) ||
         (c.furigana ?? '').toLowerCase().includes(q) ||
-        (c.email ?? '').toLowerCase().includes(q)
+        (c.email ?? '').toLowerCase().includes(q) ||
+        // LINE表示名（予約時点のスナップショット。改名され得るため補助扱い）
+        (c.lineName ?? '').toLowerCase().includes(q) ||
+        // LINEのID（不変）。chat.line.biz のチャットURLからIDを貼り付けて逆引きできるようにする
+        (c.chatLineUserId ?? '').toLowerCase().includes(q) ||
+        (c.lineUserId ?? '').toLowerCase().includes(q)
     );
   }, [customers, search]);
 
@@ -124,7 +129,7 @@ export default function CustomerList({ customers }: { customers: CustomerWithCou
       <div className="p-4 border-b border-gray-100 flex gap-3 items-center">
         <input
           type="text"
-          placeholder="氏名・フリガナ・電話番号・メールで検索..."
+          placeholder="氏名・フリガナ・電話番号・メール・LINE名・LINE IDで検索..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand/30"
