@@ -269,6 +269,17 @@ export interface ApiResponse<T = unknown> {
 }
 
 // ============================================================
+// 予約画像（予約詳細にアップロードする参考写真等。枚数無制限）
+// ============================================================
+export interface ReservationPhoto {
+  id: string;
+  reservationId: string;
+  path: string;        // storage バケット内のパス
+  fileName?: string;   // 元のファイル名（表示用）
+  createdAt?: string;
+}
+
+// ============================================================
 // 祝日
 // ============================================================
 export interface Holiday {

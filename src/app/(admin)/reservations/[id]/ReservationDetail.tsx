@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option, Holiday } from '@/types';
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
 import { LOC_INSURANCE } from '@/lib/location';
@@ -72,6 +72,8 @@ interface Props {
   linkedOrders: LinkedOrder[];
   holidays: Holiday[];
   isRepeater: boolean;
+  /** 予約に紐づく画像（署名付きURL。サーバー側で生成） */
+  photos: { id: string; fileName?: string; url: string }[];
 }
 
 function parseAssignment(json?: string): StaffAssignment {
@@ -79,7 +81,28 @@ function parseAssignment(json?: string): StaffAssignment {
   try { return JSON.parse(json); } catch { return {}; }
 }
 
-export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders, holidays, isRepeater }: Props) {
+/** アップロード前にブラウザ側で縮小する（長辺1600px・JPEG）。
+ *  Vercelのリクエストサイズ上限(約4.5MB)に収めるため。縮小できない形式は原本のまま返す */
+async function downscaleImage(file: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size < 1024 * 1024) return file; // 小さい画像はそのまま
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    return blob ?? file;
+  } catch {
+    return file; // デコードできない形式は原本のまま（サーバー側でサイズ・形式チェック）
+  }
+}
+
+export default function ReservationDetail({ reservation, customer, plan, allPlans, options: initialOptions, allOptions, staff, products, linkedOrders: initialLinkedOrders, holidays, isRepeater, photos }: Props) {
   const router = useRouter();
   const [status, setStatus] = useState(reservation.status);
   const [loading, setLoading] = useState(false);
@@ -288,6 +311,43 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       router.refresh();
     } finally {
       setAssignSaving(false);
+    }
+  }
+
+  // 画像アップロード
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoDeleting, setPhotoDeleting] = useState<string | null>(null);
+
+  async function handlePhotoUpload(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setPhotoUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const blob = await downscaleImage(file);
+        const uploadName = blob === file ? file.name : file.name.replace(/\.[^.]+$/, '') + '.jpg';
+        const fd = new FormData();
+        fd.append('file', new File([blob], uploadName, { type: blob.type || file.type }));
+        const res = await fetch(`/api/reservations/${reservation.id}/photos`, { method: 'POST', body: fd });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert(err.error ?? `${file.name} のアップロードに失敗しました`);
+        }
+      }
+      router.refresh();
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
+  async function handlePhotoDelete(photoId: string) {
+    if (!confirm('この画像を削除しますか？')) return;
+    setPhotoDeleting(photoId);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}/photos/${photoId}`, { method: 'DELETE' });
+      if (!res.ok) alert('削除に失敗しました');
+      router.refresh();
+    } finally {
+      setPhotoDeleting(null);
     }
   }
 
@@ -996,6 +1056,54 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 {optionAdding ? '追加中...' : '追加'}
               </button>
             </div>
+          </section>
+
+          {/* 画像（参考写真など。枚数無制限・スタッフのみアップロード可） */}
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                <PhotoIcon className="w-4 h-4" />
+                画像
+              </h2>
+              <label className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${photoUploading ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand text-white hover:bg-brand-dark cursor-pointer'}`}>
+                {photoUploading ? 'アップロード中...' : '＋ 画像を追加'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={photoUploading}
+                  onChange={(e) => { handlePhotoUpload(e.target.files); e.target.value = ''; }}
+                />
+              </label>
+            </div>
+            {photos.length === 0 ? (
+              <p className="text-sm text-gray-400">画像なし</p>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                {photos.map((p) => (
+                  <div key={p.id} className="relative">
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" title={p.fileName ?? ''}>
+                      <img
+                        src={p.url}
+                        alt={p.fileName ?? '予約画像'}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handlePhotoDelete(p.id)}
+                      disabled={photoDeleting === p.id}
+                      title="削除"
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-white border border-gray-300 rounded-full text-gray-400 hover:text-red-500 hover:border-red-300 text-xs leading-none disabled:opacity-50 shadow-sm"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-3">クリックで拡大表示。複数枚まとめて追加できます（アップロード時に自動で縮小されます）。</p>
           </section>
 
           {/* 担当割り当て */}
