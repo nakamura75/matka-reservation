@@ -267,7 +267,9 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
           const overlap = tot > 1;
           // 重なっても幅・位置は通常の枠と同じ（横/縦のずらしはしない）。
           // 前面/背面は重なり順だけで制御：開始が遅い枠ほど前面、同じ開始なら短い枠を前面に。
-          const z = 100 + Math.round(block.top) * 4 - Math.round(block.height);
+          // 高さの最大値(TOTAL_HOURS*HOUR_HEIGHT)分の下駄を履かせて z が負にならないようにする。
+          // （朝早くチェックインした長時間の予約で z が負になると背景の裏に隠れて見えなくなる）
+          const z = 100 + TOTAL_HOURS * HOUR_HEIGHT + Math.round(block.top) * 4 - Math.round(block.height);
           return (
             <Link
               key={block.id}
