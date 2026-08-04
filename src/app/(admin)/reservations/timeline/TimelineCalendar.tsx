@@ -49,6 +49,8 @@ interface Props {
   blockedDates?: Record<string, string>;
   blockedTimeSlots?: Record<string, Record<string, string>>;
   holidayDates?: string[];
+  /** ロケ撮影可能日（公開日）。日付 → 午前/午後の公開状況。無い日は非公開 */
+  locationShootDays?: Record<string, { am: boolean; pm: boolean }>;
 }
 
 // タイムラインの時間範囲
@@ -74,9 +76,10 @@ function toDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export default function TimelineCalendar({ reservations, blockedDates = {}, blockedTimeSlots = {}, holidayDates = [] }: Props) {
+export default function TimelineCalendar({ reservations, blockedDates = {}, blockedTimeSlots = {}, holidayDates = [], locationShootDays = {} }: Props) {
   const blockedDateMap = useMemo(() => new Map(Object.entries(blockedDates)), [blockedDates]);
   const holidayDateSet = useMemo(() => new Set(holidayDates), [holidayDates]);
+  const locShootDayMap = useMemo(() => new Map(Object.entries(locationShootDays)), [locationShootDays]);
   const today = new Date();
   const router = useRouter();
   const pathname = usePathname();
@@ -230,8 +233,9 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
     return STATUS_DOT[r.status];
   }
 
-  // 1つの小列（スタジオ/ロケ/見学）に予約ブロックを配置
-  function renderSubColumn(reservations: Reservation[], blocked?: { time: string; reason: string }[]) {
+  // 1つの小列（スタジオ/ロケ/見学）に予約ブロックを配置。
+  // closedRegions: 予約を解放していない時間帯（スタジオ休業/ロケ非公開）。背面にグレー表示する
+  function renderSubColumn(reservations: Reservation[], blocked?: { time: string; reason: string }[], closedRegions?: { top: number; height: number; label?: string }[]) {
     const resBlocks = reservations
       .filter((r) => r.checkInTime && r.checkOutTime)
       .map((r) => ({ ...getBlockPosition(r.checkInTime!, r.checkOutTime!), id: r.id, reservation: r }));
@@ -251,6 +255,11 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
     const laneMap = computeLanes(allBlocks.map((b) => ({ top: b.top, height: b.height, id: b.id })));
     return (
       <div className="relative border-r border-gray-100 last:border-r-0 h-full">
+        {(closedRegions ?? []).map((c, idx) => (
+          <div key={`c-${idx}`} className="absolute left-0 right-0 bg-gray-100/80 pointer-events-none flex items-start justify-center" style={{ top: `${c.top}px`, height: `${c.height}px` }}>
+            {c.label && <span className="text-[9px] text-gray-400 font-medium mt-1">{c.label}</span>}
+          </div>
+        ))}
         {(blocked ?? []).map((b, idx) => {
           const s = timeToMinutes(b.time);
           const pos = getBlockPosition(minutesToTime(s), minutesToTime(s + 60));
@@ -352,7 +361,11 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
         </span>
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded bg-gray-200" />
-          休業日
+          休業日（スタジオ休業＋ロケ非公開）
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded bg-gray-100 border border-gray-200" />
+          解放していない枠（週表示）
         </span>
         <span className="flex items-center gap-1">
           <span className="text-[10px] text-green-600 font-medium">祝</span>
@@ -378,8 +391,10 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                 const isSaturday = i === 6;
                 const isBlocked = blockedDateMap.has(dateStr);
                 const isHoliday = holidayDateSet.has(dateStr);
+                const hLocDay = locShootDayMap.get(dateStr);
+                const hFullyClosed = isBlocked && !(hLocDay && (hLocDay.am || hLocDay.pm));
                 return (
-                  <div key={dateStr} className={`border-r border-gray-100 ${isBlocked ? 'bg-gray-50' : ''}`}>
+                  <div key={dateStr} className={`border-r border-gray-100 ${hFullyClosed ? 'bg-gray-50' : ''}`}>
                     <div className="text-center py-1.5">
                       <div className={`text-xs font-medium ${isSunday || isHoliday ? 'text-red-400' : isSaturday ? 'text-blue-400' : 'text-gray-500'}`}>{weekdays[i]}</div>
                       <div className="flex items-center justify-center gap-1">
@@ -414,30 +429,44 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                   const dateStr = toDateStr(day);
                   const dayReservations = weekReservationMap.get(dateStr) ?? [];
                   const isBlocked = blockedDateMap.has(dateStr);
+                  const locDay = locShootDayMap.get(dateStr);
+                  const locOpen = !!locDay && (locDay.am || locDay.pm);
+                  // スタジオ休業かつロケ非公開＝その日は何も解放していない（完全休み）
+                  const fullyClosed = isBlocked && !locOpen;
                   const partialBlocked = blockedTimeSlots[dateStr];
                   const blockedEntries = partialBlocked ? Object.entries(partialBlocked).map(([time, reason]) => ({ time, reason })) : [];
                   const studio = dayReservations.filter((r) => r.status !== '見学' && r.shootType !== 'location');
                   const location = dayReservations.filter((r) => r.status !== '見学' && r.shootType === 'location');
                   const visit = dayReservations.filter((r) => r.status === '見学');
 
+                  // 小列ごとのグレー領域：スタジオ＝休業日は全時間帯／ロケ＝非公開の時間帯（午前・午後単位）
+                  const studioClosed = isBlocked ? [{ top: 0, height: TOTAL_HOURS * HOUR_HEIGHT, label: '休業' }] : [];
+                  const locClosed: { top: number; height: number; label?: string }[] = [];
+                  if (!locDay) {
+                    locClosed.push({ top: 0, height: TOTAL_HOURS * HOUR_HEIGHT, label: '非公開' });
+                  } else {
+                    if (!locDay.am) locClosed.push({ ...getBlockPosition('9:10', '12:00'), label: '非公開' });
+                    if (!locDay.pm) locClosed.push({ ...getBlockPosition('13:00', '16:00'), label: '非公開' });
+                  }
+
                   return (
-                    <div key={dateStr} className={`relative border-r border-gray-100 ${isBlocked ? 'bg-gray-50' : ''}`} style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
+                    <div key={dateStr} className={`relative border-r border-gray-100 ${fullyClosed ? 'bg-gray-50' : ''}`} style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
                       {/* 時間グリッド線 */}
                       {timeLabels.slice(0, -1).map((hour) => (
                         <div key={hour} className="absolute w-full border-t border-gray-100 pointer-events-none" style={{ top: `${(hour - TIMELINE_START) * HOUR_HEIGHT}px` }} />
                       ))}
 
-                      {/* 3小列（休業日でも予約があれば表示する） */}
-                      {(!isBlocked || dayReservations.length > 0) && (
+                      {/* 3小列（完全休みの日でも予約があれば表示する） */}
+                      {(!fullyClosed || dayReservations.length > 0) && (
                         <div className="grid grid-cols-3 h-full">
-                          {renderSubColumn(studio, blockedEntries)}
-                          {renderSubColumn(location)}
+                          {renderSubColumn(studio, blockedEntries, studioClosed)}
+                          {renderSubColumn(location, undefined, locClosed)}
                           {renderSubColumn(visit)}
                         </div>
                       )}
 
-                      {/* 終日ブロック表示（予約が無い休業日のみ中央表示） */}
-                      {isBlocked && dayReservations.length === 0 && (
+                      {/* 終日ブロック表示（予約が無い完全休みの日のみ中央表示） */}
+                      {fullyClosed && dayReservations.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center z-10">
                           <div className="bg-gray-200/60 rounded-lg px-3 py-2 text-center">
                             <p className="text-xs font-medium text-gray-500">予約不可</p>
@@ -445,8 +474,8 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                           </div>
                         </div>
                       )}
-                      {/* 予約がある休業日は上部に休業ラベルを小さく表示 */}
-                      {isBlocked && dayReservations.length > 0 && (
+                      {/* 予約がある完全休みの日は上部に休業ラベルを小さく表示 */}
+                      {fullyClosed && dayReservations.length > 0 && (
                         <div className="absolute top-0.5 left-0.5 z-10 bg-gray-200/70 rounded px-1.5 py-0.5 pointer-events-none">
                           <p className="text-[9px] font-medium text-gray-500">休業日{blockedDateMap.get(dateStr) ? `（${blockedDateMap.get(dateStr)}）` : ''}</p>
                         </div>
@@ -501,6 +530,10 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
               const isSaturday = weekday === 6;
               const isBlocked = blockedDateMap.has(dateStr);
               const isHoliday = holidayDateSet.has(dateStr);
+              const mLocDay = locShootDayMap.get(dateStr);
+              const mLocOpen = !!mLocDay && (mLocDay.am || mLocDay.pm);
+              // スタジオ休業かつロケ非公開＝何も解放していない日（完全休み）だけ背景をグレーにする
+              const fullyClosed = isBlocked && !mLocOpen;
               const partialBlocked = blockedTimeSlots[dateStr];
 
               type CalItem = { kind: 'reservation'; time: string; r: Reservation } | { kind: 'blocked'; time: string; reason: string };
@@ -515,7 +548,7 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                 <div
                   key={day}
                   className={`border-b border-r border-gray-100 min-h-24 p-1.5
-                    ${isBlocked ? 'bg-gray-100' : isToday ? 'bg-brand-light' : ''}`}
+                    ${fullyClosed ? 'bg-gray-100' : isToday ? 'bg-brand-light' : ''}`}
                 >
                   <div className="flex items-center gap-1">
                     <div
@@ -527,12 +560,15 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                     {isBlocked && <span className="text-[10px] text-red-500 font-medium">休</span>}
                     {isHoliday && !isBlocked && <span className="text-[10px] text-green-600 font-medium">祝</span>}
                   </div>
-                  {isBlocked && dayReservations.length === 0 ? (
+                  {fullyClosed && dayReservations.length === 0 ? (
                     <p className="text-[10px] text-gray-400 mt-1 text-center">予約不可{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
                   ) : (
                     <div className="space-y-0.5 mt-0.5">
                       {isBlocked && (
-                        <p className="text-[10px] text-gray-400 truncate">休業日{blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}</p>
+                        <p className="text-[10px] text-gray-400 truncate">
+                          {/* スタジオ休業でもロケ公開日なら「ロケのみ」と分かるようにする */}
+                          {mLocOpen ? 'スタジオ休業（ロケのみ）' : `休業日${blockedDateMap.get(dateStr) ? ` - ${blockedDateMap.get(dateStr)}` : ''}`}
+                        </p>
                       )}
                       {calItems.slice(0, 5).map((item, idx) =>
                         item.kind === 'blocked' ? (

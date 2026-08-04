@@ -1,4 +1,4 @@
-import { getReservations, getCustomers, getHolidays, getBlockedSlots } from '@/lib/db';
+import { getReservations, getCustomers, getHolidays, getBlockedSlots, getLocationShootDays } from '@/lib/db';
 import TimelineCalendar from './TimelineCalendar';
 
 export const dynamic = 'force-dynamic';
@@ -12,11 +12,12 @@ export default async function TimelinePage() {
   const fromDate = new Date(now); fromDate.setMonth(fromDate.getMonth() - 3);
   const toDate = new Date(now); toDate.setMonth(toDate.getMonth() + 9);
 
-  const [reservations, customers, holidays, blockedSlots] = await Promise.all([
+  const [reservations, customers, holidays, blockedSlots, locShootDays] = await Promise.all([
     getReservations({ fromDate: toDateStr(fromDate), toDate: toDateStr(toDate) }).catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getHolidays().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getBlockedSlots().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getLocationShootDays().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
   ]);
 
   const customerMap = Object.fromEntries(customers.map((c) => [c.id, c.name]));
@@ -60,6 +61,7 @@ export default async function TimelinePage() {
         blockedDates={Object.fromEntries(blockedDates)}
         blockedTimeSlots={Object.fromEntries(Array.from(blockedTimeSlots.entries()).map(([k, v]) => [k, Object.fromEntries(v)]))}
         holidayDates={Array.from(holidayDates)}
+        locationShootDays={Object.fromEntries(locShootDays.map((d) => [d.date, { am: d.am, pm: d.pm }]))}
       />
     </div>
   );
