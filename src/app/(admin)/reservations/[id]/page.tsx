@@ -11,7 +11,10 @@ import {
   getHolidays,
   getCustomers,
   getReservations,
+  getReservationPhotos,
+  RESERVATION_PHOTO_BUCKET,
 } from '@/lib/db';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { buildRepeaterIndex } from '@/lib/repeater';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
@@ -75,6 +78,21 @@ export default async function ReservationDetailPage({
       return { id: order.id, orderDate: order.orderDate, isPaid: order.isPaid, total, itemCount: items.length, items: itemDetails };
     });
 
+  // 予約に紐づく画像（非公開バケットのため署名付きURLで渡す。有効期限1時間）
+  const photoRows = await getReservationPhotos(reservation.id).catch((e) => {
+    console.error('[DB Error]', e.message ?? e);
+    return [];
+  });
+  const adminStorage = createAdminClient().storage.from(RESERVATION_PHOTO_BUCKET);
+  const photos = (
+    await Promise.all(
+      photoRows.map(async (p) => {
+        const { data } = await adminStorage.createSignedUrl(p.path, 60 * 60);
+        return data?.signedUrl ? { id: p.id, fileName: p.fileName, url: data.signedUrl } : null;
+      })
+    )
+  ).filter((p): p is { id: string; fileName: string | undefined; url: string } => p !== null);
+
   return (
     <ReservationDetail
       reservation={reservation}
@@ -88,6 +106,7 @@ export default async function ReservationDetailPage({
       linkedOrders={linkedOrders}
       holidays={holidays}
       isRepeater={isRepeater}
+      photos={photos}
     />
   );
 }

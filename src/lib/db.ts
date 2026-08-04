@@ -14,6 +14,7 @@ import type {
   SalesRecord,
   Holiday,
   BlockedSlot,
+  ReservationPhoto,
 } from '@/types';
 
 // ============================================================
@@ -817,6 +818,59 @@ export async function getSalesRecords(): Promise<SalesRecord[]> {
     amount: r.amount,
     staffId: r.staff_id,
   }));
+}
+
+// ============================================================
+// 予約画像（storage バケット reservation-photos と対で管理）
+// ============================================================
+
+export const RESERVATION_PHOTO_BUCKET = 'reservation-photos';
+
+export async function getReservationPhotos(reservationId: string): Promise<ReservationPhoto[]> {
+  const { data, error } = await supabase()
+    .from('reservation_photos')
+    .select('id, reservation_id, path, file_name, created_at')
+    .eq('reservation_id', reservationId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    reservationId: r.reservation_id as string,
+    path: r.path as string,
+    fileName: (r.file_name as string) ?? undefined,
+    createdAt: (r.created_at as string) ?? undefined,
+  }));
+}
+
+export async function addReservationPhoto(photo: { reservationId: string; path: string; fileName?: string }): Promise<void> {
+  const { error } = await supabase().from('reservation_photos').insert({
+    reservation_id: photo.reservationId,
+    path: photo.path,
+    file_name: photo.fileName ?? null,
+  });
+  if (error) throw error;
+}
+
+export async function getReservationPhotoById(photoId: string): Promise<ReservationPhoto | null> {
+  const { data, error } = await supabase()
+    .from('reservation_photos')
+    .select('id, reservation_id, path, file_name, created_at')
+    .eq('id', photoId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    reservationId: data.reservation_id as string,
+    path: data.path as string,
+    fileName: (data.file_name as string) ?? undefined,
+    createdAt: (data.created_at as string) ?? undefined,
+  };
+}
+
+export async function deleteReservationPhoto(photoId: string): Promise<void> {
+  const { error } = await supabase().from('reservation_photos').delete().eq('id', photoId);
+  if (error) throw error;
 }
 
 // ============================================================
