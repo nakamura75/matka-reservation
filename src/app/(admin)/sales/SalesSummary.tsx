@@ -220,30 +220,41 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
         map[staffId].unitBreakdowns[role][unitPrice].count += 1;
         map[staffId].total += unitPrice;
       }
-      // オプション担当
+      // オプション担当。
+      // 数量>1のオプションは1人ずつ担当を分けられる（キー: 行ID / 行ID#2 …）。
+      // #付きキーが1つも無い旧データは「1人がまとめて担当」として全数量分を計上する。
       const resOptions = optionsByReservation[r.id] ?? [];
       for (const ro of resOptions) {
-        const staffId = assignment.options?.[ro.id];
-        if (!staffId) continue;
-        if (!map[staffId]) {
-          map[staffId] = {
-            name: nameMap[staffId]?.name ?? staffId,
-            counts: emptyRoleCounts(),
-            amounts: emptyRoleCounts(),
-            unitBreakdowns: emptyRoleBreakdowns(),
-            total: 0,
-          };
+        const qty = Math.max(1, ro.quantity);
+        const unitKeys = Array.from({ length: qty }, (_, i) => (i === 0 ? ro.id : `${ro.id}#${i + 1}`));
+        const isLegacy = qty > 1 && unitKeys.slice(1).every((k) => assignment.options?.[k] === undefined);
+        const optUnitPrice = optionPriceMap[ro.optionId] ?? 0;
+        const entries: { staffId: string; amountBase: number }[] = isLegacy
+          ? (assignment.options?.[ro.id] ? [{ staffId: assignment.options[ro.id], amountBase: optUnitPrice * qty }] : [])
+          : unitKeys.flatMap((k) => {
+              const sid = assignment.options?.[k];
+              return sid ? [{ staffId: sid, amountBase: optUnitPrice }] : [];
+            });
+        for (const { staffId, amountBase } of entries) {
+          if (!map[staffId]) {
+            map[staffId] = {
+              name: nameMap[staffId]?.name ?? staffId,
+              counts: emptyRoleCounts(),
+              amounts: emptyRoleCounts(),
+              unitBreakdowns: emptyRoleBreakdowns(),
+              total: 0,
+            };
+          }
+          const unitPrice = Math.round(amountBase * multiplier);
+          const discounted = rate > 0;
+          map[staffId].counts.option += 1;
+          map[staffId].amounts.option += unitPrice;
+          if (!map[staffId].unitBreakdowns.option[unitPrice]) {
+            map[staffId].unitBreakdowns.option[unitPrice] = { count: 0, discounted };
+          }
+          map[staffId].unitBreakdowns.option[unitPrice].count += 1;
+          map[staffId].total += unitPrice;
         }
-        const optPrice = (optionPriceMap[ro.optionId] ?? 0) * ro.quantity;
-        const unitPrice = Math.round(optPrice * multiplier);
-        const discounted = rate > 0;
-        map[staffId].counts.option += 1;
-        map[staffId].amounts.option += unitPrice;
-        if (!map[staffId].unitBreakdowns.option[unitPrice]) {
-          map[staffId].unitBreakdowns.option[unitPrice] = { count: 0, discounted };
-        }
-        map[staffId].unitBreakdowns.option[unitPrice].count += 1;
-        map[staffId].total += unitPrice;
       }
     }
     return Object.values(map).sort((a, b) => b.total - a.total);

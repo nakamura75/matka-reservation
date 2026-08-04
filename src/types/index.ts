@@ -64,7 +64,9 @@ export interface StaffAssignment {
   assistant?: string;  // アシスタント担当 staffId
   hair?: string;       // ヘア担当 staffId
   makeup?: string;     // メイク担当 staffId
-  options?: Record<string, string>; // { reservationOptionId: staffId }
+  // { キー: staffId }。キーは1人目=reservationOptionId、2人目以降=`${reservationOptionId}#2` …
+  // （数量>1のオプションは1人ずつ担当を分けられる。#付きキーが無いデータは旧形式=まとめて担当）
+  options?: Record<string, string>;
 }
 
 // ============================================================

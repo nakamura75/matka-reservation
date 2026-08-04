@@ -268,11 +268,23 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   async function saveAssignment() {
     setAssignSaving(true);
     try {
+      // 数量>1のオプションは全人数分のキー（行ID / 行ID#2 …）を明示的に保存する。
+      // #付きキーの有無で売上集計側が新旧データ（まとめて担当/1人ずつ担当）を判別するため。
+      const options = { ...(assignment.options ?? {}) };
+      for (const o of currentOptions) {
+        const qty = Math.max(1, o.quantity);
+        for (let i = 0; i < qty; i++) {
+          const key = i === 0 ? o.id : `${o.id}#${i + 1}`;
+          if (options[key] === undefined) options[key] = '';
+        }
+      }
+      const normalized = { ...assignment, options };
       await fetch(`/api/reservations/${reservation.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffAssignment: JSON.stringify(assignment) }),
+        body: JSON.stringify({ staffAssignment: JSON.stringify(normalized) }),
       });
+      setAssignment(normalized);
       router.refresh();
     } finally {
       setAssignSaving(false);
@@ -1076,32 +1088,41 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 </div>
               )}
 
-              {/* オプション（各自選択、割引100%時は¥0表示） */}
-              {currentOptions.map((o) => {
-                const optionAmount = Math.round(o.price * o.quantity * (1 - discountRate / 100));
-                return (
-                <div key={o.id} className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-700">{o.optionName}</p>
-                    <p className="text-xs text-gray-400">{formatCurrency(optionAmount)}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
-                  </div>
-                  <select
-                    value={assignment.options?.[o.id] ?? ''}
-                    onChange={(e) =>
-                      setAssignment((a) => ({
-                        ...a,
-                        options: { ...(a.options ?? {}), [o.id]: e.target.value || '' },
-                      }))
-                    }
-                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
-                  >
-                    <option value="">未選択</option>
-                    {allStaff.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                );
+              {/* オプション（各自選択、割引100%時は¥0表示）。
+                  数量が複数の場合は1人ずつ担当を分けられるよう行を分割する。
+                  キーは1人目=行ID、2人目以降=`行ID#2`… とし、旧データ（行IDのみ）とも互換 */}
+              {currentOptions.flatMap((o) => {
+                const qty = Math.max(1, o.quantity);
+                const unitAmount = Math.round(o.price * (1 - discountRate / 100));
+                return Array.from({ length: qty }, (_, i) => {
+                  const key = i === 0 ? o.id : `${o.id}#${i + 1}`;
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-700">
+                          {o.optionName}
+                          {qty > 1 && <span className="text-xs text-gray-400 ml-1">（{i + 1}人目）</span>}
+                        </p>
+                        <p className="text-xs text-gray-400">{formatCurrency(unitAmount)}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
+                      </div>
+                      <select
+                        value={assignment.options?.[key] ?? ''}
+                        onChange={(e) =>
+                          setAssignment((a) => ({
+                            ...a,
+                            options: { ...(a.options ?? {}), [key]: e.target.value || '' },
+                          }))
+                        }
+                        className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                      >
+                        <option value="">未選択</option>
+                        {allStaff.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                });
               })}
 
               <button
