@@ -580,10 +580,11 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                             key={item.r.id}
                             href={`/reservations/${item.r.id}`}
                             className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded truncate hover:opacity-80 transition-opacity
-                              ${item.r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
+                              ${item.r.shootType === 'location' ? 'bg-emerald-100 text-emerald-800' :
+                                item.r.status === 'キャンセル' ? 'bg-gray-50 text-gray-400' :
                                 item.r.status === '完了' ? 'bg-green-50 text-green-700' :
                                 item.r.status === '予約確定' ? 'bg-blue-50 text-blue-700' :
-                                item.r.status === '見学' ? (item.r.shootType === 'location' ? 'bg-emerald-50 text-emerald-700' : 'bg-purple-50 text-purple-700') :
+                                item.r.status === '見学' ? 'bg-purple-50 text-purple-700' :
                                 'bg-yellow-50 text-yellow-700'}`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${blockDot(item.r)}`} />
