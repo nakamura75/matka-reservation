@@ -3,17 +3,12 @@ import TimelineCalendar from './TimelineCalendar';
 
 export const dynamic = 'force-dynamic';
 
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 export default async function TimelinePage() {
-  const now = new Date();
-  const fromDate = new Date(now); fromDate.setMonth(fromDate.getMonth() - 3);
-  const toDate = new Date(now); toDate.setMonth(toDate.getMonth() + 9);
-
+  // 予約は全期間を取得する。以前は「3ヶ月前〜9ヶ月先」に絞っていたが、
+  // 過去月のカレンダーが空に見える（5月より前が表示されない等）ため撤廃。
+  // 件数規模（数百〜数千件）では性能上の問題はない。
   const [reservations, customers, holidays, blockedSlots, locShootDays] = await Promise.all([
-    getReservations({ fromDate: toDateStr(fromDate), toDate: toDateStr(toDate) }).catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
+    getReservations().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getCustomers().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getHolidays().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
     getBlockedSlots().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; }),
