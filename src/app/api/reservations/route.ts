@@ -39,10 +39,12 @@ import {
   getPlans,
   getOptions,
   getCustomers,
+  getLocationShootDays,
 } from '@/lib/db';
 import { sendLinePush, buildTentativeMessage, buildLocationVisitTentativeMessage, buildLocationShootTentativeMessage, type LineMessage } from '@/lib/line';
-import { locationPlanPrice, locationShootTotal } from '@/lib/location';
+import { locationPlanPrice, locationShootTotal, locationSlotHalf } from '@/lib/location';
 import { getActiveCampaign, isCampaignScene } from '@/lib/campaign';
+import { BOOKING_DAYS } from '@/lib/constants';
 import { generateId, generateReservationNumber } from '@/lib/utils';
 import type { ReservationFormData, Reservation } from '@/types';
 
@@ -92,6 +94,10 @@ export async function POST(req: NextRequest) {
     const isVisit = body.isVisit === true;
     const shootType: 'studio' | 'location' = body.shootType === 'location' ? 'location' : 'studio';
     const isLocation = shootType === 'location';
+    // 管理画面（新規予約）はログイン必須なので、認証済みならスタッフの手入力とみなす。
+    // スタッフは撮影可能日に登録されていない日にもロケ予約を入れられる。
+    const { data: { user: staffUser } } = await (await createClient()).auth.getUser();
+    const isStaff = !!staffUser;
     // ロケ本番はプラン未確定で受け付ける（プラン必須はスタジオ撮影のみ）
     const needsPlan = !isVisit && !isLocation;
 
@@ -108,17 +114,34 @@ export async function POST(req: NextRequest) {
       }
       // 日付の範囲チェックは JST 基準の YYYY-MM-DD 文字列比較で行う。
       // （サーバーはUTC稼働のため new Date() ベースだと境界がJSTと最大1日ズレ、
-      //   空き枠カレンダー[JST]では選べる90日目ちょうどの日を弾く不具合が出る。
+      //   空き枠カレンダー[JST]では選べる最終日ちょうどの日を弾く不具合が出る。
       //   空き枠生成 lib/slots.ts と同じJST基準に揃える）
       const jstDateStr = (ms: number) => new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const nowMs = Date.now();
-      const todayJST = jstDateStr(nowMs);                          // JSTの今日
-      const maxJST = jstDateStr(nowMs + 90 * 24 * 60 * 60 * 1000); // JSTの90日後（カレンダーの最終日と一致）
+      const todayJST = jstDateStr(nowMs); // JSTの今日
       if (body.date < todayJST) {
         return NextResponse.json({ error: '過去の日付には予約できません' }, { status: 400 });
       }
-      if (body.date > maxJST) {
-        return NextResponse.json({ error: '予約は90日先までです' }, { status: 400 });
+      // 先の日付の上限はスタジオ撮影のみ。
+      // ロケは設定「撮影可能日」に登録された日だけがフォームに出るため上限を設けず、
+      // 登録されていれば90日より先（七五三の繁忙期など）でも受け付ける。
+      if (!isLocation) {
+        const maxJST = jstDateStr(nowMs + BOOKING_DAYS * 24 * 60 * 60 * 1000); // 空き枠カレンダーの最終日と一致
+        if (body.date > maxJST) {
+          return NextResponse.json({ error: `予約は${BOOKING_DAYS}日先までです` }, { status: 400 });
+        }
+      }
+      // ロケ本番は「撮影可能日として公開されている枠」だけ受け付ける（フォーム迂回POST／
+      // フォームを開いたまま枠が閉じられたケースの対策）。管理画面の手入力は対象外。
+      if (isLocation && !isStaff) {
+        const half = locationSlotHalf(body.timeSlot);
+        const day = (await getLocationShootDays()).find((d) => d.date === body.date);
+        if (!half || !day || !day[half]) {
+          return NextResponse.json(
+            { error: 'この日時は現在受付しておりません。カレンダーから受付中の日時をお選びください。' },
+            { status: 400 },
+          );
+        }
       }
       // キャンペーン予約はサーバ側でも「期間内＆許可枠のみ」を強制（フォーム迂回POST対策）
       if (isCampaignScene(body.scene)) {

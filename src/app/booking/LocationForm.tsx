@@ -7,14 +7,13 @@ import { QRCodeSVG } from 'qrcode.react';
 import type { Option, Plan } from '@/types';
 import { formatCurrency, isWeekend } from '@/lib/utils';
 import { LINE_OA_ID } from '@/lib/constants';
+import { LOC_SHOOT_TIMES } from '@/lib/location';
 
 // ============================================================
 // 定数
 // ============================================================
-const SHOOT_TIMES = [
-  { value: '9:10', half: 'am' as const, label: '午前の部　9:10〜12:00' },
-  { value: '13:00', half: 'pm' as const, label: '午後の部　13:00〜16:00' },
-];
+// 撮影枠（9:10=午前 / 13:00=午後）はサーバーの受付チェックと同じ定義を使う
+const SHOOT_TIMES = LOC_SHOOT_TIMES;
 // 撮影可能日は午前(am)/午後(pm)を個別に公開できる（東山荘が半日しか押さえられない日に対応）
 type ShootDayHalves = { am: boolean; pm: boolean };
 const VISIT_TIME = '16:30';        // 見学はWEB予約だと16:30固定
