@@ -536,6 +536,7 @@ function bankTransferBlock(): Record<string, unknown> {
       textComponent('名古屋銀行 堀田支店', { size: 'sm', color: DARK_TEXT, margin: 'xs', weight: 'bold' }),
       textComponent('普通 5022325', { size: 'sm', color: DARK_TEXT, margin: 'xs', weight: 'bold' }),
       textComponent('※ お振込は撮影日の2週間前までにお願いいたします。', { size: 'xxs', color: '#FF6B35', margin: 'sm' }),
+      textComponent('お手数ですが、お振込後LINEにて振り込み完了の旨お知らせいただきますようお願いいたします。', { size: 'xxs', color: '#FF6B35', margin: 'xs', wrap: true }),
     ],
     backgroundColor: '#EBF7ED',
     cornerRadius: '8px',
