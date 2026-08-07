@@ -40,6 +40,7 @@ import {
   getOptions,
   getCustomers,
   getLocationShootDays,
+  getLocationVisitDays,
 } from '@/lib/db';
 import { sendLinePush, buildTentativeMessage, buildLocationVisitTentativeMessage, buildLocationShootTentativeMessage, type LineMessage } from '@/lib/line';
 import { locationPlanPrice, locationShootTotal, locationSlotHalf } from '@/lib/location';
@@ -101,6 +102,34 @@ export async function POST(req: NextRequest) {
     // ロケ本番はプラン未確定で受け付ける（プラン必須はスタジオ撮影のみ）
     const needsPlan = !isVisit && !isLocation;
 
+    // 日付の範囲チェックは JST 基準の YYYY-MM-DD 文字列比較で行う。
+    // （サーバーはUTC稼働のため new Date() ベースだと境界がJSTと最大1日ズレ、
+    //   空き枠カレンダー[JST]では選べる最終日ちょうどの日を弾く不具合が出る。
+    //   空き枠生成 lib/slots.ts と同じJST基準に揃える）
+    const jstDateStr = (ms: number) => new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const nowMs = Date.now();
+    const todayJST = jstDateStr(nowMs); // JSTの今日
+
+    // --- 入力バリデーション（ロケの見学） ---
+    // 見学は「見学可能日」に登録された日だけ受け付ける（撮影可能日チェックと同じ考え方。
+    // フォーム迂回POST／フォームを開いたまま枠が閉じられたケースの対策）。
+    // 管理画面の手入力は対象外。16:30枠の重複は後段の checkVisitSlotConflict で確認する。
+    if (isVisit && isLocation && !isStaff) {
+      if (!body.date || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+        return NextResponse.json({ error: '日付が不正です' }, { status: 400 });
+      }
+      if (body.date < todayJST) {
+        return NextResponse.json({ error: '過去の日付には予約できません' }, { status: 400 });
+      }
+      const visitDays = await getLocationVisitDays();
+      if (!visitDays.includes(body.date)) {
+        return NextResponse.json(
+          { error: 'この日は見学を受け付けておりません。カレンダーから受付中の日をお選びください。' },
+          { status: 400 },
+        );
+      }
+    }
+
     // --- 入力バリデーション（見学以外） ---
     if (!isVisit) {
       if (!body.date || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
@@ -112,13 +141,6 @@ export async function POST(req: NextRequest) {
       if ((needsPlan && !body.planId) || !body.customerName || !body.phone) {
         return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
       }
-      // 日付の範囲チェックは JST 基準の YYYY-MM-DD 文字列比較で行う。
-      // （サーバーはUTC稼働のため new Date() ベースだと境界がJSTと最大1日ズレ、
-      //   空き枠カレンダー[JST]では選べる最終日ちょうどの日を弾く不具合が出る。
-      //   空き枠生成 lib/slots.ts と同じJST基準に揃える）
-      const jstDateStr = (ms: number) => new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const nowMs = Date.now();
-      const todayJST = jstDateStr(nowMs); // JSTの今日
       if (body.date < todayJST) {
         return NextResponse.json({ error: '過去の日付には予約できません' }, { status: 400 });
       }
