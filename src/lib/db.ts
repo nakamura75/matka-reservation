@@ -982,6 +982,24 @@ export async function removeLocationVisitBlockedDate(date: string): Promise<void
   if (error) throw error;
 }
 
+// 見学可能日（ホワイトリスト方式）。登録された日だけ予約フォームの見学カレンダーで選べる。
+// 撮影可能日(location_shoot_days)と同じ考え方で、NG日方式(location_visit_blocked_dates)から移行した。
+export async function getLocationVisitDays(): Promise<string[]> {
+  const { data, error } = await supabase().from('location_visit_days').select('date').order('date');
+  if (error) throw error;
+  return (data ?? []).map((r) => r.date as string);
+}
+
+export async function addLocationVisitDay(date: string): Promise<void> {
+  const { error } = await supabase().from('location_visit_days').upsert({ date }, { onConflict: 'date' });
+  if (error) throw error;
+}
+
+export async function removeLocationVisitDay(date: string): Promise<void> {
+  const { error } = await supabase().from('location_visit_days').delete().eq('date', date);
+  if (error) throw error;
+}
+
 export async function getLocationBookedShoots(): Promise<{ date: string; timeSlot: string; half: 'am' | 'pm' }[]> {
   const { data, error } = await supabase()
     .from('reservations')

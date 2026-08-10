@@ -97,9 +97,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   // 本番撮影日
   const [shootDate, setShootDate] = useState('');
   const [shootTime, setShootTime] = useState('');
-  // 撮影可能日（設定で登録された日。午前/午後を個別公開）／見学NG日／本番の予約済み枠（date|timeSlot）
+  // 撮影可能日（設定で登録された日。午前/午後を個別公開）／見学可能日／本番の予約済み枠（date|timeSlot）
   const [shootDays, setShootDays] = useState<Record<string, ShootDayHalves>>({});
-  const [visitNgDates, setVisitNgDates] = useState<Set<string>>(new Set());
+  const [visitOpenDates, setVisitOpenDates] = useState<Set<string>>(new Set());
   const [bookedShoots, setBookedShoots] = useState<Set<string>>(new Set());
   // カレンダー表示月（初期は今月。撮影可能日が読み込めたら最も近い日へ移動）
   const [calYM, setCalYM] = useState(() => {
@@ -192,9 +192,9 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
         }
       })
       .catch(() => {});
-    fetch('/api/location/visit-ng')
+    fetch('/api/location/visit-days')
       .then((r) => r.json())
-      .then((d) => setVisitNgDates(new Set(d.data ?? [])))
+      .then((d) => setVisitOpenDates(new Set(d.data ?? [])))
       .catch(() => {});
     fetch('/api/location/booked-shoots')
       .then((r) => r.json())
@@ -319,7 +319,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     setChildrenDetails((prev) => { const next = [...prev]; next[i] = { ...next[i], [field]: value }; return next; });
   }
 
-  const visitValid = visitDate && visitDate >= today && (!maxVisitDate || visitDate <= maxVisitDate) && visitStatus === 'free' && !visitNgDates.has(visitDate);
+  const visitValid = visitDate && visitDate >= today && (!maxVisitDate || visitDate <= maxVisitDate) && visitStatus === 'free' && visitOpenDates.has(visitDate);
   // 日程が揃ったらプラン選択を表示。次へ進むにはプラン選択も必須。
   // 見学する場合は見学日まで、見学しない場合は本番撮影日＋時間帯のみで確定とみなす。
   const datesValid = !!shootDate && !!shootTime && (wantsVisit === 'no' ? true : wantsVisit === 'yes' && !!visitValid);
@@ -653,7 +653,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
                 {calendarGrid(
                   visitCalYM,
                   setVisitCalYM,
-                  (d) => d >= today && (!maxVisitDate || d <= maxVisitDate) && !takenVisitDates.has(d) && !visitNgDates.has(d),
+                  (d) => d >= today && (!maxVisitDate || d <= maxVisitDate) && !takenVisitDates.has(d) && visitOpenDates.has(d),
                   visitDate,
                   setVisitDate,
                 )}

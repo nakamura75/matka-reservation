@@ -957,7 +957,7 @@ function HolidaysTab() {
 }
 
 // ============================================================
-// 稼働日タブ（ロケ専用：撮影可能日 / 見学NG日）
+// 稼働日タブ（ロケ専用：撮影可能日 / 見学可能日）
 // ============================================================
 function MiniCalendar({ marked, onToggle, accent }: {
   marked: Set<string>;
@@ -1127,20 +1127,20 @@ function ShootDayCalendar({ days, onToggle }: {
 
 function AvailabilityTab() {
   const [shootDays, setShootDays] = useState<Record<string, ShootDayHalves>>({});
-  const [ngDays, setNgDays] = useState<Set<string>>(new Set());
+  const [visitDays, setVisitDays] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/location/shoot-days').then((r) => r.json()).catch(() => ({ data: [] })),
-      fetch('/api/location/visit-ng').then((r) => r.json()).catch(() => ({ data: [] })),
+      fetch('/api/location/visit-days').then((r) => r.json()).catch(() => ({ data: [] })),
     ]).then(([a, b]) => {
       const map: Record<string, ShootDayHalves> = {};
       for (const d of (a.data ?? []) as { date: string; am?: boolean; pm?: boolean }[]) {
         map[d.date] = { am: d.am !== false, pm: d.pm !== false };
       }
       setShootDays(map);
-      setNgDays(new Set(b.data ?? []));
+      setVisitDays(new Set(b.data ?? []));
       setLoading(false);
     });
   }, []);
@@ -1168,12 +1168,13 @@ function AvailabilityTab() {
     } catch { /* noop */ }
   }
 
-  async function toggleNg(date: string) {
-    const has = ngDays.has(date);
-    setNgDays((prev) => { const n = new Set(prev); if (has) n.delete(date); else n.add(date); return n; });
+  // 見学可能日のON/OFF（クリックで即保存。撮影可能日と同じ操作感）
+  async function toggleVisitDay(date: string) {
+    const has = visitDays.has(date);
+    setVisitDays((prev) => { const n = new Set(prev); if (has) n.delete(date); else n.add(date); return n; });
     try {
-      if (has) await fetch(`/api/location/visit-ng?date=${date}`, { method: 'DELETE' });
-      else await fetch('/api/location/visit-ng', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) });
+      if (has) await fetch(`/api/location/visit-days?date=${date}`, { method: 'DELETE' });
+      else await fetch('/api/location/visit-days', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) });
     } catch { /* noop */ }
   }
 
@@ -1191,9 +1192,12 @@ function AvailabilityTab() {
           <ShootDayCalendar days={shootDays} onToggle={toggleShootHalf} />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">見学NG日</h2>
-          <p className="text-xs text-gray-400 mb-3">見学を受け付けない日を選択（赤）。予約フォームの見学カレンダーで選べなくなります。</p>
-          <MiniCalendar marked={ngDays} onToggle={toggleNg} accent="red" />
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">見学可能日</h2>
+          <p className="text-xs text-gray-400 mb-3">
+            見学を受け付ける日を選択（緑）。<strong>緑にした日だけ</strong>が予約フォームの見学カレンダーで選べます。
+            撮影可能日と同じで、90日より先の日も開けられます。クリックするとすぐ保存されます。
+          </p>
+          <MiniCalendar marked={visitDays} onToggle={toggleVisitDay} accent="emerald" />
         </div>
       </div>
       <p className="text-xs text-gray-400">※ 撮影の時間帯は{LOC_SHOOT_TIMES.map((t) => `${t.half === 'am' ? '午前の部' : '午後の部'} ${t.value}〜${t.end}`).join('／')} で固定です。</p>
@@ -1204,7 +1208,7 @@ function AvailabilityTab() {
 // ============================================================
 // メインコンポーネント
 // ============================================================
-// スタジオは休日管理、ロケは稼働日（撮影可能日 / 見学NG日）をタブに持つ
+// スタジオは休日管理、ロケは稼働日（撮影可能日 / 見学可能日）をタブに持つ
 const STUDIO_SETTINGS_TABS: { key: Tab; label: string }[] = [
   { key: 'plans', label: 'プラン' },
   { key: 'options', label: 'オプション' },
