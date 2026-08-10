@@ -1,5 +1,6 @@
 import { getReservations, getStaff, getPlans, getOptions, getReservationOptions, getOrders, getOrderItems, getProducts, getHolidays } from '@/lib/db';
 import { isWeekend } from '@/lib/utils';
+import { resolveOptionPrice } from '@/lib/reservation-options';
 import SalesSummary from './SalesSummary';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export default async function SalesPage() {
   // 予約IDごとのオプション合計
   const optionTotalByReservation: Record<string, number> = {};
   for (const ro of reservationOptions) {
-    const price = optionPriceMap[ro.optionId] ?? 0;
+    const price = resolveOptionPrice(ro, optionPriceMap[ro.optionId] ?? 0);
     optionTotalByReservation[ro.reservationId] = (optionTotalByReservation[ro.reservationId] ?? 0) + price * ro.quantity;
   }
 

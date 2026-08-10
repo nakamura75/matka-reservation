@@ -9,6 +9,7 @@ import {
   getProducts,
 } from '@/lib/db';
 import { formatDate } from '@/lib/utils';
+import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
 import PrintButton from './PrintButton';
 
 export const dynamic = 'force-dynamic';
@@ -40,10 +41,14 @@ export default async function ReceiptPage({
 
   const plan = plans.find((p) => p.id === reservation.planId);
 
-  const optionsWithInfo = reservationOptions.map((ro) => {
-    const opt = options.find((o) => o.id === ro.optionId);
-    return { ...ro, optionName: opt?.name ?? '', price: opt?.price ?? 0 };
-  });
+  // 領収書はお客様向けなので、プラン込み(¥0)の「ご主役のお支度」は明細に出さない
+  // （日本髪など課金される支度は通常のオプションとして残す）
+  const optionsWithInfo = reservationOptions
+    .map((ro) => {
+      const opt = options.find((o) => o.id === ro.optionId);
+      return { ...ro, optionName: opt?.name ?? '', price: resolveOptionPrice(ro, opt?.price ?? 0) };
+    })
+    .filter((o) => !isPlanIncludedPrep(o, o.price));
 
   // この予約に紐づく注文の商品明細
   const productMap = Object.fromEntries(products.map((p) => [p.id, p]));

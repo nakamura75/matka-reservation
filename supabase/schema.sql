@@ -130,7 +130,11 @@ CREATE TABLE reservation_options (
   reservation_id TEXT REFERENCES reservations(id) ON DELETE CASCADE,
   option_id TEXT REFERENCES options(id),
   quantity INTEGER NOT NULL DEFAULT 1,
-  note TEXT
+  note TEXT,
+  -- この予約での単価。NULL ならオプションマスターの価格を使う
+  unit_price INTEGER,
+  -- ご主役のお子様のお支度の行（管理画面のみ表示・LINE/領収書からは除外）
+  is_main_prep BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE INDEX idx_reservation_options_reservation_id ON reservation_options(reservation_id);

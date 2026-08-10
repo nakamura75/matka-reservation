@@ -12,6 +12,21 @@ export const LOC_INSURANCE = 5500;         // キャンセル保険
 export const LOC_VISIT_TIME = '16:30';     // 見学の固定時刻（WEB予約）
 
 /**
+ * ロケの担当割り当て内訳（税込）。スタジオの PLAN_STAFF_BREAKDOWN とは別体系で、
+ * 着付け・キャンセル保険の担当がある。
+ * insurance は「加入する」のときだけ計上し、割引対象外（合計の扱いと揃える）。
+ * photo〜kitsuke の合計 61,000 で、残りはベーシックプランの店舗取り分。
+ */
+export const LOC_STAFF_BREAKDOWN = {
+  photo: 33000,
+  assistant: 4400,
+  hair: 6600,
+  makeup: 6600,
+  kitsuke: 11000,
+  insurance: LOC_INSURANCE,
+} as const;
+
+/**
  * ロケ本番の撮影枠。timeSlot と「撮影可能日」の午前(am)/午後(pm)フラグの対応を1か所で持つ。
  * 予約フォームの時間帯ボタンと、サーバー側の受付チェックの両方がこれを見る。
  */

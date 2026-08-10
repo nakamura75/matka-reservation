@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS "reservation_options" (
   "option_id" text,
   "quantity" integer NOT NULL,
   "note" text,
+  "unit_price" integer,
+  "is_main_prep" boolean NOT NULL DEFAULT false,
   PRIMARY KEY ("id")
 );
 

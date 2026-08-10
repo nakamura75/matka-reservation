@@ -5,6 +5,8 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useMode } from '@/components/layout/ModeProvider';
 import type { Reservation, Staff, Order, OrderItem, Holiday, ReservationOption } from '@/types';
 import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
+import { LOC_STAFF_BREAKDOWN } from '@/lib/location';
+import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
 import { isWeekend } from '@/lib/utils';
 
 function isHolidayOrWeekend(dateStr: string, holidayDates: Set<string>): boolean {
@@ -23,18 +25,22 @@ interface Props {
   optionPriceMap: Record<string, number>;
 }
 
-const ROLES = ['photo', 'assistant', 'hair', 'makeup', 'option'] as const;
-type Role = typeof ROLES[number];
+// 表示する役割の列。ロケは着付け・キャンセル保険の担当があるためスタジオより多い
+const STUDIO_ROLES = ['photo', 'assistant', 'hair', 'makeup', 'option'] as const;
+const LOC_ROLES = ['photo', 'assistant', 'hair', 'makeup', 'kitsuke', 'insurance', 'option'] as const;
+type Role = typeof LOC_ROLES[number];
 
 const ROLE_LABEL: Record<Role, string> = {
   photo: 'フォト',
   assistant: 'アシスタント',
   hair: 'ヘア',
   makeup: 'メイク',
+  kitsuke: '着付け',
+  insurance: 'キャンセル保険',
   option: 'オプション',
 };
 
-function parseAssignment(json?: string): Partial<Record<'photo' | 'assistant' | 'hair' | 'makeup', string>> & { options?: Record<string, string> } {
+function parseAssignment(json?: string): Partial<Record<Exclude<Role, 'option'>, string>> & { options?: Record<string, string> } {
   if (!json) return {};
   try { return JSON.parse(json); } catch { return {}; }
 }
@@ -52,6 +58,7 @@ type TaxMode = 'included' | 'excluded';
 export default function SalesSummary({ reservations: allReservations, staff, orders: allOrders, holidays, reservationOptions, optionPriceMap }: Props) {
   const mode = useMode();
   const isLoc = mode === 'location';
+  const roles: readonly Role[] = isLoc ? LOC_ROLES : STUDIO_ROLES;
 
   // 撮影区分で絞り込み（以降の集計はこの絞り込み済みデータに対して行う）
   const shootTypeByRes = useMemo(() => {
@@ -182,8 +189,8 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
     return map;
   }, [reservationOptions]);
 
-  const emptyRoleCounts = (): Record<Role, number> => ({ photo: 0, assistant: 0, hair: 0, makeup: 0, option: 0 });
-  const emptyRoleBreakdowns = (): Record<Role, UnitBreakdown> => ({ photo: {}, assistant: {}, hair: {}, makeup: {}, option: {} });
+  const emptyRoleCounts = (): Record<Role, number> => ({ photo: 0, assistant: 0, hair: 0, makeup: 0, kitsuke: 0, insurance: 0, option: 0 });
+  const emptyRoleBreakdowns = (): Record<Role, UnitBreakdown> => ({ photo: {}, assistant: {}, hair: {}, makeup: {}, kitsuke: {}, insurance: {}, option: {} });
 
   // 予約リストから担当者別金額を集計する共通関数
   function calcByStaff(
@@ -193,13 +200,29 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
     const map: Record<string, StaffRow> = {};
     for (const r of targets) {
       const assignment = parseAssignment(r.staffAssignmentJson);
-      const planType = SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery';
-      const breakdown = PLAN_STAFF_BREAKDOWN[planType];
       const rate = (r as Reservation & { discountRate?: number }).discountRate ?? 0;
       const multiplier = 1 - rate / 100;
-      // プラン役割（photo/assistant/hair/makeup）
-      for (const role of (['photo', 'assistant', 'hair', 'makeup'] as const)) {
-        const staffId = assignment[role];
+      // プラン役割の単価。ロケはスタジオと別体系で、着付けがあり、
+      // キャンセル保険は加入時のみ・割引対象外（予約合計での扱いと揃える）。
+      const planRoles: { role: Role; price: number; discountable: boolean }[] =
+        r.shootType === 'location'
+          ? [
+              { role: 'photo', price: LOC_STAFF_BREAKDOWN.photo, discountable: true },
+              { role: 'assistant', price: LOC_STAFF_BREAKDOWN.assistant, discountable: true },
+              { role: 'hair', price: LOC_STAFF_BREAKDOWN.hair, discountable: true },
+              { role: 'makeup', price: LOC_STAFF_BREAKDOWN.makeup, discountable: true },
+              { role: 'kitsuke', price: LOC_STAFF_BREAKDOWN.kitsuke, discountable: true },
+              ...(r.cancelInsurance === '加入する'
+                ? [{ role: 'insurance' as Role, price: LOC_STAFF_BREAKDOWN.insurance, discountable: false }]
+                : []),
+            ]
+          : (['photo', 'assistant', 'hair', 'makeup'] as const).map((role) => ({
+              role: role as Role,
+              price: PLAN_STAFF_BREAKDOWN[SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery'][role],
+              discountable: true,
+            }));
+      for (const { role, price, discountable } of planRoles) {
+        const staffId = assignment[role as Exclude<Role, 'option'>];
         if (!staffId) continue;
         if (!map[staffId]) {
           map[staffId] = {
@@ -210,8 +233,8 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
             total: 0,
           };
         }
-        const unitPrice = Math.round(breakdown[role] * multiplier);
-        const discounted = rate > 0;
+        const unitPrice = discountable ? Math.round(price * multiplier) : price;
+        const discounted = discountable && rate > 0;
         map[staffId].counts[role] += 1;
         map[staffId].amounts[role] += unitPrice;
         if (!map[staffId].unitBreakdowns[role][unitPrice]) {
@@ -223,12 +246,14 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
       // オプション担当。
       // 数量>1のオプションは1人ずつ担当を分けられる（キー: 行ID / 行ID#2 …）。
       // #付きキーが1つも無い旧データは「1人がまとめて担当」として全数量分を計上する。
-      const resOptions = optionsByReservation[r.id] ?? [];
+      // プラン込み(¥0)のご主役のお支度は配分する金額が無いため集計しない
+      const resOptions = (optionsByReservation[r.id] ?? [])
+        .filter((ro) => !isPlanIncludedPrep(ro, resolveOptionPrice(ro, optionPriceMap[ro.optionId] ?? 0)));
       for (const ro of resOptions) {
         const qty = Math.max(1, ro.quantity);
         const unitKeys = Array.from({ length: qty }, (_, i) => (i === 0 ? ro.id : `${ro.id}#${i + 1}`));
         const isLegacy = qty > 1 && unitKeys.slice(1).every((k) => assignment.options?.[k] === undefined);
-        const optUnitPrice = optionPriceMap[ro.optionId] ?? 0;
+        const optUnitPrice = resolveOptionPrice(ro, optionPriceMap[ro.optionId] ?? 0);
         const entries: { staffId: string; amountBase: number }[] = isLegacy
           ? (assignment.options?.[ro.id] ? [{ staffId: assignment.options[ro.id], amountBase: optUnitPrice * qty }] : [])
           : unitKeys.flatMap((k) => {
@@ -279,12 +304,13 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
 
   // 役割ごとの列合計（完了のみ）
   const roleTotals = useMemo(() => {
-    const totals: Record<Role, number> = { photo: 0, assistant: 0, hair: 0, makeup: 0, option: 0 };
+    const totals = emptyRoleCounts();
     for (const row of byStaff) {
-      for (const role of ROLES) totals[role] += row.amounts[role];
+      for (const role of roles) totals[role] += row.amounts[role];
     }
     return totals;
-  }, [byStaff]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byStaff, roles]);
 
   // 支払方法別の集計（完了のみ）
   const paymentBreakdown = useMemo(() => {
@@ -395,7 +421,7 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
               <tr>
                 <th className="px-5 py-3 text-left">担当者</th>
-                {ROLES.map((role) => (
+                {roles.map((role) => (
                   <th key={role} className="px-4 py-3 text-right">{ROLE_LABEL[role]}</th>
                 ))}
                 <th className="px-5 py-3 text-right">合計</th>
@@ -404,7 +430,7 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
             <tbody className="divide-y divide-gray-100">
               {!hasStaffRows ? (
                 <tr>
-                  <td colSpan={ROLES.length + 2} className="px-5 py-10 text-center text-gray-400">
+                  <td colSpan={roles.length + 2} className="px-5 py-10 text-center text-gray-400">
                     {selectedMonth} に「完了」の予約・商品がありません
                   </td>
                 </tr>
@@ -413,7 +439,7 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
                   {byStaff.map((row) => (
                     <tr key={row.name} className="hover:bg-gray-50 align-top">
                       <td className="px-5 py-3 font-medium text-gray-800">{row.name}</td>
-                      {ROLES.map((role) => {
+                      {roles.map((role) => {
                         const bd = row.unitBreakdowns[role];
                         const entries = Object.entries(bd).map(([p, entry]) => ({ unitPrice: Number(p), ...entry }));
                         return (
@@ -459,7 +485,7 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
                           )}
                         </div>
                       </td>
-                      {ROLES.map((role) => (
+                      {roles.map((role) => (
                         <td key={role} className="px-4 py-3 text-right text-gray-300">—</td>
                       ))}
                       <td className="px-5 py-3 text-right font-semibold text-gray-900">
@@ -474,7 +500,7 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
               <tfoot className="border-t-2 border-gray-200 bg-gray-50">
                 <tr>
                   <td className="px-5 py-3 font-semibold text-gray-700">合計</td>
-                  {ROLES.map((role) => (
+                  {roles.map((role) => (
                     <td key={role} className="px-4 py-3 text-right font-semibold text-gray-700">
                       {roleTotals[role] ? formatYen(applyTax(roleTotals[role])) : '—'}
                     </td>

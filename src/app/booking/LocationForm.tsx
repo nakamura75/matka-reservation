@@ -334,18 +334,14 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     const childrenDetail = childrenDetails.length > 0
       ? childrenDetails.map((c, i) => `${i + 1}人目: ${c.name}（${c.furigana}）（${c.gender}）${c.birthday} / ${c.clothingSize}`).join('\n')
       : '';
-    // 主役のお子様のお支度を備考に記録（管理画面の「お客様備考」で把握）。日本髪のみ+料金を明記
-    const mainPrepNote = mainPrep.length
-      ? '【ご主役のお子様のお支度】' + mainPrep
-          .map((id) => { const o = options.find((x) => x.id === id); if (!o) return null; return isNihongami(o) ? `${o.name}（＋${formatCurrency(o.price)}）` : o.name; })
-          .filter(Boolean).join('、')
-      : '';
-    // ご主役のお支度の有料項目（日本髪のみ）は課金対象なのでオプションに含める。
-    // 着付け＋ヘアメイク等はプラン込み(¥0)なので備考のみ（DB価格で課金されないよう除外）。
-    const mainPrepBilled = mainPrep
+    // ご主役のお支度も追加オプションと同じ「オプション」欄に載せる。
+    // 備考とオプションに分かれていると美容師が支度内容を取り違えるため、表示場所を1か所にまとめる。
+    // プラン込みの項目は単価0で登録し（マスター価格で課金されないよう unitPrice を明示）、
+    // 日本髪のみ課金対象なので実額を入れる。
+    const mainPrepSelected = mainPrep
       .map((id) => options.find((o) => o.id === id))
-      .filter((o): o is Option => !!o && mainPrepPrice(o) > 0)
-      .map((o) => ({ optionId: o.id, quantity: 1 }));
+      .filter((o): o is Option => !!o)
+      .map((o) => ({ optionId: o.id, quantity: 1, unitPrice: mainPrepPrice(o), isMainPrep: true }));
     const base = {
       shootType: 'location',
       scene: 'その他',
@@ -360,7 +356,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       childrenCount: Number(childrenCount) || 0,
       adultCount,
       childrenDetail,
-      selectedOptions: [...selectedOptions, ...mainPrepBilled],
+      selectedOptions: [...selectedOptions, ...mainPrepSelected],
       phoneCallPreference,
       cancelPolicyAgreed: true,
       lineUserId,
@@ -384,7 +380,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       // ② 本番撮影（仮予約）：プランは正規項目(planId)、見学日/保険も専用項目に
       const shootRes = await fetch('/api/reservations', {
         method: 'POST', headers,
-        body: JSON.stringify({ ...base, isVisit: false, planId: selectedPlan?.id ?? '', date: shootDate, timeSlot: shootTime, visitDate: wantsVisit === 'yes' ? visitDate : '', cancelInsurance: insurance, note: mainPrepNote }),
+        body: JSON.stringify({ ...base, isVisit: false, planId: selectedPlan?.id ?? '', date: shootDate, timeSlot: shootTime, visitDate: wantsVisit === 'yes' ? visitDate : '', cancelInsurance: insurance, note: '' }),
       });
       const shootData = await shootRes.json();
       if (!shootData.success) { setError(shootData.error ?? '本番予約の登録に失敗しました'); return; }

@@ -511,6 +511,8 @@ export async function getReservationOptions(reservationId?: string): Promise<Res
     optionId: r.option_id,
     quantity: r.quantity,
     note: r.note,
+    unitPrice: r.unit_price ?? null,
+    isMainPrep: r.is_main_prep ?? false,
   }));
 }
 
@@ -523,6 +525,9 @@ export async function createReservationOption(
     option_id: data.optionId,
     quantity: data.quantity,
     note: data.note ?? '',
+    // 単価未指定はマスター価格を使う意味なので NULL のまま入れる（0 とは区別する）
+    unit_price: data.unitPrice ?? null,
+    is_main_prep: data.isMainPrep ?? false,
   });
   if (error) throw error;
 }
