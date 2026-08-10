@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Plan, Option, Customer } from '@/types';
 import { ALL_TIME_SLOTS, SHICHIGOSAN_TIME_SLOTS, VISIT_TIME_SLOTS, SHOOTING_SCENES, SCENE_PLAN_MAP } from '@/lib/constants';
 import { isWeekend, formatCurrency } from '@/lib/utils';
-import { LOC_INSURANCE } from '@/lib/location';
+import { LOC_INSURANCE, LOC_SHOOT_TIMES } from '@/lib/location';
 
 interface Props {
   mode?: 'studio' | 'location';
@@ -22,8 +22,8 @@ interface SelectedOption {
   quantity: number;
 }
 
-// ロケ本番の時間帯（午前/午後の2枠固定）
-const LOCATION_TIME_SLOTS = ['9:10', '13:00'];
+// ロケ本番の時間帯（午前/午後の2枠固定）。撮影枠の定義から引く
+const LOCATION_TIME_SLOTS = LOC_SHOOT_TIMES.map((t) => t.value);
 
 export default function NewReservationForm({ mode = 'studio', plans, options, customers, blockedDates = [], blockedTimeSlots = {}, holidayDates = [] }: Props) {
   const isLoc = mode === 'location';
@@ -163,7 +163,7 @@ export default function NewReservationForm({ mode = 'studio', plans, options, cu
   }, 0);
   const total = (selectedPlan?.price ?? 0) + optionTotal;
 
-  // 撮影時間帯：ロケは午前9:10/午後13:00の固定2枠。スタジオは七五三のみ9時不可。
+  // 撮影時間帯：ロケは LOC_SHOOT_TIMES の午前/午後の固定2枠。スタジオは七五三のみ9時不可。
   const timeSlots = isLoc ? LOCATION_TIME_SLOTS : (scene === '七五三' ? SHICHIGOSAN_TIME_SLOTS : ALL_TIME_SLOTS);
 
   async function handleSubmit(e: React.FormEvent) {

@@ -12,7 +12,7 @@ import { LOC_SHOOT_TIMES } from '@/lib/location';
 // ============================================================
 // 定数
 // ============================================================
-// 撮影枠（9:10=午前 / 13:00=午後）はサーバーの受付チェックと同じ定義を使う
+// 撮影枠（午前/午後の2枠）はサーバーの受付チェックと同じ定義を使う
 const SHOOT_TIMES = LOC_SHOOT_TIMES;
 // 撮影可能日は午前(am)/午後(pm)を個別に公開できる（東山荘が半日しか押さえられない日に対応）
 type ShootDayHalves = { am: boolean; pm: boolean };
@@ -198,7 +198,8 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       .catch(() => {});
     fetch('/api/location/booked-shoots')
       .then((r) => r.json())
-      .then((d) => setBookedShoots(new Set((d.data ?? []).map((s: { date: string; timeSlot: string }) => `${s.date}|${s.timeSlot}`))))
+      // 予約済み枠は午前/午後の単位で持つ（集合時刻を変えても同じ半日が二重に開かないように）
+      .then((d) => setBookedShoots(new Set((d.data ?? []).map((s: { date: string; half: string }) => `${s.date}|${s.half}`))))
       .catch(() => {});
   }, [today]);
 
@@ -207,7 +208,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     if (!shootDate || !shootTime) return;
     const half = SHOOT_TIMES.find((t) => t.value === shootTime)?.half;
     const stillOpen = half ? shootDays[shootDate]?.[half] : false;
-    if (!stillOpen || bookedShoots.has(`${shootDate}|${shootTime}`)) setShootTime('');
+    if (!stillOpen || bookedShoots.has(`${shootDate}|${half}`)) setShootTime('');
   }, [shootDate, shootTime, bookedShoots, shootDays]);
 
   function toggleOption(optionId: string) {
@@ -577,7 +578,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   function renderSchedule() {
     // その日に実際に選べる時間帯＝「設定で公開されている枠」かつ「まだ予約が入っていない枠」
     const availableTimes = (d: string) =>
-      SHOOT_TIMES.filter((t) => shootDays[d]?.[t.half] && !bookedShoots.has(`${d}|${t.value}`));
+      SHOOT_TIMES.filter((t) => shootDays[d]?.[t.half] && !bookedShoots.has(`${d}|${t.half}`));
     const shootSummary = shootDate ? `${jpDate(shootDate)}${shootTime ? ` ${shootTime}〜` : ''}` : '未選択';
     const visitSummary = wantsVisit === 'no' ? '見学なし' : visitDate ? `${jpDate(visitDate)} ${VISIT_TIME}` : '未選択';
     return (
@@ -953,7 +954,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           <div>
             <p className="text-xs font-semibold text-emerald-700 mb-1">■ 駐車場について</p>
             <ul className="text-xs text-gray-600 list-disc pl-4 space-y-0.5">
-              <li>東山荘駐車場の開放時間は9:00です。9:10のご予約で早く到着されても駐車できない場合がございます。</li>
+              <li>東山荘駐車場の開放時間は9:00です。{SHOOT_TIMES[0].value}のご予約で早く到着されても駐車できない場合がございます。</li>
               <li>駐車場は現地10台分です。満車の場合は近隣のコインパーキング（お客様負担）をご利用ください。</li>
             </ul>
           </div>

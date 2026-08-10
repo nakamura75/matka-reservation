@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/utils';
 import type { Plan, Option, Product, Staff, Holiday, BlockedSlot } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { useMode } from '@/components/layout/ModeProvider';
+import { LOC_SHOOT_TIMES } from '@/lib/location';
 
 type Tab = 'plans' | 'options' | 'products' | 'staff' | 'holidays' | 'availability';
 
@@ -1113,8 +1114,7 @@ function ShootDayCalendar({ days, onToggle }: {
         <div className="border border-gray-200 rounded-xl p-3 bg-white mt-3">
           <p className="text-sm font-bold text-gray-900 mb-2">{jpDayLabel(selected)}</p>
           <div className="grid grid-cols-2 gap-2">
-            {halfButton('am', '午前の部', '9:10〜12:00')}
-            {halfButton('pm', '午後の部', '13:00〜16:00')}
+            {LOC_SHOOT_TIMES.map((t) => halfButton(t.half, t.half === 'am' ? '午前の部' : '午後の部', `${t.value}〜${t.end}`))}
           </div>
           <p className="text-[11px] text-gray-400 mt-2">ボタンを押すと公開／非公開が切り替わります。両方を非公開にするとその日は予約フォームに出ません。</p>
         </div>
@@ -1200,7 +1200,7 @@ function AvailabilityTab() {
           <MiniCalendar marked={visitDays} onToggle={toggleVisitDay} accent="emerald" />
         </div>
       </div>
-      <p className="text-xs text-gray-400">※ 撮影の時間帯は午前の部 9:10〜12:00／午後の部 13:00〜16:00 で固定です。</p>
+      <p className="text-xs text-gray-400">※ 撮影の時間帯は{LOC_SHOOT_TIMES.map((t) => `${t.half === 'am' ? '午前の部' : '午後の部'} ${t.value}〜${t.end}`).join('／')} で固定です。</p>
     </div>
   );
 }
