@@ -15,6 +15,7 @@ import {
   RESERVATION_PHOTO_BUCKET,
 } from '@/lib/db';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { resolveOptionPrice } from '@/lib/reservation-options';
 import { buildRepeaterIndex } from '@/lib/repeater';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
@@ -59,7 +60,7 @@ export default async function ReservationDetailPage({
 
   const optionsWithInfo = reservationOptions.map((ro) => {
     const opt = options.find((o) => o.id === ro.optionId);
-    return { ...ro, optionName: opt?.name ?? '', price: opt?.price ?? 0 };
+    return { ...ro, optionName: opt?.name ?? '', price: resolveOptionPrice(ro, opt?.price ?? 0) };
   });
 
   // この予約に紐づく注文を集計

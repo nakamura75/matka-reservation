@@ -18,7 +18,8 @@ import {
   getLocationPairSibling,
 } from '@/lib/db';
 import { isLocationVisit, locationPlanPrice, locationShootTotal } from '@/lib/location';
-import type { Reservation } from '@/types';
+import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
+import type { Reservation, ReservationOption } from '@/types';
 
 /**
  * POST /api/line/webhook
@@ -91,21 +92,17 @@ async function handleTextMessage(event: LineEvent) {
   ]);
 
   const res = { ...reservation, customerName: customer?.name ?? reservation.customerName ?? '' };
-  const optionsWithInfo = reservationOptions.map((ro) => {
-    const opt = options.find((o) => o.id === ro.optionId);
-    return {
-      name: opt?.name ?? '',
-      price: opt?.price ?? 0,
-      quantity: ro.quantity,
-    };
-  });
-
-  // オプション情報を {name,price,quantity}[] に整形するヘルパー
-  const toOptInfo = (ros: { optionId: string; quantity: number }[]) =>
+  // オプション情報を {name,price,quantity}[] に整形するヘルパー。
+  // LINEはお客様向けなので、プラン込みの「ご主役のお支度」は明細に出さない
+  const toOptInfo = (ros: ReservationOption[]) =>
     ros.map((ro) => {
       const opt = options.find((o) => o.id === ro.optionId);
-      return { name: opt?.name ?? '', price: opt?.price ?? 0, quantity: ro.quantity };
-    });
+      return { ro, name: opt?.name ?? '', price: resolveOptionPrice(ro, opt?.price ?? 0), quantity: ro.quantity };
+    })
+      .filter((o) => !isPlanIncludedPrep(o.ro, o.price))
+      .map(({ name, price, quantity }) => ({ name, price, quantity }));
+  const optionsWithInfo = toOptInfo(reservationOptions);
+
   // 撮影の仮予約メッセージを組み立て（プラン実額で計算）
   const buildShoot = (shoot: Reservation, opts: { name: string; price: number; quantity: number }[]) => {
     const plan = plans.find((p) => p.id === shoot.planId);

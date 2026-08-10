@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option, Holiday } from '@/types';
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
-import { LOC_INSURANCE } from '@/lib/location';
+import { LOC_INSURANCE, LOC_STAFF_BREAKDOWN } from '@/lib/location';
+import { isPlanIncludedPrep } from '@/lib/reservation-options';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
@@ -278,9 +279,11 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   }
 
   // 担当割り当て
+  const isLocation = reservation.shootType === 'location'; // ロケ予約（撮影シーンなし・見学日/保険あり・来店時間不要）
   const allStaff = staff.filter((s) => s.isActive !== 'FALSE');
   const planType: 'Discovery' | 'Maternity' = reservation.scene === 'マタニティ' ? 'Maternity' : 'Discovery';
-  const breakdown = PLAN_STAFF_BREAKDOWN[planType];
+  // ロケはスタジオと単価体系が別（着付け・キャンセル保険あり）
+  const breakdown = isLocation ? LOC_STAFF_BREAKDOWN : PLAN_STAFF_BREAKDOWN[planType];
   const isHolidayDate = holidays.some((h) => h.date === reservation.date && h.type === 'holiday');
   const hasHolidayFee = isWeekend(reservation.date) || isHolidayDate;
   const [assignment, setAssignment] = useState<StaffAssignment>(
@@ -294,7 +297,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       // 数量>1のオプションは全人数分のキー（行ID / 行ID#2 …）を明示的に保存する。
       // #付きキーの有無で売上集計側が新旧データ（まとめて担当/1人ずつ担当）を判別するため。
       const options = { ...(assignment.options ?? {}) };
-      for (const o of currentOptions) {
+      for (const o of currentOptions.filter((x) => !isPlanIncludedPrep(x, x.price))) {
         const qty = Math.max(1, o.quantity);
         for (let i = 0; i < qty; i++) {
           const key = i === 0 ? o.id : `${o.id}#${i + 1}`;
@@ -403,7 +406,6 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
   // 撮影合計（プラン＋オプション）※見学は料金0
   const isVisit = status === '見学';
-  const isLocation = reservation.shootType === 'location'; // ロケ予約（撮影シーンなし・見学日/保険あり・来店時間不要）
   // ロケ：振込期限＝撮影日の2週間前。期限超過かつ未払いなら警告表示
   const transferDeadline = (isLocation && reservation.date)
     ? (() => { const d = new Date(reservation.date + 'T00:00:00'); d.setDate(d.getDate() - 14); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()
@@ -1009,7 +1011,12 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 <tbody className="divide-y divide-gray-100">
                   {currentOptions.map((o) => (
                     <tr key={o.id}>
-                      <td className="py-2 text-gray-700">{o.optionName}</td>
+                      <td className="py-2 text-gray-700">
+                        {o.optionName}
+                        {o.isMainPrep && (
+                          <span className="ml-1.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 align-middle">ご主役</span>
+                        )}
+                      </td>
                       <td className="py-2 text-right text-gray-600">{formatCurrency(o.price)}</td>
                       <td className="py-2 text-right text-gray-600">×{o.quantity}</td>
                       <td className="py-2 text-right font-medium">{formatCurrency(o.price * o.quantity)}</td>
@@ -1185,6 +1192,46 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 </select>
               </div>
 
+              {/* 着付け（ロケのみ） */}
+              {isLocation && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">着付け</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(Math.round(LOC_STAFF_BREAKDOWN.kitsuke * (1 - discountRate / 100)))}{discountRate > 0 && <span className="text-red-400 ml-1">({discountRate}%OFF)</span>}</p>
+                  </div>
+                  <select
+                    value={assignment.kitsuke ?? ''}
+                    onChange={(e) => setAssignment((a) => ({ ...a, kitsuke: e.target.value || undefined }))}
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                  >
+                    <option value="">未選択</option>
+                    {allStaff.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* キャンセル保険（ロケ・加入時のみ／割引対象外） */}
+              {isLocation && cancelInsuranceFee > 0 && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700">キャンセル保険</p>
+                    <p className="text-xs text-gray-400">{formatCurrency(LOC_STAFF_BREAKDOWN.insurance)}</p>
+                  </div>
+                  <select
+                    value={assignment.insurance ?? ''}
+                    onChange={(e) => setAssignment((a) => ({ ...a, insurance: e.target.value || undefined }))}
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-[140px]"
+                  >
+                    <option value="">未選択</option>
+                    {allStaff.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* 休日料金（土日のみ表示、割引100%時は非表示） */}
               {hasHolidayFee && discountRate < 100 && (
                 <div className="flex items-center justify-between gap-4">
@@ -1198,8 +1245,11 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
               {/* オプション（各自選択、割引100%時は¥0表示）。
                   数量が複数の場合は1人ずつ担当を分けられるよう行を分割する。
-                  キーは1人目=行ID、2人目以降=`行ID#2`… とし、旧データ（行IDのみ）とも互換 */}
-              {currentOptions.flatMap((o) => {
+                  キーは1人目=行ID、2人目以降=`行ID#2`… とし、旧データ（行IDのみ）とも互換。
+                  プラン込み(¥0)のご主役のお支度は上の着付け／ヘア／メイクで担当を持つため、ここには出さない
+                  （オプション欄には支度内容の確認用として¥0で表示される）。
+                  日本髪など課金される支度は通常のオプションとして担当を割り当てる */}
+              {currentOptions.filter((o) => !isPlanIncludedPrep(o, o.price)).flatMap((o) => {
                 const qty = Math.max(1, o.quantity);
                 const unitAmount = Math.round(o.price * (1 - discountRate / 100));
                 return Array.from({ length: qty }, (_, i) => {

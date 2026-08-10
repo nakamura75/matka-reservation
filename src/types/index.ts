@@ -64,6 +64,8 @@ export interface StaffAssignment {
   assistant?: string;  // アシスタント担当 staffId
   hair?: string;       // ヘア担当 staffId
   makeup?: string;     // メイク担当 staffId
+  kitsuke?: string;    // 着付け担当 staffId（ロケのみ）
+  insurance?: string;  // キャンセル保険担当 staffId（ロケ・加入時のみ）
   // { キー: staffId }。キーは1人目=reservationOptionId、2人目以降=`${reservationOptionId}#2` …
   // （数量>1のオプションは1人ずつ担当を分けられる。#付きキーが無いデータは旧形式=まとめて担当）
   options?: Record<string, string>;
@@ -133,6 +135,11 @@ export interface ReservationOption {
   quantity: number;        // 数量
   note?: string;           // 備考
   subtotal?: number;       // 小計（VC）
+  // この予約での単価。未指定(null/undefined)ならオプションマスターの価格を使う
+  unitPrice?: number | null;
+  // ご主役のお子様のお支度の行（ロケ）。プラン込みのため単価0で登録され、
+  // 管理画面には「ご主役」として表示するが、LINE・領収書には出さない
+  isMainPrep?: boolean;
 }
 
 // ============================================================
@@ -246,7 +253,8 @@ export interface ReservationFormData {
   adultCount?: string;
   childrenDetail: string;
   // オプション
-  selectedOptions: { optionId: string; quantity: number }[];
+  // unitPrice / isMainPrep はロケの「ご主役のお支度」用（プラン込み＝単価0で登録）
+  selectedOptions: { optionId: string; quantity: number; unitPrice?: number; isMainPrep?: boolean }[];
   // 確認
   phoneCallPreference?: string;
   note?: string;

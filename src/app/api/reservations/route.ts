@@ -266,15 +266,23 @@ export async function POST(req: NextRequest) {
         reservationId,
         optionId: opt.optionId,
         quantity: opt.quantity,
+        // ロケの「ご主役のお支度」はプラン込みなので単価0で登録される
+        unitPrice: opt.unitPrice ?? null,
+        isMainPrep: opt.isMainPrep ?? false,
       });
     }
 
     // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（スタジオ撮影 / ロケ見学 / ロケ撮影）
     if (body.lineUserId) {
       const allOptions = await getOptions().catch((e) => { console.error('[DB Error]', e.message ?? e); return []; });
+      // LINEはお客様向けなので、プラン込み(¥0)の「ご主役のお支度」は明細に出さない
+      // （日本髪など課金される支度は通常のオプションとして残す）
       const optionsWithInfo = body.selectedOptions.map((sel) => {
         const opt = allOptions.find((o) => o.id === sel.optionId);
-        return opt ? { name: opt.name, price: opt.price, quantity: sel.quantity } : null;
+        if (!opt) return null;
+        const price = sel.unitPrice ?? opt.price;
+        if (sel.isMainPrep && price === 0) return null;
+        return { name: opt.name, price, quantity: sel.quantity };
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
 
       let message: LineMessage | null = null;
