@@ -1,5 +1,6 @@
 import { createAdminClient } from './supabase/admin';
 import { VISIT_DURATION_MIN } from './constants';
+import { locationSlotHalf } from './location';
 import type {
   Customer,
   Plan,
@@ -934,7 +935,7 @@ export async function deleteBlockedSlot(id: string): Promise<void> {
 // ============================================================
 
 /**
- * ロケ撮影可能日。am/pm で午前(9:10〜)・午後(13:00〜)を個別に公開できる。
+ * ロケ撮影可能日。am/pm で午前・午後を個別に公開できる（時刻は LOC_SHOOT_TIMES）。
  * 両方 false の日は行を持たない（＝非公開）。
  */
 export type LocationShootDay = { date: string; am: boolean; pm: boolean };
@@ -981,12 +982,17 @@ export async function removeLocationVisitBlockedDate(date: string): Promise<void
   if (error) throw error;
 }
 
-export async function getLocationBookedShoots(): Promise<{ date: string; timeSlot: string }[]> {
+export async function getLocationBookedShoots(): Promise<{ date: string; timeSlot: string; half: 'am' | 'pm' }[]> {
   const { data, error } = await supabase()
     .from('reservations')
     .select('date,time_slot')
     .eq('shoot_type', 'location')
     .not('status', 'in', '("キャンセル","見学")');
   if (error) throw error;
-  return (data ?? []).map((r) => ({ date: r.date as string, timeSlot: r.time_slot as string }));
+  // 午前/午後で返す。集合時刻を変更したときに、時刻の完全一致だと
+  // 同じ午前に旧時刻と新時刻の2件が入れてしまうため、枠は半日単位で判定する
+  return (data ?? []).flatMap((r) => {
+    const half = locationSlotHalf(r.time_slot as string);
+    return half ? [{ date: r.date as string, timeSlot: r.time_slot as string, half }] : [];
+  });
 }

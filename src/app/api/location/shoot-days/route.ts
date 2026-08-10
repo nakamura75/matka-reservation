@@ -5,7 +5,7 @@ import { getLocationShootDays, setLocationShootDay, removeLocationShootDay } fro
 export const dynamic = 'force-dynamic';
 
 // 撮影可能日の一覧（公開：ロケ予約フォームが使用）
-// data: { date, am, pm }[] — am=午前(9:10〜) / pm=午後(13:00〜) の公開可否
+// data: { date, am, pm }[] — am=午前 / pm=午後（時刻は LOC_SHOOT_TIMES）の公開可否
 export async function GET() {
   try {
     const days = await getLocationShootDays();

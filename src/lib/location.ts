@@ -28,11 +28,16 @@ export const LOC_STAFF_BREAKDOWN = {
 
 /**
  * ロケ本番の撮影枠。timeSlot と「撮影可能日」の午前(am)/午後(pm)フラグの対応を1か所で持つ。
- * 予約フォームの時間帯ボタンと、サーバー側の受付チェックの両方がこれを見る。
+ * 予約フォームの時間帯ボタン、サーバー側の受付チェック、管理画面の表示すべてがこれを見る。
+ * 時刻を直書きせず必ずここから引くこと（変更が漏れると重複判定や所要時間の表示がずれる）。
+ *
+ * 2026-08 に集合時刻を後ろへずらした。施設の開放が9:00で午前は準備が10分しか取れず、
+ * 午後のみ稼働の日は入館13:00とお客様の受け入れが重なって準備できなかったため。
+ * 終了時刻は据え置き。
  */
 export const LOC_SHOOT_TIMES = [
-  { value: '9:10', half: 'am' as const, label: '午前の部　9:10〜12:00' },
-  { value: '13:00', half: 'pm' as const, label: '午後の部　13:00〜16:00' },
+  { value: '9:20', half: 'am' as const, end: '12:00', label: '午前の部　9:20〜12:00' },
+  { value: '13:20', half: 'pm' as const, end: '16:00', label: '午後の部　13:20〜16:00' },
 ];
 
 /** timeSlot → 撮影可能日の午前/午後。ロケ本番の枠でなければ null */
@@ -60,7 +65,7 @@ export function locationShootTotal(
   return base + optTotal + ins;
 }
 
-/** ロケ予約が「見学」か（WEB見学は16:30固定・撮影枠は9:10/13:00なので時刻で判別可能） */
+/** ロケ予約が「見学」か（WEB見学は LOC_VISIT_TIME 固定で撮影枠と重ならないため時刻で判別可能） */
 export function isLocationVisit(
   r: Pick<Reservation, 'shootType' | 'timeSlot'>
 ): boolean {

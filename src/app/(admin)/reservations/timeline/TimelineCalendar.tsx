@@ -6,6 +6,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
 import type { Reservation } from '@/types';
 import { STATUS_LABEL } from '@/lib/constants';
+import { LOC_SHOOT_TIMES } from '@/lib/location';
 
 const STATUS_DOT: Record<Reservation['status'], string> = {
   '予約済': 'bg-yellow-400',
@@ -25,11 +26,10 @@ const STATUS_BG: Record<Reservation['status'], string> = {
   'キャンセル': 'bg-gray-100 border-gray-300 text-gray-500',
 };
 
-// ロケ本番の所要時間（開始時刻 → 終了時刻）
-const LOCATION_SHOOT_END: Record<string, string> = {
-  '9:10': '12:00',
-  '13:00': '16:00',
-};
+// ロケ本番の所要時間（開始時刻 → 終了時刻）。撮影枠の定義から引く
+const LOCATION_SHOOT_END: Record<string, string> = Object.fromEntries(
+  LOC_SHOOT_TIMES.map((t) => [t.value, t.end])
+);
 
 /** 時間文字列を分に変換 */
 function timeToMinutes(t: string): number {
@@ -243,7 +243,7 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
       .filter((r) => !r.checkInTime || !r.checkOutTime)
       .map((r) => {
         const s = timeToMinutes(r.timeSlot);
-        // ロケ本番は所要時間（9:10→12:00 / 13:00→16:00）でブロック長を決める。他は1時間
+        // ロケ本番は LOC_SHOOT_TIMES の所要時間でブロック長を決める。他は1時間
         let endMin = s + 60;
         if (r.shootType === 'location' && r.status !== '見学') {
           const end = LOCATION_SHOOT_END[r.timeSlot];
@@ -445,8 +445,9 @@ export default function TimelineCalendar({ reservations, blockedDates = {}, bloc
                   if (!locDay) {
                     locClosed.push({ top: 0, height: TOTAL_HOURS * HOUR_HEIGHT, label: '非公開' });
                   } else {
-                    if (!locDay.am) locClosed.push({ ...getBlockPosition('9:10', '12:00'), label: '非公開' });
-                    if (!locDay.pm) locClosed.push({ ...getBlockPosition('13:00', '16:00'), label: '非公開' });
+                    for (const t of LOC_SHOOT_TIMES) {
+                      if (!locDay[t.half]) locClosed.push({ ...getBlockPosition(t.value, t.end), label: '非公開' });
+                    }
                   }
 
                   return (
