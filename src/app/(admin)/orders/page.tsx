@@ -32,8 +32,9 @@ export default async function OrdersPage() {
     return {
       ...item,
       productName: product?.name ?? item.productId,
-      unitPrice: product?.price ?? 0,
-      subtotal: (product?.price ?? 0) * item.quantity,
+      // unit_price 上書き（セット掛け値等）があればそれを、なければマスター価格
+      unitPrice: item.unitPrice ?? product?.price ?? 0,
+      subtotal: (item.unitPrice ?? product?.price ?? 0) * item.quantity,
       customerName: order ? (customerMap[order.customerId] ?? order.customerId) : '',
       orderDate: order?.orderDate ?? '',
       deadline: order?.deadline ?? '',

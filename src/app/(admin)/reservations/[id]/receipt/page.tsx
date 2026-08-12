@@ -10,6 +10,7 @@ import {
 } from '@/lib/db';
 import { formatDate } from '@/lib/utils';
 import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
+import { isSetPlanAutoOrder } from '@/lib/location';
 import PrintButton from './PrintButton';
 
 export const dynamic = 'force-dynamic';
@@ -51,13 +52,14 @@ export default async function ReceiptPage({
     .filter((o) => !isPlanIncludedPrep(o, o.price));
 
   // この予約に紐づく注文の商品明細
+  // セットプラン内訳の自動作成注文はプラン料金に含まれる（請求済み）ため領収書には出さない
   const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
   const linkedOrderIds = new Set(
-    allOrders.filter((o) => o.reservationId === reservation.id).map((o) => o.id)
+    allOrders.filter((o) => o.reservationId === reservation.id && !isSetPlanAutoOrder(o.note)).map((o) => o.id)
   );
   const orderItemsWithInfo = allOrderItems
     .filter((i) => linkedOrderIds.has(i.orderId))
-    .map((i) => ({ ...i, productName: productMap[i.productId]?.name ?? i.productId, price: productMap[i.productId]?.price ?? 0 }));
+    .map((i) => ({ ...i, productName: productMap[i.productId]?.name ?? i.productId, price: i.unitPrice ?? productMap[i.productId]?.price ?? 0 }));
   const orderItemTotal = orderItemsWithInfo.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const optionTotal = optionsWithInfo.reduce((sum, o) => sum + o.price * o.quantity, 0);

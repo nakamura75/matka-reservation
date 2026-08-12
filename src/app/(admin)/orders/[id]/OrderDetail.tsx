@@ -107,7 +107,7 @@ export default function OrderDetail({ order, customer, reservation, items: initi
   async function updateItemStatus(item: EnrichedItem, status: OrderItem['status']) {
     setUpdatingItem(item.id);
     const today = new Date().toLocaleDateString('ja-JP');
-    const dateFields: Partial<OrderItem> = {};
+    const dateFields: Partial<Pick<OrderItem, 'selectedDate' | 'layoutDate' | 'orderedDate' | 'packedDate' | 'shippedDate'>> = {};
     if (status === 'セレクト済') dateFields.selectedDate = today;
     if (status === 'レイアウト済') dateFields.layoutDate = today;
     if (status === '発注済') dateFields.orderedDate = today;

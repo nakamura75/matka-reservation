@@ -16,6 +16,7 @@ import {
 } from '@/lib/db';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { resolveOptionPrice } from '@/lib/reservation-options';
+import { isSetPlanAutoOrder } from '@/lib/location';
 import { buildRepeaterIndex } from '@/lib/repeater';
 import { notFound } from 'next/navigation';
 import ReservationDetail from './ReservationDetail';
@@ -70,13 +71,15 @@ export default async function ReservationDetailPage({
     .filter((o) => o.reservationId === reservation.id)
     .map((order) => {
       const items = allOrderItems.filter((i) => i.orderId === order.id);
-      const total = items.reduce((sum, i) => sum + (productPriceMap[i.productId] ?? 0) * i.quantity, 0);
+      // unit_price 上書き（セット掛け値等）があればそれを使う
+      const total = items.reduce((sum, i) => sum + (i.unitPrice ?? productPriceMap[i.productId] ?? 0) * i.quantity, 0);
       const itemDetails = items.map((i) => ({
         productName: productNameMap[i.productId] ?? '不明な商品',
-        price: productPriceMap[i.productId] ?? 0,
+        price: i.unitPrice ?? productPriceMap[i.productId] ?? 0,
         quantity: i.quantity,
       }));
-      return { id: order.id, orderDate: order.orderDate, isPaid: order.isPaid, total, itemCount: items.length, items: itemDetails };
+      // セットプラン内訳の自動作成注文はプラン料金に含まれるため、支払合計には足さない
+      return { id: order.id, orderDate: order.orderDate, isPaid: order.isPaid, total, itemCount: items.length, items: itemDetails, isSetPlanAuto: isSetPlanAutoOrder(order.note) };
     });
 
   // 予約に紐づく画像（非公開バケットのため署名付きURLで渡す。有効期限1時間）
