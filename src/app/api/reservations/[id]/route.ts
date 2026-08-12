@@ -13,6 +13,7 @@ import {
 } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage, buildLocationVisitConfirmMessage, buildLocationShootConfirmMessage } from '@/lib/line';
 import { locationPlanPrice, locationShootTotal, isLocationVisit } from '@/lib/location';
+import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
 import type { ReservationStatus } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -163,9 +164,13 @@ export async function PATCH(
       ]).catch((e) => console.error('LINE push failed:', e));
     } else {
       // 撮影の確定（振込案内つき）＋ 対の見学確定も一緒に送る（見学→撮影の順）
+      // 単価上書き（ご主役のお支度=¥0等）を反映し、プラン込みの行はお客様向け明細に出さない
       const optionsWithInfo = reservationOptions.map((ro) => {
         const opt = allOptions.find((o) => o.id === ro.optionId);
-        return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
+        if (!opt) return null;
+        const price = resolveOptionPrice(ro, opt.price);
+        if (isPlanIncludedPrep(ro, price)) return null;
+        return { name: opt.name, price, quantity: ro.quantity };
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
       const plan = plans.find((p) => p.id === target.planId);
       const planPrice = plan?.price ?? locationPlanPrice(target.date);
@@ -188,9 +193,13 @@ export async function PATCH(
     if (plan) {
       // 最新のDB状態を再取得（金額修正やオプション追加が反映済み）
       const updatedReservation = await getReservationById(reservation.id);
+      // 単価上書き（ご主役のお支度=¥0等）を反映し、プラン込みの行はお客様向け明細に出さない
       const optionsWithInfo = reservationOptions.map((ro) => {
         const opt = allOptions.find((o) => o.id === ro.optionId);
-        return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
+        if (!opt) return null;
+        const price = resolveOptionPrice(ro, opt.price);
+        if (isPlanIncludedPrep(ro, price)) return null;
+        return { name: opt.name, price, quantity: ro.quantity };
       }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
 
       await sendLinePush(reservation.lineUserId, [
