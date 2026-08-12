@@ -10,6 +10,7 @@ import {
   checkVisitSlotConflict,
   getLocationPairSibling,
   getCustomerById,
+  syncSetPlanAutoOrder,
 } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage, buildLocationVisitConfirmMessage, buildLocationShootConfirmMessage } from '@/lib/line';
 import { locationPlanPrice, locationShootTotal, isLocationVisit } from '@/lib/location';
@@ -144,6 +145,16 @@ export async function PATCH(
     }
   }
 
+  // プラン変更・キャンセルに合わせてセットプラン内訳の自動注文を同期
+  // （手動運用だと定価での二重計上や削除漏れが起きるため必ず自動で作り直す）
+  if (body.planId !== undefined || body.status !== undefined) {
+    await syncSetPlanAutoOrder({
+      ...reservation,
+      planId: body.planId ?? reservation.planId,
+      status: (body.status ?? reservation.status) as ReservationStatus,
+    }).catch((e) => console.error('[SetPlan Order Sync Error]', e.message ?? e));
+  }
+
   // 予約確定 → LINE通知（DB更新後に送信）
   if (body.status === '予約確定' && reservation.lineUserId && reservation.shootType === 'location') {
     // ロケ：見学/撮影で確定メッセージを出し分け（見分け＝変更前ステータス「見学」or 16:30枠）
@@ -226,6 +237,11 @@ export async function DELETE(
     const sibling = reservation?.shootType === 'location'
       ? await getLocationPairSibling(reservation)
       : null;
+    // セットプラン内訳の自動注文も一緒に削除（キャンセル扱いで同期＝削除される）
+    if (reservation) {
+      await syncSetPlanAutoOrder({ ...reservation, status: 'キャンセル' })
+        .catch((e) => console.error('[SetPlan Order Sync Error]', e.message ?? e));
+    }
     await deleteReservation(params.id);
     if (sibling) await deleteReservation(sibling.id);
     return NextResponse.json({ success: true });
