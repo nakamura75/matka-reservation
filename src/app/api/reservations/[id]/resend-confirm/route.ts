@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getReservationById, getPlans, getOptions, getReservationOptions } from '@/lib/db';
 import { sendLinePush, buildConfirmMessage, buildLocationVisitConfirmMessage, buildLocationShootConfirmMessage } from '@/lib/line';
 import { locationPlanPrice, locationShootTotal, isLocationVisit } from '@/lib/location';
+import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,9 +32,13 @@ export async function POST(
     getReservationOptions(reservation.id),
   ]);
 
+  // 単価上書き（ご主役のお支度=¥0等）を反映し、プラン込みの行はお客様向け明細に出さない
   const optionsWithInfo = reservationOptions.map((ro) => {
     const opt = allOptions.find((o) => o.id === ro.optionId);
-    return opt ? { name: opt.name, price: opt.price, quantity: ro.quantity } : null;
+    if (!opt) return null;
+    const price = resolveOptionPrice(ro, opt.price);
+    if (isPlanIncludedPrep(ro, price)) return null;
+    return { name: opt.name, price, quantity: ro.quantity };
   }).filter((o): o is { name: string; price: number; quantity: number } => o !== null);
 
   const plan = plans.find((p) => p.id === reservation.planId);
