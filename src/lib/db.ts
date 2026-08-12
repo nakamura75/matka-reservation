@@ -1,6 +1,7 @@
 import { createAdminClient } from './supabase/admin';
 import { VISIT_DURATION_MIN } from './constants';
-import { locationSlotHalf } from './location';
+import { locationSlotHalf, setPlanIncludedProduct, SET_PLAN_ORDER_NOTE, isSetPlanAutoOrder } from './location';
+import { generateId } from './utils';
 import type {
   Customer,
   Plan,
@@ -609,6 +610,73 @@ export async function updateOrder(
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase().from('orders').update(row).eq('id', id);
   if (error) throw error;
+}
+
+// ============================================================
+// セットプラン内訳注文の同期
+// ============================================================
+
+/**
+ * セットプラン内訳の自動作成注文を、予約の現在のプラン・ステータスに同期する。
+ * - セットプラン（Album/Frame）でキャンセル以外 → 内訳注文が1件ある状態にする
+ * - それ以外（プラン変更で外れた・キャンセル） → 内訳注文を削除する
+ * 予約作成・プラン変更・ステータス変更・予約削除の全経路からこれを呼ぶことで、
+ * 手動運用による二重計上（定価で手動追加・削除漏れ）を防ぐ。
+ * 手動で作成した注文（マーカーなし）には一切触らない。
+ */
+export async function syncSetPlanAutoOrder(
+  reservation: Pick<Reservation, 'id' | 'customerId' | 'planId' | 'status' | 'shootType'>
+): Promise<void> {
+  if (reservation.shootType !== 'location') return;
+
+  const { data: orderRows, error } = await supabase()
+    .from('orders')
+    .select('id, note')
+    .eq('reservation_id', reservation.id);
+  if (error) throw error;
+  const autoOrders = (orderRows ?? []).filter((o) => isSetPlanAutoOrder(o.note));
+
+  const desired = reservation.status === 'キャンセル'
+    ? undefined
+    : setPlanIncludedProduct(reservation.planId);
+
+  // 既に望ましい状態（自動注文1件・商品一致）なら何もしない
+  if (desired && autoOrders.length === 1) {
+    const { data: items } = await supabase()
+      .from('order_items')
+      .select('product_id, unit_price')
+      .eq('order_id', autoOrders[0].id);
+    const item = (items ?? [])[0];
+    if (item && item.product_id === desired.productId && item.unit_price === desired.unitPrice) return;
+  }
+  if (!desired && autoOrders.length === 0) return;
+
+  // 作り直し: 既存の自動注文（明細ごと）を削除してから、必要なら新規作成
+  for (const o of autoOrders) {
+    await supabase().from('order_items').delete().eq('order_id', o.id);
+    await supabase().from('orders').delete().eq('id', o.id);
+  }
+  if (desired) {
+    const orderId = generateId();
+    await createOrder({
+      id: orderId,
+      customerId: reservation.customerId,
+      reservationId: reservation.id,
+      orderDate: new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }),
+      isPaid: false,
+      note: SET_PLAN_ORDER_NOTE,
+    });
+    await createOrderItem({
+      id: generateId(),
+      orderId,
+      productId: desired.productId,
+      customerId: reservation.customerId,
+      quantity: 1,
+      unitPrice: desired.unitPrice,
+      status: '受注',
+      note: '',
+    });
+  }
 }
 
 // ============================================================
