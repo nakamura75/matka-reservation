@@ -38,7 +38,8 @@ export async function GET(
       return {
         ...item,
         productName: product?.name ?? item.productId,
-        subtotal: (product?.price ?? 0) * item.quantity,
+        // unit_price 上書き（セット掛け値等）があればそれを、なければマスター価格
+        subtotal: (item.unitPrice ?? product?.price ?? 0) * item.quantity,
       };
     });
 

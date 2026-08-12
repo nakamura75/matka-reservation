@@ -12,7 +12,7 @@ import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STAT
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrderItem = { productName: string; price: number; quantity: number };
-type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number; items: LinkedOrderItem[] };
+type LinkedOrder = { id: string; orderDate: string; isPaid: boolean; total: number; itemCount: number; items: LinkedOrderItem[]; isSetPlanAuto?: boolean };
 type NewOrderItem = { productId: string; productName: string; price: number; quantity: number };
 type PaymentEntry = { method: string; amount: number };
 
@@ -404,6 +404,30 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
     }
   }
 
+  // ご主役の入れ替え（ロケのみ）。指定行がプラン込み¥0になり、元のご主役は通常料金に戻る
+  const [mainPrepSwapping, setMainPrepSwapping] = useState<string | null>(null);
+  async function handleSetMainPrep(reservationOptionId: string) {
+    const target = currentOptions.find((o) => o.id === reservationOptionId);
+    if (!target) return;
+    if (!confirm(`「${target.optionName}」をご主役のお支度にしますか？\n\nご主役のお支度はプラン込み（日本髪のみ有料）になり、現在のご主役は通常料金に戻ります。合計金額が再計算されます。`)) return;
+    setMainPrepSwapping(reservationOptionId);
+    try {
+      const res = await fetch(`/api/reservations/${reservation.id}/options`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mainPrepReservationOptionId: reservationOptionId }),
+      });
+      const data = await res.json();
+      if (!data.success) return;
+      setCurrentOptions((data.data as ReservationOption[]).map((ro) => {
+        const master = allOptions.find((o) => o.id === ro.optionId);
+        return { ...ro, optionName: master?.name ?? '', price: ro.unitPrice ?? master?.price ?? 0 };
+      }));
+    } finally {
+      setMainPrepSwapping(null);
+    }
+  }
+
   // 撮影合計（プラン＋オプション）※見学は料金0
   const isVisit = status === '見学';
   // ロケ：振込期限＝撮影日の2週間前。期限超過かつ未払いなら警告表示
@@ -419,7 +443,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const cancelInsuranceFee = (isLocation && reservation.cancelInsurance === '加入する') ? 5500 : 0;
 
   // 商品合計（linkedOrders の合計）
-  const orderItemTotal = linkedOrders.reduce((sum, o) => sum + o.total, 0);
+  // セットプラン内訳の自動作成注文はプラン料金に含まれるため支払合計には足さない
+  const orderItemTotal = linkedOrders.reduce((sum, o) => sum + (o.isSetPlanAuto ? 0 : o.total), 0);
   // 撮影割引率（0, 5, 10）
   const [discountRate, setDiscountRate] = useState(reservation.discountRate ?? 0);
   // 商品割引率（0, 5, 10）
@@ -1013,9 +1038,18 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     <tr key={o.id}>
                       <td className="py-2 text-gray-700">
                         {o.optionName}
-                        {o.isMainPrep && (
+                        {o.isMainPrep ? (
                           <span className="ml-1.5 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 align-middle">ご主役</span>
-                        )}
+                        ) : (isLocation && (
+                          <button
+                            onClick={() => handleSetMainPrep(o.id)}
+                            disabled={mainPrepSwapping !== null}
+                            className="ml-1.5 text-[10px] font-medium text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 align-middle hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-40 transition-colors"
+                            title="この行をご主役のお支度にする（現在のご主役は通常料金に戻ります）"
+                          >
+                            {mainPrepSwapping === o.id ? '変更中...' : 'ご主役にする'}
+                          </button>
+                        ))}
                       </td>
                       <td className="py-2 text-right text-gray-600">{formatCurrency(o.price)}</td>
                       <td className="py-2 text-right text-gray-600">×{o.quantity}</td>
@@ -1798,7 +1832,12 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                       className="block text-xs px-3 py-2 rounded-lg border border-gray-100 hover:bg-gray-50"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-gray-500">{order.orderDate}</span>
+                        <span className="text-gray-500">
+                          {order.orderDate}
+                          {order.isSetPlanAuto && (
+                            <span className="ml-1.5 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">セット内訳</span>
+                          )}
+                        </span>
                         <span className="text-gray-700 font-medium">¥{order.total.toLocaleString()}</span>
                       </div>
                       {order.items.length > 0 && (

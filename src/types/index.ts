@@ -172,6 +172,9 @@ export interface OrderItem {
   productName?: string;
   customerId?: string;     // ID顧客（VC）
   quantity: number;        // 数量
+  // この注文での単価。未指定(null/undefined)なら商品マスターの価格を使う
+  // （セットプラン込み商品はセット掛け値で計上するため上書きする）
+  unitPrice?: number | null;
   status: OrderItemStatus; // ステータス
   selectedDate?: string;   // セレクト済日
   layoutDate?: string;     // レイアウト済日

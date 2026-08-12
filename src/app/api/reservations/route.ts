@@ -41,9 +41,11 @@ import {
   getCustomers,
   getLocationShootDays,
   getLocationVisitDays,
+  createOrder,
+  createOrderItem,
 } from '@/lib/db';
 import { sendLinePush, buildTentativeMessage, buildLocationVisitTentativeMessage, buildLocationShootTentativeMessage, type LineMessage } from '@/lib/line';
-import { locationPlanPrice, locationShootTotal, locationSlotHalf } from '@/lib/location';
+import { locationPlanPrice, locationShootTotal, locationSlotHalf, setPlanIncludedProduct, SET_PLAN_ORDER_NOTE } from '@/lib/location';
 import { getActiveCampaign, isCampaignScene } from '@/lib/campaign';
 import { BOOKING_DAYS } from '@/lib/constants';
 import { generateId, generateReservationNumber } from '@/lib/utils';
@@ -270,6 +272,31 @@ export async function POST(req: NextRequest) {
         unitPrice: opt.unitPrice ?? null,
         isMainPrep: opt.isMainPrep ?? false,
       });
+    }
+
+    // セットプラン（Album/Frame Plan）は含まれる商品をセット掛け値で注文に自動計上する
+    // （制作進行の管理と、売上集計での商品売上分離のため。請求額は変わらない）
+    const includedProduct = !isVisit ? setPlanIncludedProduct(body.planId) : undefined;
+    if (includedProduct) {
+      const orderId = generateId();
+      await createOrder({
+        id: orderId,
+        customerId: customer.id,
+        reservationId,
+        orderDate: now,
+        isPaid: false,
+        note: SET_PLAN_ORDER_NOTE,
+      }).catch((e) => console.error('[SetPlan Order Error]', e.message ?? e));
+      await createOrderItem({
+        id: generateId(),
+        orderId,
+        productId: includedProduct.productId,
+        customerId: customer.id,
+        quantity: 1,
+        unitPrice: includedProduct.unitPrice,
+        status: '受注',
+        note: '',
+      }).catch((e) => console.error('[SetPlan OrderItem Error]', e.message ?? e));
     }
 
     // LIFF経由でlineUserIdがある場合、仮予約LINEを送信（スタジオ撮影 / ロケ見学 / ロケ撮影）

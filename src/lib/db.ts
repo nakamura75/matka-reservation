@@ -533,6 +533,17 @@ export async function createReservationOption(
   if (error) throw error;
 }
 
+export async function updateReservationOption(
+  id: string,
+  updates: { unitPrice?: number | null; isMainPrep?: boolean }
+): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if ('unitPrice' in updates) payload.unit_price = updates.unitPrice;
+  if ('isMainPrep' in updates) payload.is_main_prep = updates.isMainPrep;
+  const { error } = await supabase().from('reservation_options').update(payload).eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteReservationOption(id: string): Promise<void> {
   const { error } = await supabase().from('reservation_options').delete().eq('id', id);
   if (error) throw error;
@@ -620,6 +631,7 @@ export async function getOrderItems(orderId?: string): Promise<OrderItem[]> {
     productId: r.product_id,
     customerId: r.customer_id,
     quantity: r.quantity,
+    unitPrice: r.unit_price ?? null,
     status: r.status as OrderItem['status'],
     selectedDate: r.selected_date as string | undefined,
     layoutDate: r.layout_date as string | undefined,
@@ -640,6 +652,8 @@ export async function createOrderItem(
     product_id: data.productId,
     customer_id: data.customerId ?? '',
     quantity: data.quantity,
+    // 単価未指定はマスター価格を使う意味なので NULL のまま入れる（0 とは区別する）
+    unit_price: data.unitPrice ?? null,
     status: data.status,
     selected_date: data.selectedDate ?? '',
     layout_date: data.layoutDate ?? '',

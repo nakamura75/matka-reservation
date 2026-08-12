@@ -1,6 +1,7 @@
 import { getReservations, getStaff, getPlans, getOptions, getReservationOptions, getOrders, getOrderItems, getProducts, getHolidays } from '@/lib/db';
 import { isWeekend } from '@/lib/utils';
 import { resolveOptionPrice } from '@/lib/reservation-options';
+import { setPlanIncludedProduct } from '@/lib/location';
 import SalesSummary from './SalesSummary';
 
 export const dynamic = 'force-dynamic';
@@ -38,11 +39,16 @@ export default async function SalesPage() {
     const planPrice = planPriceMap[r.planId] ?? 0;
     const optionTotal = optionTotalByReservation[r.id] ?? 0;
 
-    // ロケは「プラン＋休日料金＋オプション＋キャンセル保険」を合計（割引なし）
+    // ロケは「プラン＋オプション＋キャンセル保険」を合計（割引なし）
     if (r.shootType === 'location') {
-      const holidaySurcharge = r.date && isWeekend(r.date) ? LOC_HOLIDAY_SURCHARGE : 0;
+      // 休日料金はプラン自体（〜（休日）プラン）に含まれているため加算しない。
+      // プランIDが無い（旧データ等）場合のみ日付ベースで休日料金を加算する
+      const holidaySurcharge = !r.planId && r.date && isWeekend(r.date) ? LOC_HOLIDAY_SURCHARGE : 0;
       const insurance = r.cancelInsurance === '加入する' ? LOC_INSURANCE : 0;
-      const total = planPrice + holidaySurcharge + optionTotal + insurance;
+      // セットプラン込みの商品（Crystal Book / Walnut Frame 8×10）は
+      // 注文（商品売上）側でセット掛け値を計上するため、プラン側から差し引く
+      const includedProductAmount = setPlanIncludedProduct(r.planId)?.unitPrice ?? 0;
+      const total = planPrice - includedProductAmount + holidaySurcharge + optionTotal + insurance;
       return { ...r, planPrice, optionTotal, total };
     }
 
@@ -59,12 +65,12 @@ export default async function SalesPage() {
   // 商品の単価マップ
   const productPriceMap: Record<string, number> = Object.fromEntries(products.map((p) => [p.id, p.price]));
 
-  // 注文に明細（価格付き）を付与
+  // 注文に明細（価格付き）を付与（unit_price 上書きがあればそれを使う＝セット掛け値対応）
   const enrichedOrders = orders.map((o) => ({
     ...o,
     items: orderItems
       .filter((i) => i.orderId === o.id)
-      .map((i) => ({ ...i, productPrice: productPriceMap[i.productId] ?? 0 })),
+      .map((i) => ({ ...i, productPrice: i.unitPrice ?? productPriceMap[i.productId] ?? 0 })),
   }));
 
   return (

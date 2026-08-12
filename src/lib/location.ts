@@ -71,3 +71,31 @@ export function isLocationVisit(
 ): boolean {
   return r.shootType === 'location' && (r.timeSlot as string) === LOC_VISIT_TIME;
 }
+
+// ============================================================
+// セットプランに含まれる商品（2026-08 先方指定のセット掛け値）
+//
+// Album Plan には Crystal Book、Frame Plan には Walnut Frame 8×10 が含まれる。
+// 予約作成時にこの内容で注文（商品明細）を自動作成し、
+// 売上集計ではプラン料金からこの金額を差し引いて商品売上側に計上する。
+// お客様への請求額（プラン料金）自体は変わらない＝社内の売上按分のみ。
+// ============================================================
+export const SET_PLAN_PRODUCTS: Record<string, { productId: string; unitPrice: number }> = {
+  'loc-plan-album-weekday': { productId: 'loc-prod-crystal-book', unitPrice: 39600 },
+  'loc-plan-album-holiday': { productId: 'loc-prod-crystal-book', unitPrice: 39600 },
+  'loc-plan-frame-weekday': { productId: 'loc-prod-walnut-8x10', unitPrice: 12100 },
+  'loc-plan-frame-holiday': { productId: 'loc-prod-walnut-8x10', unitPrice: 12100 },
+};
+
+/** セットプランに含まれる商品。セットプラン以外は undefined */
+export function setPlanIncludedProduct(planId?: string): { productId: string; unitPrice: number } | undefined {
+  return planId ? SET_PLAN_PRODUCTS[planId] : undefined;
+}
+
+/** セットプラン内訳として自動作成した注文の備考マーカー */
+export const SET_PLAN_ORDER_NOTE = 'セットプラン内訳（自動作成）';
+
+/** セットプラン内訳の自動作成注文か（領収書・予約詳細の合計からは除外する） */
+export function isSetPlanAutoOrder(note?: string | null): boolean {
+  return !!note && note.includes('セットプラン内訳');
+}
