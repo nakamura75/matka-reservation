@@ -6,11 +6,28 @@ import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import type { Reservation, ReservationStatus } from '@/types';
 import { formatDate, stripSeconds } from '@/lib/utils';
 import { STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
+import { isLocationVisit } from '@/lib/location';
 import type { ShootMode } from '@/lib/mode';
 
 // スタジオは従来通り全ステータス、ロケは 仮予約/予約確定/完了/キャンセル のみ（見学・保留なし）
 const STUDIO_TABS: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
 const LOCATION_TABS: ReservationStatus[] = ['予約済', '予約確定', '完了', 'キャンセル'];
+
+// 支払い対象のロケ本番予約か（見学・キャンセルは入金不要のため対象外）
+function isLocationShoot(r: Reservation): boolean {
+  return r.shootType === 'location' && r.status !== '見学' && r.status !== 'キャンセル' && !isLocationVisit(r);
+}
+
+// 振込期限（撮影日の2週間前）を過ぎているか
+function isTransferOverdue(dateStr?: string): boolean {
+  if (!dateStr) return false;
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() - 14);
+  const deadline = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const t = new Date();
+  const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  return today > deadline;
+}
 
 // 「完了」「キャンセル」のカウントは非表示
 const TABS_WITH_COUNT = new Set<ReservationStatus>(['予約済', '予約確定', '見学', '保留']);
@@ -30,6 +47,7 @@ export default function ReservationList({ reservations, mode }: {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [photoUndeliveredOnly, setPhotoUndeliveredOnly] = useState(false);
+  const [unpaidOnly, setUnpaidOnly] = useState(false);
 
   const isLoc = mode === 'location';
   const TAB_ORDER = isLoc ? LOCATION_TABS : STUDIO_TABS;
@@ -41,8 +59,12 @@ export default function ReservationList({ reservations, mode }: {
       setPhotoUndeliveredOnly(false);
       setPage(1);
     }
+    setUnpaidOnly(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
+
+  // 未入金フィルタはロケの キャンセル 以外のタブでのみ有効
+  const applyUnpaid = unpaidOnly && isLoc && activeTab !== 'キャンセル';
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -63,8 +85,9 @@ export default function ReservationList({ reservations, mode }: {
           r.reservationNumber?.includes(search) ||
           (r.date && r.date.includes(search));
         const matchesPhotoFilter = !photoUndeliveredOnly || !r.photoDelivered;
+        const matchesUnpaid = !applyUnpaid || (isLocationShoot(r) && !r.paymentStatus);
         const matchesShoot = isLoc ? r.shootType === 'location' : r.shootType !== 'location';
-        return matchesSearch && matchesShoot && r.status === activeTab && matchesPhotoFilter;
+        return matchesSearch && matchesShoot && r.status === activeTab && matchesPhotoFilter && matchesUnpaid;
       })
       .sort((a, b) => {
         let va: number, vb: number;
@@ -77,7 +100,7 @@ export default function ReservationList({ reservations, mode }: {
         }
         return sortDir === 'asc' ? va - vb : vb - va;
       });
-  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly, isLoc]);
+  }, [reservations, search, activeTab, sortKey, sortDir, photoUndeliveredOnly, applyUnpaid, isLoc]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -135,6 +158,24 @@ export default function ReservationList({ reservations, mode }: {
           </button>
         ))}
       </div>
+
+      {/* 未入金フィルター（ロケのキャンセル以外のタブ） */}
+      {isLoc && activeTab !== 'キャンセル' && (
+        <div className="px-4 py-2 border-b border-cream-dark flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={unpaidOnly}
+              onChange={(e) => { setUnpaidOnly(e.target.checked); setPage(1); }}
+              className="rounded border-gray-300 text-red-500 focus:ring-red-300"
+            />
+            未入金のみ表示
+          </label>
+          {applyUnpaid && (
+            <span className="text-xs text-gray-400">（{filtered.length}件）</span>
+          )}
+        </div>
+      )}
 
       {/* 未送付フィルター（完了タブのみ） */}
       {activeTab === '完了' && (
@@ -215,6 +256,17 @@ export default function ReservationList({ reservations, mode }: {
                         <span className={`inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-xs font-medium ${r.photoDelivered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
                           {r.photoDelivered ? '送付済' : '未送付'}
                         </span>
+                      )}
+                      {isLoc && isLocationShoot(r) && (
+                        r.paymentStatus ? (
+                          <span className="inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                            入金済み
+                          </span>
+                        ) : (
+                          <span className={`inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-xs font-medium ${isTransferOverdue(r.date) ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>
+                            {isTransferOverdue(r.date) ? '未入金・期限超過' : '未入金'}
+                          </span>
+                        )
                       )}
                     </div>
                   </td>
