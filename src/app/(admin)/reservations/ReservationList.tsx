@@ -264,7 +264,7 @@ export default function ReservationList({ reservations, mode }: {
                           </span>
                         ) : (
                           <span className={`inline-block whitespace-nowrap px-1.5 py-0.5 rounded text-xs font-medium ${isTransferOverdue(r.date) ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'}`}>
-                            {isTransferOverdue(r.date) ? '未入金・期限間近' : '未入金'}
+                            {isTransferOverdue(r.date) ? '未入金・期限超過' : '未入金'}
                           </span>
                         )
                       )}
