@@ -58,6 +58,13 @@ function validatePhone(v: string): string | null {
   if (digits.length < 10 || digits.length > 11) return '電話番号は10〜11桁で入力してください';
   return null;
 }
+// 電話番号の入力ミス防止用の確認欄。ハイフン有無の違いは許容し、数字部分の一致だけを見る
+function validatePhoneConfirm(phone: string, confirm: string): string | null {
+  const t = confirm.trim();
+  if (!t) return null;
+  if (phone.replace(/\D/g, '') !== t.replace(/\D/g, '')) return '電話番号が一致しません。ご確認ください';
+  return null;
+}
 function validateEmail(v: string): string | null {
   const t = v.trim();
   if (!t) return null; // 任意項目
@@ -143,6 +150,7 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
   const [zip, setZip] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneConfirm, setPhoneConfirm] = useState('');
   const [email, setEmail] = useState('');
 
   // STEP 3
@@ -621,10 +629,13 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
       type: string;
       placeholder: string;
       error: string | null;
+      noPaste?: boolean;
     }[] = [
       { label: 'お名前 *',       value: name,     onChange: setName,     type: 'text',  placeholder: '山田 花子',           error: validateName(name) },
       { label: 'フリガナ *',     value: furigana, onChange: setFurigana, type: 'text',  placeholder: 'ヤマダ ハナコ',       error: validateFurigana(furigana) },
       { label: '電話番号 *',     value: phone,    onChange: setPhone,    type: 'tel',   placeholder: '090-0000-0000',       error: validatePhone(phone) },
+      // 入力ミス防止のため2回入力してもらう（貼り付け不可で再入力を促す）
+      { label: '電話番号（確認） *', value: phoneConfirm, onChange: setPhoneConfirm, type: 'tel', placeholder: '確認のためもう一度ご入力ください', error: validatePhoneConfirm(phone, phoneConfirm), noPaste: true },
       { label: 'メールアドレス', value: email,    onChange: setEmail,    type: 'email', placeholder: 'example@email.com',   error: validateEmail(email) },
       { label: '郵便番号 *',     value: zip,      onChange: setZip,      type: 'text',  placeholder: '123-4567',            error: validateZip(zip) },
       { label: '住所 *',         value: address,  onChange: setAddress,  type: 'text',  placeholder: '東京都渋谷区...',     error: validateAddress(address) },
@@ -633,13 +644,14 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
     return (
       <div className="space-y-4">
         <h2 className="text-base font-bold text-gray-900">お客様情報</h2>
-        {fields.map(({ label, value, onChange, type, placeholder, error }) => (
+        {fields.map(({ label, value, onChange, type, placeholder, error, noPaste }) => (
           <div key={label}>
             <label className="block text-sm text-gray-600 mb-1">{label}</label>
             <input
               type={type}
               value={value}
               onChange={(e) => onChange(e.target.value)}
+              onPaste={noPaste ? (e) => e.preventDefault() : undefined}
               placeholder={placeholder}
               className={`w-full text-sm border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand ${
                 error ? 'border-red-400 bg-red-50/30' : 'border-gray-400'
@@ -1026,10 +1038,11 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
         return true;
       case 1: {
         // 必須項目すべて入力 + 形式エラーがないこと（メールは任意項目だが入力時は形式チェック）
-        if (!(name && furigana && phone && zip && address)) return false;
+        if (!(name && furigana && phone && phoneConfirm && zip && address)) return false;
         if (validateName(name)) return false;
         if (validateFurigana(furigana)) return false;
         if (validatePhone(phone)) return false;
+        if (validatePhoneConfirm(phone, phoneConfirm)) return false;
         if (validateEmail(email)) return false;
         if (validateZip(zip)) return false;
         if (validateAddress(address)) return false;
