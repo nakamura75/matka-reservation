@@ -30,7 +30,7 @@ const PLAN_DESC: Record<string, string> = {
 };
 const PLAN_NOTE: Record<string, string> = {
   'Frame Plan': 'フレーム単品注文より7,700円お得／フレーム用のお写真を1枚お選びいただけます',
-  'Album Plan': 'アルバム単品注文より9,900円お得／アルバムデザインはお任せください',
+  'Album Plan': 'アルバム単品注文より9,900円お得／アルバムデザインはお任せください／10P追加+11,000円　ご希望の方はご予約の際にメッセージでお伝えください',
 };
 
 // ============================================================
@@ -150,6 +150,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
 
   // お電話の希望
   const [phoneCallPreference, setPhoneCallPreference] = useState('');
+  const [contactMethod, setContactMethod] = useState(''); // 希望する場合の連絡方法（LINE / お電話）
 
   // 確認
   const [insurance, setInsurance] = useState<'' | '加入する' | '加入しない'>('');
@@ -328,6 +329,7 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
   const datesValid = !!shootDate && !!shootTime && (wantsVisit === 'no' ? true : wantsVisit === 'yes' && !!visitValid);
   const scheduleValid = datesValid && !!planTier;
   const customerValid = name.trim() && furigana.trim() && phone.trim() && phoneConfirm.trim() && zip.trim() && address.trim() && phoneCallPreference
+    && (phoneCallPreference !== '希望する' || contactMethod)
     && !validateName(name) && !validateFurigana(furigana) && !validatePhone(phone) && !validatePhoneConfirm(phone, phoneConfirm) && !validateZip(zip) && !validateAddress(address) && !validateEmail(email);
   const peopleValid = childrenCount !== '' && adultCount !== '';
   const canNext = (step === 0 && scheduleValid) || (step === 1 && customerValid) || (step === 2 && peopleValid) || (step === 3 && mainPrepValid) || step === 4;
@@ -361,7 +363,10 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
       adultCount,
       childrenDetail,
       selectedOptions: [...selectedOptions, ...mainPrepSelected],
-      phoneCallPreference,
+      // 希望する場合は連絡方法も含めて保存（管理画面の「電話希望」欄にそのまま表示される）
+      phoneCallPreference: phoneCallPreference === '希望する' && contactMethod
+        ? `希望する（${contactMethod}）`
+        : phoneCallPreference,
       cancelPolicyAgreed: true,
       lineUserId,
       lineName,
@@ -550,7 +555,10 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
     return (
       <div className="border-2 border-emerald-200 rounded-xl p-4 space-y-2">
         <p className="text-sm font-semibold text-gray-800">事前の見学はご希望されますか？<span className="text-red-500"> *</span></p>
-        <p className="text-xs text-gray-400">見学が難しい場合は「見学しない」をお選びいただけます（見学日の選択はスキップされます）。</p>
+        <p className="text-xs text-gray-400">
+          見学に来られる場合は振り込みの他に見学時のカード支払いも可能となります。<br />
+          見学が難しい場合は撮影日1週間前までにご希望のお衣装を2、3着までに絞ってLINEにご送付ください。
+        </p>
         <div className="flex gap-3 pt-1">
           {([
             { key: 'yes', label: '見学する' },
@@ -698,16 +706,27 @@ export default function LocationForm({ lineUserId = '', lineName = '', isInLine 
           </div>
         ))}
 
-        {/* お電話の希望 */}
+        {/* ご連絡の希望（LINEか電話かを選んでもらう。日中は電話がつながりにくいお客様が多いため） */}
         <div>
-          <label className="block text-sm text-gray-600 mb-2">仮予約後のお電話について <span className="text-red-500">*</span></label>
-          <p className="text-xs text-gray-400 mb-2">担当者からのお電話をご希望されますか？ご要望・ご不明点がある方は「希望する」をお選びください。</p>
+          <label className="block text-sm text-gray-600 mb-2">仮予約後のご連絡について <span className="text-red-500">*</span></label>
+          <p className="text-xs text-gray-400 mb-2">担当者からのご連絡をご希望されますか？ご要望・ご不明点がある方は「希望する」をお選びください。</p>
           <div className="flex gap-3">
             {['希望する', '希望しない'].map((opt) => (
-              <button key={opt} type="button" onClick={() => setPhoneCallPreference(opt)}
+              <button key={opt} type="button" onClick={() => { setPhoneCallPreference(opt); if (opt === '希望しない') setContactMethod(''); }}
                 className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${phoneCallPreference === opt ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{opt}</button>
             ))}
           </div>
+          {phoneCallPreference === '希望する' && (
+            <div className="mt-3">
+              <p className="text-xs text-gray-600 font-medium mb-2">ご希望の連絡方法をお選びください <span className="text-red-500">*</span></p>
+              <div className="flex gap-3">
+                {['LINE', 'お電話'].map((m) => (
+                  <button key={m} type="button" onClick={() => setContactMethod(m)}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${contactMethod === m ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-600 hover:border-emerald-200'}`}>{m}</button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
