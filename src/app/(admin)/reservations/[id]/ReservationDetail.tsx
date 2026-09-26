@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeftIcon, PencilSquareIcon, DocumentTextIcon, UserGroupIcon, CheckIcon, XMarkIcon, PlusIcon, TrashIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssignment, Product, Option, Holiday } from '@/types';
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
-import { LOC_INSURANCE, LOC_STAFF_BREAKDOWN } from '@/lib/location';
+import { LOC_INSURANCE, LOC_STAFF_BREAKDOWN, LOC_SHOOT_TIMES } from '@/lib/location';
 import { isPlanIncludedPrep } from '@/lib/reservation-options';
 import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS } from '@/lib/constants';
 
@@ -214,7 +214,9 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [infoEditing, setInfoEditing] = useState(false);
   const [infoSaving, setInfoSaving] = useState(false);
   const [editDate, setEditDate] = useState(reservation.date ?? '');
-  const [editTimeSlot, setEditTimeSlot] = useState<Reservation['timeSlot']>(reservation.timeSlot || '9:00');
+  const [editTimeSlot, setEditTimeSlot] = useState<Reservation['timeSlot']>(
+    reservation.timeSlot || ((reservation.shootType === 'location' ? '9:20' : '9:00') as Reservation['timeSlot'])
+  );
   const [editScene, setEditScene] = useState(reservation.scene ?? '');
   const [editOtherSceneNote, setEditOtherSceneNote] = useState(reservation.otherSceneNote ?? '');
   const [editChildrenCount, setEditChildrenCount] = useState(String(reservation.childrenCount ?? ''));
@@ -430,6 +432,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
 
   // 撮影合計（プラン＋オプション）※見学は料金0
   const isVisit = status === '見学';
+  // 編集フォームの時間帯選択肢を撮影区分で出し分け（ロケ本番は午前/午後の2枠）
+  const timeSlotOptions: readonly string[] = isVisit ? VISIT_TIME_SLOTS : isLocation ? LOC_SHOOT_TIMES.map((t) => t.value) : ALL_TIME_SLOTS;
   // ロケ：振込期限＝撮影日の2週間前。期限超過かつ未払いなら警告表示
   const transferDeadline = (isLocation && reservation.date)
     ? (() => { const d = new Date(reservation.date + 'T00:00:00'); d.setDate(d.getDate() - 14); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()
@@ -497,7 +501,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
       if (res.ok) {
         setStatus('保留');
         setEditDate('');
-        setEditTimeSlot('9:00');
+        setEditTimeSlot((isLocation ? '9:20' : '9:00') as Reservation['timeSlot']);
         router.refresh();
       } else {
         alert('日程変更に失敗しました');
@@ -738,7 +742,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     onChange={(e) => setEditTimeSlot(e.target.value as Reservation['timeSlot'])}
                     className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                   >
-                    {(isVisit ? VISIT_TIME_SLOTS : ALL_TIME_SLOTS).map((t) => (
+                    {timeSlotOptions.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
@@ -2073,7 +2077,7 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                     onChange={(e) => setEditTimeSlot(e.target.value as Reservation['timeSlot'])}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                   >
-                    {(isVisit ? VISIT_TIME_SLOTS : ALL_TIME_SLOTS).map((t) => (
+                    {timeSlotOptions.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
@@ -2105,8 +2109,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 {resendingLine ? '送信中...' : '予約確定LINEを再送信'}
               </button>
             )}
-            {/* 日程変更ボタン: 予約確定・見学のときに表示（ロケは延期なしのため非表示） */}
-            {!isLocation && (status === '予約確定' || status === '見学') && (
+            {/* 日程変更ボタン: 予約確定・見学のときに表示（スタジオ・ロケ共通） */}
+            {(status === '予約確定' || status === '見学') && (
               <button
                 onClick={handleScheduleChange}
                 disabled={loading}
