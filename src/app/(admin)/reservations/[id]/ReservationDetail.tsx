@@ -944,9 +944,10 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 <div>
                   <dt className="text-gray-400">LINE連携</dt>
                   <dd className="mt-0.5">
-                    {(reservation.chatLineUserId || reservation.lineUserId) ? (
+                    {reservation.chatLineUserId ? (
+                      // トーク連携済み（手動ペーストのチャットIDあり）＝確実にトークを開ける
                       <a
-                        href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${reservation.chatLineUserId || reservation.lineUserId}`}
+                        href={`https://chat.line.biz/${LINE_OA_BOT_ID}/chat/${reservation.chatLineUserId}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-80"
@@ -957,6 +958,15 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                         </svg>
                         LINEトークを開く
                       </a>
+                    ) : reservation.lineUserId ? (
+                      // LINE予約・予約番号送信による自動連携のみ（チャットIDと形式が異なりトークURLは開けない）。
+                      // 自動送信メッセージは届く。トークを開くには下の欄でチャットIDの登録が必要
+                      <span
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-800 bg-amber-50 border border-amber-300"
+                        title="LINE予約フォーム経由などで自動連携済みです。自動送信メッセージは届きますが、トークを開くには下の欄でチャットIDを登録してください"
+                      >
+                        LINE自動連携済み（トーク未紐づけ）
+                      </span>
                     ) : (
                       <span className="text-gray-400">未連携</span>
                     )}
