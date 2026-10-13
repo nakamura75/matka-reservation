@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useMode } from '@/components/layout/ModeProvider';
 import type { Reservation, Staff, Order, OrderItem, Holiday, ReservationOption } from '@/types';
-import { PLAN_STAFF_BREAKDOWN, SCENE_PLAN_MAP, HOLIDAY_FEE } from '@/lib/constants';
+import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, studioPlanBreakdownType } from '@/lib/constants';
 import { LOC_STAFF_BREAKDOWN } from '@/lib/location';
 import { resolveOptionPrice, isPlanIncludedPrep } from '@/lib/reservation-options';
 import { isWeekend } from '@/lib/utils';
@@ -218,7 +218,8 @@ export default function SalesSummary({ reservations: allReservations, staff, ord
             ]
           : (['photo', 'assistant', 'hair', 'makeup'] as const).map((role) => ({
               role: role as Role,
-              price: PLAN_STAFF_BREAKDOWN[SCENE_PLAN_MAP[r.scene ?? ''] ?? 'Discovery'][role],
+              // 改定後のマタニティ（新プラン）はDiscoveryと統一配分。旧プランの予約のみ旧配分
+              price: PLAN_STAFF_BREAKDOWN[studioPlanBreakdownType(r.scene, r.planId)][role],
               discountable: true,
             }));
       for (const { role, price, discountable } of planRoles) {

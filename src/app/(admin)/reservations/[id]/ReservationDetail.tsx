@@ -8,7 +8,7 @@ import type { Reservation, Customer, Plan, ReservationOption, Staff, StaffAssign
 import { formatDate, formatCurrency, isWeekend, stripSeconds } from '@/lib/utils';
 import { LOC_INSURANCE, LOC_STAFF_BREAKDOWN, LOC_SHOOT_TIMES } from '@/lib/location';
 import { isPlanIncludedPrep } from '@/lib/reservation-options';
-import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS } from '@/lib/constants';
+import { PLAN_STAFF_BREAKDOWN, HOLIDAY_FEE, STORE_STAFF_ID, LINE_OA_BOT_ID, STATUS_LABEL, STATUS_COLORS, DISCOUNT_RATES, ALL_TIME_SLOTS, VISIT_TIME_SLOTS, studioPlanBreakdownType } from '@/lib/constants';
 
 type OptionWithInfo = ReservationOption & { optionName: string; price: number };
 type LinkedOrderItem = { productName: string; price: number; quantity: number };
@@ -283,7 +283,8 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   // 担当割り当て
   const isLocation = reservation.shootType === 'location'; // ロケ予約（撮影シーンなし・見学日/保険あり・来店時間不要）
   const allStaff = staff.filter((s) => s.isActive !== 'FALSE');
-  const planType: 'Discovery' | 'Maternity' = reservation.scene === 'マタニティ' ? 'Maternity' : 'Discovery';
+  // 改定後のマタニティ（新プラン）はDiscoveryと統一配分。旧プランの予約のみ旧配分
+  const planType: 'Discovery' | 'Maternity' = studioPlanBreakdownType(reservation.scene, reservation.planId);
   // ロケはスタジオと単価体系が別（着付け・キャンセル保険あり）
   const breakdown = isLocation ? LOC_STAFF_BREAKDOWN : PLAN_STAFF_BREAKDOWN[planType];
   const isHolidayDate = holidays.some((h) => h.date === reservation.date && h.type === 'holiday');
