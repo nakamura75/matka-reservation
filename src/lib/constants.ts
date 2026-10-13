@@ -40,6 +40,21 @@ export const SCENE_PLAN_MAP: Record<string, 'Discovery' | 'Maternity'> = {
   'マタニティ': 'Maternity',
 };
 
+// 2026-10-15 料金改定前の旧 Maternity プラン（平日 ¥33,000 / 休日 ¥38,500）。
+// 改定後のマタニティは Discovery と統一価格・統一配分になったため、
+// 旧プランで予約された分だけ従来の Maternity 配分を維持する。
+export const LEGACY_MATERNITY_PLAN_IDS = ['20260122221555_4134C939', '20260122221555_BDA7648C'];
+
+/** スタジオ予約の担当配分キー。改定後のマタニティ（新プラン）は Discovery 配分を使う */
+export function studioPlanBreakdownType(
+  scene: string | undefined,
+  planId: string | undefined
+): 'Discovery' | 'Maternity' {
+  const base = SCENE_PLAN_MAP[scene ?? ''] ?? 'Discovery';
+  if (base === 'Maternity' && !LEGACY_MATERNITY_PLAN_IDS.includes(planId ?? '')) return 'Discovery';
+  return base;
+}
+
 // 予約ステータス
 export const RESERVATION_STATUSES = ['予約済', '予約確定', '見学', '完了', 'キャンセル'] as const;
 
