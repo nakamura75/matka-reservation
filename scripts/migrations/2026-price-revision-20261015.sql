@@ -9,7 +9,8 @@
 --       2026-10-14 15:00 UTC（= 10/15 0:00 JST）に自動実行。
 --       実行結果は cron.job_run_details で確認し、確認後 cron.unschedule する。
 --
--- 対象外: ロケーションのプラン・お支度（先方確認済み）、商品（10/3に先方が変更済み・
+-- 対象外: ロケーションのプラン・お支度（先方確認済み。ただし 10/14 の追加依頼で
+--         ロケの日本髪のみ 2,200→3,300 円で対象に追加）、商品（10/3に先方が変更済み・
 --         過去注文への unit_price 焼き付け修復は 10/13 実施済み）。
 --
 -- 担当配分: 新Maternityプランは Discovery と統一配分（コード側 LEGACY_MATERNITY_PLAN_IDS 参照）。
@@ -40,7 +41,8 @@ insert into options (id, name, price, description, is_active, show_in_form, shoo
   ('20261015-father-hair-makeup',    'お父様ヘア+フェイスメイク',  5500, '※人員のかねあいにより日時変更をお願いする可能性がございます。',              true, true,  'studio', ''),
   ('20261015-furisode',              '振袖着付け',                15400, '',                                                                            true, false, 'studio', ''),
   ('20261015-seijin-hair',           '成人式ヘアセット',          11000, '',                                                                            true, false, 'studio', ''),
-  ('20261015-seijin-makeup',         '成人式フェイスメイク',       7700, '',                                                                            true, false, 'studio', '')
+  ('20261015-seijin-makeup',         '成人式フェイスメイク',       7700, '',                                                                            true, false, 'studio', ''),
+  ('20261015-loc-nihongami',         '日本髪',                     3300, '※日本髪をご希望の方は、ヘアメイク料金として別途3,300円を頂戴します',        true, true,  'location', '')
 on conflict (id) do nothing;
 
 -- 旧オプションをフォーム非表示・無効化（管理画面の追加候補から消え、既存予約の金額参照はそのまま）
@@ -51,5 +53,5 @@ where id in (
   '20260122205222_CC3481D5', '20260122205222_C239EBF0', '20260122205222_0135B48D',
   '20260122205222_A2E78B7A', '20260122205222_88F96FD9', '20260122205222_3B60CFC2',
   'opt_father_makeup', '20260122205222_75D70EC7', 'opt_furisode',
-  'opt_seijin_hair', 'opt_seijin_makeup'
+  'opt_seijin_hair', 'opt_seijin_makeup', 'loc-opt-nihongami'
 );
