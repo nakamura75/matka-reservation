@@ -21,15 +21,21 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json() as { optionId: string; quantity: number };
+  const body = await req.json() as { optionId: string; quantity: number; unitPrice?: number | null };
   const reservation = await getReservationById(params.id);
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // 単価上書き（旧料金での追加等）。未指定はマスター価格に追従する意味で null
+  const unitPrice = typeof body.unitPrice === 'number' && Number.isFinite(body.unitPrice) && body.unitPrice >= 0
+    ? Math.round(body.unitPrice)
+    : null;
 
   const newOption = {
     id: generateId(),
     reservationId: params.id,
     optionId: body.optionId,
     quantity: body.quantity ?? 1,
+    unitPrice,
     note: '',
   };
   await createReservationOption(newOption);
