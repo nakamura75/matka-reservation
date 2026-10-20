@@ -164,13 +164,13 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
   const [selectedOptions, setSelectedOptions] = useState<{ optionId: string; quantity: number }[]>([]);
 
   // STEP 5
-  const [phoneCallPreference, setPhoneCallPreference] = useState('希望しない'); // ② 連絡希望
+  const [phoneCallPreference, setPhoneCallPreference] = useState('希望しない'); // ② 電話希望
   const [phoneCallTopics, setPhoneCallTopics] = useState<string[]>([]);
-  const [phoneContactMethod, setPhoneContactMethod] = useState(''); // 希望する場合の連絡方法（LINE / お電話）
-  // 「電話希望」欄への保存・確認画面表示の共通形式（例: 希望する（LINE・衣装について））
-  const contactParts = [phoneContactMethod, ...phoneCallTopics].filter(Boolean);
-  const contactPreferenceLabel = phoneCallPreference === '希望する' && contactParts.length > 0
-    ? `希望する（${contactParts.join('・')}）`
+  // 「電話希望」欄への保存・確認画面表示の共通形式（例: 希望する（衣装について））
+  // ※スタジオはLINE/電話の選択肢を一度導入したが、電話で説明した方が早い問い合わせが
+  //   多かったため2026-10に電話のみへ戻した（ロケはLINE/電話の選択を継続）
+  const contactPreferenceLabel = phoneCallPreference === '希望する' && phoneCallTopics.length > 0
+    ? `希望する（${phoneCallTopics.join('、')}）`
     : phoneCallPreference;
   const [note, setNote] = useState('');
   const [agreed, setAgreed] = useState(false);
@@ -889,7 +889,7 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
           {email && <p className="text-gray-500">✉️ {email}</p>}
           <p className="text-gray-500">📍 {zip} {address}</p>
           <p className="text-gray-500">お子様: {childrenCount}名　大人の方: {adultCount === '5以上' ? '5名以上' : adultCount + '名'}</p>
-          <p className="text-gray-500">📞 ご連絡: {contactPreferenceLabel}</p>
+          <p className="text-gray-500">📞 お電話: {contactPreferenceLabel}</p>
         </div>
 
         {/* ③ お子様詳細を確認画面に表示 */}
@@ -945,12 +945,12 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
           />
         </div>
 
-        {/* ② ご連絡の希望（LINEか電話かを選んでもらう。日中は電話がつながりにくいお客様が多いため） */}
+        {/* ② お電話の希望（LINE/電話の選択は2026-10に廃止し、電話のみに戻した） */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">仮予約後のご連絡について <span className="text-red-500">*</span></h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">仮予約後のお電話について <span className="text-red-500">*</span></h3>
           <div className="bg-gray-50 rounded-xl p-4">
             <p className="text-xs text-gray-500 mb-3">
-              仮予約確定後、担当者からのご連絡をご希望されますか？<br />
+              仮予約確定後、担当者からのお電話をご希望されますか？<br />
               ご要望・ご不明点がある方は「希望する」をお選びください。
             </p>
             <div className="flex gap-4">
@@ -963,7 +963,7 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
                     checked={phoneCallPreference === option}
                     onChange={(e) => {
                       setPhoneCallPreference(e.target.value);
-                      if (e.target.value === '希望しない') { setPhoneCallTopics([]); setPhoneContactMethod(''); }
+                      if (e.target.value === '希望しない') setPhoneCallTopics([]);
                     }}
                     className="w-4 h-4 accent-brand"
                   />
@@ -972,19 +972,8 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
               ))}
             </div>
             {phoneCallPreference === '希望する' && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-600 font-medium mb-2">ご希望の連絡方法をお選びください <span className="text-red-500">*</span></p>
-                <div className="flex gap-3">
-                  {['LINE', 'お電話'].map((m) => (
-                    <button key={m} type="button" onClick={() => setPhoneContactMethod(m)}
-                      className={`flex-1 py-2 rounded-xl border-2 text-sm font-medium transition-colors ${phoneContactMethod === m ? 'border-brand bg-brand-light text-gray-900' : 'border-gray-300 text-gray-600 hover:border-brand'}`}>{m}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {phoneCallPreference === '希望する' && (
               <div className="mt-3 space-y-2">
-                <p className="text-xs text-gray-600 font-medium">ご連絡の際に確認したい内容を教えてください（複数選択可）</p>
+                <p className="text-xs text-gray-600 font-medium">お電話で確認したい内容を教えてください（複数選択可）</p>
                 {[
                   '撮影当日の流れや準備について',
                   '料金・プランの詳細について',
@@ -1070,8 +1059,7 @@ export default function StudioForm({ lineUserId = '', lineName = '', isInLine }:
         return true;
       }
       case 3: return true;
-      // 連絡を希望する場合は連絡方法（LINE / お電話）の選択も必須
-      case 4: return agreed && (phoneCallPreference !== '希望する' || !!phoneContactMethod);
+      case 4: return agreed;
       default: return false;
     }
   }
