@@ -363,28 +363,37 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
   const [addingOptionQty, setAddingOptionQty] = useState(1);
   const [optionAdding, setOptionAdding] = useState(false);
   const [optionDeleting, setOptionDeleting] = useState<string | null>(null);
+  // 単価の上書き（料金改定前のお客様に旧料金で追加する場合など）。普段は隠しておく
+  const [priceEditing, setPriceEditing] = useState(false);
+  const [customPrice, setCustomPrice] = useState('');
 
   async function handleAddOption() {
     if (!addingOptionId) return;
     const master = allOptions.find((o) => o.id === addingOptionId);
     if (!master) return;
+    // 単価欄が開いていて、マスター価格と異なる値のときだけ上書きを送る
+    // （同額なら null のまま＝マスター価格に追従）
+    const parsed = priceEditing && customPrice !== '' ? Number(customPrice) : NaN;
+    const unitPrice = Number.isFinite(parsed) && parsed >= 0 && parsed !== master.price ? parsed : undefined;
     setOptionAdding(true);
     try {
       const res = await fetch(`/api/reservations/${reservation.id}/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ optionId: addingOptionId, quantity: addingOptionQty }),
+        body: JSON.stringify({ optionId: addingOptionId, quantity: addingOptionQty, unitPrice }),
       });
       const data = await res.json();
       if (!data.success) return;
       const newOpt: OptionWithInfo = {
         ...data.data,
         optionName: master.name,
-        price: master.price,
+        price: data.data.unitPrice ?? master.price,
       };
       setCurrentOptions((prev) => [...prev, newOpt]);
       setAddingOptionId('');
       setAddingOptionQty(1);
+      setPriceEditing(false);
+      setCustomPrice('');
     } finally {
       setOptionAdding(false);
     }
@@ -1088,7 +1097,14 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
             <div className="flex gap-1.5 pt-2 border-t border-gray-100">
               <select
                 value={addingOptionId}
-                onChange={(e) => setAddingOptionId(e.target.value)}
+                onChange={(e) => {
+                  setAddingOptionId(e.target.value);
+                  // 単価欄を開いている場合は、選び直したオプションのマスター価格を初期値に入れ直す
+                  if (priceEditing) {
+                    const m = allOptions.find((o) => o.id === e.target.value);
+                    setCustomPrice(m ? String(m.price) : '');
+                  }
+                }}
                 className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand/30 min-w-0"
               >
                 <option value="">オプションを追加...</option>
@@ -1112,6 +1128,39 @@ export default function ReservationDetail({ reservation, customer, plan, allPlan
                 {optionAdding ? '追加中...' : '追加'}
               </button>
             </div>
+            {/* 単価の上書き（レア操作のため普段は畳んでおく。料金改定前のお客様への旧料金追加など） */}
+            {priceEditing ? (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="text-[10px] text-gray-500 shrink-0">この追加だけの単価 ¥</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={customPrice}
+                  onChange={(e) => setCustomPrice(e.target.value)}
+                  placeholder="例: 4400"
+                  className="w-24 text-xs border border-amber-300 bg-amber-50/40 rounded-lg px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-amber-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setPriceEditing(false); setCustomPrice(''); }}
+                  className="text-[10px] text-gray-400 hover:text-gray-600"
+                >
+                  やめる（通常料金で追加）
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setPriceEditing(true);
+                  const m = allOptions.find((o) => o.id === addingOptionId);
+                  setCustomPrice(m ? String(m.price) : '');
+                }}
+                className="mt-1.5 text-[10px] text-gray-400 hover:text-brand underline-offset-2 hover:underline"
+              >
+                単価を変更して追加（料金改定前のお客様など）
+              </button>
+            )}
           </section>
 
           {/* 画像（参考写真など。枚数無制限・スタッフのみアップロード可） */}
