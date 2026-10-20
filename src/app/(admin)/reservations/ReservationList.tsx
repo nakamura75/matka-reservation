@@ -9,9 +9,11 @@ import { STATUS_LABEL, STATUS_COLORS } from '@/lib/constants';
 import { isLocationVisit } from '@/lib/location';
 import type { ShootMode } from '@/lib/mode';
 
-// スタジオは従来通り全ステータス、ロケは 仮予約/予約確定/完了/キャンセル のみ（見学・保留なし）
+// スタジオ・ロケとも全ステータスのタブを表示する。
+// ロケは当初「見学・保留なし」だったが、日程変更（保留化）がロケでも可能になったため保留タブを追加
+// （ないと保留の予約が一覧から見えなくなる）。確定前の見学も一覧で管理できるよう見学タブも追加。
 const STUDIO_TABS: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
-const LOCATION_TABS: ReservationStatus[] = ['予約済', '予約確定', '完了', 'キャンセル'];
+const LOCATION_TABS: ReservationStatus[] = ['予約済', '予約確定', '見学', '保留', '完了', 'キャンセル'];
 
 // 支払い対象のロケ本番予約か（見学・キャンセルは入金不要のため対象外）
 function isLocationShoot(r: Reservation): boolean {
