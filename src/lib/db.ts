@@ -28,6 +28,32 @@ function supabase() {
 }
 
 // ============================================================
+// 全件取得ヘルパー
+//
+// Supabase(PostgREST)は1リクエストで最大1000行しか返さない。
+// 2026-10 に予約が1001件に達し、一番新しい予約が一覧・タイムラインから
+// 消える不具合が起きたため、件数が増え続けるテーブルの全件取得は
+// range でページを繋いで取得する。
+// ※ build に渡すクエリには「順序が一意に定まる order」を必ず指定すること
+//   （順序が曖昧だとページ境界で行の重複・欠落が起きる。idを第2キーにする）。
+// ============================================================
+const FETCH_PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += FETCH_PAGE_SIZE) {
+    const { data, error } = await build(from, from + FETCH_PAGE_SIZE - 1);
+    if (error) throw error;
+    const rows = data ?? [];
+    all.push(...rows);
+    if (rows.length < FETCH_PAGE_SIZE) break;
+  }
+  return all;
+}
+
+// ============================================================
 // snake_case ⇔ camelCase 変換ヘルパー
 // ============================================================
 
@@ -170,12 +196,15 @@ function reservationToDb(r: Partial<Reservation>): Record<string, unknown> {
 // ============================================================
 
 export async function getCustomers(): Promise<Customer[]> {
-  const { data, error } = await supabase()
-    .from('customers')
-    .select('*')
-    .order('furigana', { ascending: true, nullsFirst: false });
-  if (error) throw error;
-  return (data ?? []).map(dbToCustomer);
+  const data = await fetchAllRows<Record<string, unknown>>((from, to) =>
+    supabase()
+      .from('customers')
+      .select('*')
+      .order('furigana', { ascending: true, nullsFirst: false })
+      .order('id')
+      .range(from, to)
+  );
+  return data.map(dbToCustomer);
 }
 
 export async function getCustomerById(id: string): Promise<Customer | null> {
@@ -350,15 +379,18 @@ export async function updateStaff(data: Staff): Promise<void> {
 // ============================================================
 
 export async function getReservations(opts?: { fromDate?: string; toDate?: string }): Promise<Reservation[]> {
-  let query = supabase()
-    .from('reservations')
-    .select('*')
-    .order('created_at', { ascending: true });
-  if (opts?.fromDate) query = query.gte('date', opts.fromDate);
-  if (opts?.toDate) query = query.lte('date', opts.toDate);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map(dbToReservation);
+  const data = await fetchAllRows<Record<string, unknown>>((from, to) => {
+    let query = supabase()
+      .from('reservations')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .order('id')
+      .range(from, to);
+    if (opts?.fromDate) query = query.gte('date', opts.fromDate);
+    if (opts?.toDate) query = query.lte('date', opts.toDate);
+    return query;
+  });
+  return data.map(dbToReservation);
 }
 
 export async function getReservationById(id: string): Promise<Reservation | null> {
@@ -498,16 +530,19 @@ export async function saveChatLineUserId(id: string, chatLineUserId: string): Pr
 // ============================================================
 
 export async function getReservationOptions(reservationId?: string): Promise<ReservationOption[]> {
-  let query = supabase()
-    .from('reservation_options')
-    .select('*')
-    .order('id');
-  if (reservationId) {
-    query = query.eq('reservation_id', reservationId);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map((r) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = await fetchAllRows<Record<string, any>>((from, to) => {
+    let query = supabase()
+      .from('reservation_options')
+      .select('*')
+      .order('id')
+      .range(from, to);
+    if (reservationId) {
+      query = query.eq('reservation_id', reservationId);
+    }
+    return query;
+  });
+  return data.map((r) => ({
     id: r.id,
     reservationId: r.reservation_id,
     optionId: r.option_id,
@@ -562,12 +597,16 @@ export async function deleteReservation(id: string): Promise<void> {
 // ============================================================
 
 export async function getOrders(): Promise<Order[]> {
-  const { data, error } = await supabase()
-    .from('orders')
-    .select('*')
-    .order('order_date', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((r) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = await fetchAllRows<Record<string, any>>((from, to) =>
+    supabase()
+      .from('orders')
+      .select('*')
+      .order('order_date', { ascending: false })
+      .order('id')
+      .range(from, to)
+  );
+  return data.map((r) => ({
     id: r.id,
     customerId: r.customer_id,
     reservationId: r.reservation_id,
@@ -684,16 +723,19 @@ export async function syncSetPlanAutoOrder(
 // ============================================================
 
 export async function getOrderItems(orderId?: string): Promise<OrderItem[]> {
-  let query = supabase()
-    .from('order_items')
-    .select('*')
-    .order('id');
-  if (orderId) {
-    query = query.eq('order_id', orderId);
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map((r) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = await fetchAllRows<Record<string, any>>((from, to) => {
+    let query = supabase()
+      .from('order_items')
+      .select('*')
+      .order('id')
+      .range(from, to);
+    if (orderId) {
+      query = query.eq('order_id', orderId);
+    }
+    return query;
+  });
+  return data.map((r) => ({
     id: r.id,
     orderId: r.order_id,
     productId: r.product_id,
